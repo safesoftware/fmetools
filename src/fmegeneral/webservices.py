@@ -20,7 +20,6 @@ from fmewebservices import (
 from fmeobjects import FMEException, FMESession
 from requests.auth import AuthBase
 
-from fmegeneral.fmeconstants import kFME_MSGNUM_NAMED_CONNECTION_NOT_FOUND
 from fmegeneral.fmehttp import get_auth_object
 from fmegeneral.fmeutil import systemToUnicode
 
@@ -197,5 +196,5 @@ class NamedConnectionNotFound(FMEException):
 
     def __init__(self, client_name, connection_name):
         super(NamedConnectionNotFound, self).__init__(
-            kFME_MSGNUM_NAMED_CONNECTION_NOT_FOUND, [client_name, connection_name]
+            926882, [client_name, connection_name]
         )
