@@ -26,8 +26,7 @@ class OpenParameters(OrderedDict):
         :param dataset: Dataset value from the first argument to `open()`. Should use `decodedDataset` instead.
         :param list[str] parameters: open() parameters. Must have an odd number of elements or be empty.
         """
-        assert (len(parameters) > 0
-                and len(parameters) % 2 == 1) or len(parameters) == 0
+        assert (len(parameters) > 0 and len(parameters) % 2 == 1) or len(parameters) == 0
         super(OpenParameters, self).__init__()
 
         self.__session = FMESession()
@@ -38,8 +37,7 @@ class OpenParameters(OrderedDict):
         self.original = parameters
 
         for i in range(1, len(parameters), 2):
-            key, value = systemToUnicode(parameters[i]), systemToUnicode(
-                parameters[i + 1])
+            key, value = systemToUnicode(parameters[i]), systemToUnicode(parameters[i + 1])
 
             if self.__contains__(key):
                 # Key already exists in this dictionary.
@@ -91,8 +89,9 @@ class OpenParameters(OrderedDict):
         return fmeutil.stringToBool(value)
 
     def __str__(self):
-        return "Open parameters: " + ", ".join("%s: %s" % (key, value)
-                                               for key, value in self.items())
+        return "Open parameters: " + ", ".join(
+            "%s: %s" % (key, value) for key, value in self.items()
+        )
 
 
 class SearchEnvelope(object):
@@ -105,8 +104,8 @@ class SearchEnvelope(object):
 
     def __init__(self, envelope, coordSys=None):
         """
-      :param list[list[float]] envelope: [[minX, minY], [maxX, maxY]]
-      """
+        :param list[list[float]] envelope: [[minX, minY], [maxX, maxY]]
+        """
         self.envelope = envelope
         self.bottomLeft = envelope[0]
         self.topRight = envelope[1]
@@ -117,8 +116,9 @@ class SearchEnvelope(object):
         self.coordSys = coordSys
 
     def __str__(self):
-        return 'Envelope<({},{})({},{}) {}>'.format(
-            self.minX, self.minY, self.maxX, self.maxY, self.coordSys)
+        return "Envelope<({},{})({},{}) {}>".format(
+            self.minX, self.minY, self.maxX, self.maxY, self.coordSys
+        )
 
 
 def parse_def_line(def_line, option_names):
@@ -138,8 +138,7 @@ def parse_def_line(def_line, option_names):
 
     attributes, options = OrderedDict(), {}
     for index in range(2, len(def_line), 2):
-        key, value = systemToUnicode(def_line[index]), systemToUnicode(
-            def_line[index + 1])
+        key, value = systemToUnicode(def_line[index]), systemToUnicode(def_line[index + 1])
 
         if key in option_names:
             options[key] = session.decodeFromFMEParsableText(value)
@@ -167,65 +166,61 @@ class JSONOptionParser(object):
     """Parse writer DEF line options common to formats that use
     ``install/metafile/jsonWriterConfig.fmi``."""
 
-    OPTION_PREFIX = 'fme_json_document_'
-    SOURCE_OPTION_ATTR = OPTION_PREFIX + 'source'
-    SOURCE_PARAMS_OPTION_ATTR = OPTION_PREFIX + 'source_params'
+    OPTION_PREFIX = "fme_json_document_"
+    SOURCE_OPTION_ATTR = OPTION_PREFIX + "source"
+    SOURCE_PARAMS_OPTION_ATTR = OPTION_PREFIX + "source_params"
     OPTION_ATTRS = {SOURCE_OPTION_ATTR, SOURCE_PARAMS_OPTION_ATTR}
     """DEF line option names handled by this parser. Include these in the writer's set of recognized DEF line options."""
 
-    DOCUMENT_SOURCE_FEATURE = 'Feature'
-    DOCUMENT_SOURCE_ATTRIBUTE = 'JSON Attribute'
+    DOCUMENT_SOURCE_FEATURE = "Feature"
+    DOCUMENT_SOURCE_ATTRIBUTE = "JSON Attribute"
 
-    INNER_PARAM_DOCUMENT_ID_ATTR = OPTION_PREFIX + 'id_attribute'
-    INNER_PARAM_DOCUMENT_JSON_ATTR = OPTION_PREFIX + 'json_attribute'
+    INNER_PARAM_DOCUMENT_ID_ATTR = OPTION_PREFIX + "id_attribute"
+    INNER_PARAM_DOCUMENT_JSON_ATTR = OPTION_PREFIX + "json_attribute"
 
     def __init__(self, def_line_options):
         """
-      :param dict def_line_options: This class will not modify this parameter.
-      """
+        :param dict def_line_options: This class will not modify this parameter.
+        """
         self.def_options = def_line_options
         self.inner_params = {}
 
-        source_params = def_line_options.get(self.SOURCE_PARAMS_OPTION_ATTR,
-                                             '').split(';')
+        source_params = def_line_options.get(self.SOURCE_PARAMS_OPTION_ATTR, "").split(";")
         if len(source_params) >= 2:
             session = FMESession()
             for i in range(0, len(source_params), 2):
-                self.inner_params[source_params[
-                    i]] = session.decodeFromFMEParsableText(
-                        source_params[i + 1])
+                self.inner_params[source_params[i]] = session.decodeFromFMEParsableText(
+                    source_params[i + 1]
+                )
 
     def document_source(self):
         """Gets the document source setting value.
 
-      :return: Document source setting value, or 'Feature' if not set.
-      """
-        return self.def_options.get(self.SOURCE_OPTION_ATTR,
-                                    self.DOCUMENT_SOURCE_FEATURE)
+        :return: Document source setting value, or 'Feature' if not set.
+        """
+        return self.def_options.get(self.SOURCE_OPTION_ATTR, self.DOCUMENT_SOURCE_FEATURE)
 
     def document_source_is_feature(self):
         """Returns True if the writer should build JSON documents out of the Feature.
 
-      :returns: True if the writer should build JSON documents out of the Feature.
-         Otherwise, the writer should get JSON documents out of the attribute specified by :meth:`json_attribute`.
-      :rtype: bool
-      """
+        :returns: True if the writer should build JSON documents out of the Feature.
+           Otherwise, the writer should get JSON documents out of the attribute specified by :meth:`json_attribute`.
+        :rtype: bool
+        """
         return self.document_source() == self.DOCUMENT_SOURCE_FEATURE
 
     def json_attribute(self):
         """Gets the name of the attribute containing document JSON.
 
-      :return: Name of attribute that contains document JSON. Forced from Unicode to system if necessary.
-      :raises KeyError: if not configured. Empty string counts as 'configured'.
-      """
-        return unicodeToSystem(
-            self.inner_params[self.INNER_PARAM_DOCUMENT_JSON_ATTR])
+        :return: Name of attribute that contains document JSON. Forced from Unicode to system if necessary.
+        :raises KeyError: if not configured. Empty string counts as 'configured'.
+        """
+        return unicodeToSystem(self.inner_params[self.INNER_PARAM_DOCUMENT_JSON_ATTR])
 
     def id_attribute(self):
         """Gets the name of the attribute containing document IDs.
 
-      :return: Name of attribute that contains document IDs. Forced from Unicode to system if necessary.
-      :raises KeyError: If not configured. Empty string counts as 'configured'.
-      """
-        return unicodeToSystem(
-            self.inner_params[self.INNER_PARAM_DOCUMENT_ID_ATTR])
+        :return: Name of attribute that contains document IDs. Forced from Unicode to system if necessary.
+        :raises KeyError: If not configured. Empty string counts as 'configured'.
+        """
+        return unicodeToSystem(self.inner_params[self.INNER_PARAM_DOCUMENT_ID_ATTR])

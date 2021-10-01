@@ -91,13 +91,13 @@ class FMETokenConnectionWrapper(object):
     def get_authorization_header(self):
         """Gets the authorization header name and its value.
 
-      :return: Authorization header name, and its value.
-         Unlike the original `getAuthorizationHeader()`, these values are cleaned up for use with Requests.
-         The trailing colon is removed from the header.
-         Then both the header and value have leading and trailing spaces stripped, as required by
-         `Requests 2.11 <https://github.com/requests/requests/issues/3488>`_.
-      :rtype: str
-      """
+        :return: Authorization header name, and its value.
+           Unlike the original `getAuthorizationHeader()`, these values are cleaned up for use with Requests.
+           The trailing colon is removed from the header.
+           Then both the header and value have leading and trailing spaces stripped, as required by
+           `Requests 2.11 <https://github.com/requests/requests/issues/3488>`_.
+        :rtype: str
+        """
         header, value = self.wrapped_conn.getAuthorizationHeader()
         header = header.replace(":", "").strip()
         value = value.strip()
@@ -148,14 +148,14 @@ class FMEWebConnectionTokenBasedAuth(AuthBase):
 
     def __init__(self, wrapped_conn, token_location=None, header_and_url=False):
         """
-      :param FMETokenConnectionWrapper wrapped_conn:
-         Wrapped OAuth 2.0 or token-based connection from which to obtain tokens.
-      :param str token_location: If None, the token is treated as an OAuth 2.0 access token and put in the header.
-         Otherwise, this is the query string parameter name for the token.
-      :param bool header_and_url: If true, then assume token is an OAuth 2.0 token,
-         but include it in both the Authorization header and token_location.
-         This is intended for use by ArcGIS Online only.
-      """
+        :param FMETokenConnectionWrapper wrapped_conn:
+           Wrapped OAuth 2.0 or token-based connection from which to obtain tokens.
+        :param str token_location: If None, the token is treated as an OAuth 2.0 access token and put in the header.
+           Otherwise, this is the query string parameter name for the token.
+        :param bool header_and_url: If true, then assume token is an OAuth 2.0 token,
+           but include it in both the Authorization header and token_location.
+           This is intended for use by ArcGIS Online only.
+        """
         assert (header_and_url and token_location) or not header_and_url
         self.conn = wrapped_conn
         self.token_location = token_location

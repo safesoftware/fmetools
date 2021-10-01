@@ -21,44 +21,41 @@ from fmegeneral.parsers import SearchEnvelope, OpenParameters
 class FMESimplifiedReader(FMEReader):
     """Base class for Python-based FME reader implementations.
 
-   :param str _typeName: The name used in the following contexts:
+    :param str _typeName: The name used in the following contexts:
 
-         * the name of the format's .db file in the formats info folder
-         * the format short name for the format within the .db file
-         * ``FORMAT_NAME`` in the metafile
+          * the name of the format's .db file in the formats info folder
+          * the format short name for the format within the .db file
+          * ``FORMAT_NAME`` in the metafile
 
-   :param str _keyword: A unique identifier for this reader instance.
-   :param FMEMappingFileWrapper _mappingFileWrapper: The :class:`FMEMappingFileWrapper`.
-   :param bool _debug: Toggle for debug mode.
-   :param Logger _logger: Helper class for logging functionality.
-   :param bool _usingConstraints: True if :meth:`setConstraints` was called.
-   :param bool _aborted: True if :meth:`abort` was called.
-   :param SearchEnvelope _searchEnvelope: An abstraction of the 2D search envelope given by FME
-      that's easier to understand.
-   :type _featureTypes: list[six.text_type]
-   :param _featureTypes: Ordered list of feature types, in Unicode.
-   :param _readSchema_generator: Use this member to store any generator used for :meth:`readSchema`.
-      Doing so means it'll be be explicitly closed for you in :meth:`close`.
-   :param _read_generator: Use this member to store any generator used for :meth:`read`.
-      Doing so means it'll be be explicitly closed for you in :meth:`close`.
-      :meth:`setConstraints` will both close it and set it to `None`.
-      This means :meth:`read` can just check this member for `None` to determine whether it needs to re-instantiate
-      its generator to honour new settings.
-   """
+    :param str _keyword: A unique identifier for this reader instance.
+    :param FMEMappingFileWrapper _mappingFileWrapper: The :class:`FMEMappingFileWrapper`.
+    :param bool _debug: Toggle for debug mode.
+    :param Logger _logger: Helper class for logging functionality.
+    :param bool _usingConstraints: True if :meth:`setConstraints` was called.
+    :param bool _aborted: True if :meth:`abort` was called.
+    :param SearchEnvelope _searchEnvelope: An abstraction of the 2D search envelope given by FME
+       that's easier to understand.
+    :type _featureTypes: list[six.text_type]
+    :param _featureTypes: Ordered list of feature types, in Unicode.
+    :param _readSchema_generator: Use this member to store any generator used for :meth:`readSchema`.
+       Doing so means it'll be be explicitly closed for you in :meth:`close`.
+    :param _read_generator: Use this member to store any generator used for :meth:`read`.
+       Doing so means it'll be be explicitly closed for you in :meth:`close`.
+       :meth:`setConstraints` will both close it and set it to `None`.
+       This means :meth:`read` can just check this member for `None` to determine whether it needs to re-instantiate
+       its generator to honour new settings.
+    """
 
     def __init__(self, readerTypeName, readerKeyword, mappingFile):
         # super() is intentionally not called.
         # The base class implementation would throw an exception because it doesn't want to be called.
         self._typeName = readerTypeName
         self._keyword = readerKeyword
-        self._mappingFileWrapper = FMEMappingFileWrapper(
-            mappingFile, readerKeyword, readerTypeName
-        )
+        self._mappingFileWrapper = FMEMappingFileWrapper(mappingFile, readerKeyword, readerTypeName)
 
         # Check if the debug flag is set
         self._debug = (
-            self._mappingFileWrapper.mappingFile.fetch(fmeconstants.kFME_DEBUG)
-            is not None
+            self._mappingFileWrapper.mappingFile.fetch(fmeconstants.kFME_DEBUG) is not None
         )
 
         # Instantiate a logger with the appropriate debug mode.
@@ -167,35 +164,32 @@ class FMESimplifiedReader(FMEReader):
 class FMESimplifiedWriter(FMEWriter):
     """Base class for Python-based FME writer implementations.
 
-   :param str _typeName: The name used in the following contexts:
+    :param str _typeName: The name used in the following contexts:
 
-         * the name of the format's .db file in the formats info folder
-         * the format short name for the format within the .db file
-         * ``FORMAT_NAME`` in the metafile
+          * the name of the format's .db file in the formats info folder
+          * the format short name for the format within the .db file
+          * ``FORMAT_NAME`` in the metafile
 
-   :param str _keyword: A unique identifier for this writer instance.
-   :param FMEMappingFileWrapper _mappingFileWrapper: A wrapper for accessing information from the
-      mapping file in a simplified way.
-   :param bool _debug: Toggle for debug mode.
-   :param Logger _logger: Helper class for logging functionality.
-   :param bool _aborted: True if :meth:`abort` was called.
-   :type _featureTypes:  list[six.text_type]
-   :param _featureTypes: Ordered list of feature types, in Unicode.
-   """
+    :param str _keyword: A unique identifier for this writer instance.
+    :param FMEMappingFileWrapper _mappingFileWrapper: A wrapper for accessing information from the
+       mapping file in a simplified way.
+    :param bool _debug: Toggle for debug mode.
+    :param Logger _logger: Helper class for logging functionality.
+    :param bool _aborted: True if :meth:`abort` was called.
+    :type _featureTypes:  list[six.text_type]
+    :param _featureTypes: Ordered list of feature types, in Unicode.
+    """
 
     def __init__(self, writerTypeName, writerKeyword, mappingFile):
         # super() is intentionally not called.
         # The base class implementation would throw an exception because it doesn't want to be called.
         self._typeName = writerTypeName
         self._keyword = writerKeyword
-        self._mappingFileWrapper = FMEMappingFileWrapper(
-            mappingFile, writerKeyword, writerTypeName
-        )
+        self._mappingFileWrapper = FMEMappingFileWrapper(mappingFile, writerKeyword, writerTypeName)
 
         # Check if the debug flag is set
         self._debug = (
-            self._mappingFileWrapper.mappingFile.fetch(fmeconstants.kFME_DEBUG)
-            is not None
+            self._mappingFileWrapper.mappingFile.fetch(fmeconstants.kFME_DEBUG) is not None
         )
 
         # Instantiate a logger with the appropriate debug mode.
@@ -267,10 +261,10 @@ class FMEMappingFileWrapper(object):
 
     def __init__(self, mappingFile, pluginKeyword, pluginType):
         """
-      :param pluginbuilder.FMEMappingFile mappingFile: The original mapping file object.
-      :param str pluginKeyword: Plugin keyword string.
-      :param str pluginType: Plugin type string.
-      """
+        :param pluginbuilder.FMEMappingFile mappingFile: The original mapping file object.
+        :param str pluginKeyword: Plugin keyword string.
+        :param str pluginType: Plugin type string.
+        """
         self.mappingFile = mappingFile
         self._pluginKeyword = pluginKeyword
         self._pluginType = pluginType
@@ -324,9 +318,7 @@ class FMEMappingFileWrapper(object):
         if asList and isinstance(value, six.string_types):
             value = value.split()
             if decodeWWJD:
-                value = [
-                    self.__session.decodeFromFMEParsableText(entry) for entry in value
-                ]
+                value = [self.__session.decodeFromFMEParsableText(entry) for entry in value]
         elif decodeWWJD and isinstance(value, six.string_types):
             value = self.__session.decodeFromFMEParsableText(value)
         return value
@@ -350,24 +342,20 @@ class FMEMappingFileWrapper(object):
         :returns: The search envelope, or None if not set.
         :rtype: parsers.SearchEnvelope, None
         """
-        env = self.mappingFile.fetchSearchEnvelope(
-            self._pluginKeyword, self._pluginType
-        )
+        env = self.mappingFile.fetchSearchEnvelope(self._pluginKeyword, self._pluginType)
         if not env:
             return None
         coordSys = self.get("_SEARCH_ENVELOPE_COORDINATE_SYSTEM")
         return SearchEnvelope(env, coordSys)
 
-    def getFeatureTypes(
-        self, openParameters, fetchMode=fmeconstants.kFME_FETCH_IDS_AND_DEFS
-    ):
+    def getFeatureTypes(self, openParameters, fetchMode=fmeconstants.kFME_FETCH_IDS_AND_DEFS):
         """Get the feature types, if any.
 
-      :param list[str] openParameters: Parameters for the reader.
-      :param int fetchMode: One of the valid feature type fetch modes from :mod:`fmegeneral.fmeconstants`.
-      :returns: List of feature types, in Unicode.
-      :rtype: list[six.text_type]
-      """
+        :param list[str] openParameters: Parameters for the reader.
+        :param int fetchMode: One of the valid feature type fetch modes from :mod:`fmegeneral.fmeconstants`.
+        :returns: List of feature types, in Unicode.
+        :rtype: list[six.text_type]
+        """
         featTypes = self.mappingFile.fetchFeatureTypes(
             self._pluginKeyword, self._pluginType, openParameters, fetchMode
         )
@@ -422,8 +410,7 @@ class FMETransformer(object):
             self.pyoutput_cb(feature)
 
     def total_features_passed_along(self):
-        """Returns a count of features that have been processed to date, in all groups
-        """
+        """Returns a count of features that have been processed to date, in all groups"""
         # Stub. Implementation is injected at runtime.
         pass
 
@@ -454,7 +441,7 @@ class FMEEnhancedTransformer(FMETransformer):
         except AttributeError:
             debug = False
         self._log = get_configured_logger(self.keyword, debug)
- 
+
     @property
     def keyword(self):
         """Override this method to define the keyword identifying the

@@ -64,9 +64,7 @@ def get_env_var(var_name_lowercase):
 
     :param str var_name_lowercase: The environment variable name.
     """
-    return os.environ.get(var_name_lowercase) or os.environ.get(
-        var_name_lowercase.upper()
-    )
+    return os.environ.get(var_name_lowercase) or os.environ.get(var_name_lowercase.upper())
 
 
 def toggle_http_debug_logging(enabled):
@@ -138,18 +136,18 @@ class FMERequestsSession(PACSession):
     def __init__(self, logPrefix, log=None, fmeSession=None, legacy_verify_mode=True):
         """
 
-      :param str logPrefix: The prefix to use for all log messages from this class, e.g. "[format name] [direction]".
-      :param fmelog.FMELoggerAdapter log: Python standard library logger to use.
-         If provided, it *must* be able to gracefully handle FME message numbers
-         or otherwise not propagate integer messages to handlers that cannot handle it (like the root logger).
-         If None, a generic Logger instance is instantiated, which won't output anything to the FME log.
-      :param FMESession fmeSession: Load proxy configuration from this session. Intended for testing purposes only.
-         If not provided, a new FMESession object is used for this purpose.
-      :param bool legacy_verify_mode: If true, then certificate verification failure
-         will warn, disable certificate verification in this session, and retry the request.
-         Starting in FME 2021.1, certificate verification should be toggled by
-         the "Verify SSL Certificates" option added to all Named Connections by FMEDESKTOP-10332.
-      """
+        :param str logPrefix: The prefix to use for all log messages from this class, e.g. "[format name] [direction]".
+        :param fmelog.FMELoggerAdapter log: Python standard library logger to use.
+           If provided, it *must* be able to gracefully handle FME message numbers
+           or otherwise not propagate integer messages to handlers that cannot handle it (like the root logger).
+           If None, a generic Logger instance is instantiated, which won't output anything to the FME log.
+        :param FMESession fmeSession: Load proxy configuration from this session. Intended for testing purposes only.
+           If not provided, a new FMESession object is used for this purpose.
+        :param bool legacy_verify_mode: If true, then certificate verification failure
+           will warn, disable certificate verification in this session, and retry the request.
+           Starting in FME 2021.1, certificate verification should be toggled by
+           the "Verify SSL Certificates" option added to all Named Connections by FMEDESKTOP-10332.
+        """
         super(FMERequestsSession, self).__init__()
         adapter = SystemCertStoreAdapter()
         for scheme in ("http://", "https://"):
@@ -226,9 +224,7 @@ class FMERequestsSession(PACSession):
 
         # Configure PyPAC with proxy credentials, if any.
         if generalProxyConfig.user:
-            self.proxy_auth = HTTPProxyAuth(
-                generalProxyConfig.user, generalProxyConfig.password
-            )
+            self.proxy_auth = HTTPProxyAuth(generalProxyConfig.user, generalProxyConfig.password)
 
         # PR70705: Honour system proxy exceptions on Windows.
         if generalProxyConfig.proxies and os.name == "nt":
@@ -359,8 +355,8 @@ class HTTPBearerAuth(AuthBase):
 
     def __init__(self, access_token):
         """
-      :param str access_token: The access token.
-      """
+        :param str access_token: The access token.
+        """
         self.access_token = access_token
 
     def __call__(self, req):
@@ -392,9 +388,7 @@ def get_auth_object(auth_type, user="", password="", format_name=""):
 
     # TODO: Convert to FME message.
     if not user or not password:
-        raise ValueError(
-            "Authentication type '%s' requires a username and password" % auth_type
-        )
+        raise ValueError("Authentication type '%s' requires a username and password" % auth_type)
 
     # These types need a username and password.
     if auth_type == "BASIC":
@@ -423,15 +417,12 @@ def proxy_url_without_credentials(proxy_url):
     if credentials_separator_index > -1:
         # Strip out credentials if they're present.
         proxy_url = (
-            proxy_url[: proxy_url.find("://") + 3]
-            + proxy_url[credentials_separator_index + 1 :]
+            proxy_url[: proxy_url.find("://") + 3] + proxy_url[credentials_separator_index + 1 :]
         )
     return proxy_url
 
 
-FMEProxyDefinition = namedtuple(
-    "FMEProxyDefinition", ["env_var", "proxy_url", "auth_method"]
-)
+FMEProxyDefinition = namedtuple("FMEProxyDefinition", ["env_var", "proxy_url", "auth_method"])
 FMECustomProxyMap = namedtuple(
     "FMECustomProxyMap",
     [
@@ -483,9 +474,7 @@ class FMEGeneralProxyHandler(object):
                 and proxy_config[i + 2] == "proxy_auth_method"
             ):
                 # Proxy values are not FME-encoded.
-                self.proxies.append(
-                    FMEProxyDefinition(key, value, proxy_config[i + 3].lower())
-                )
+                self.proxies.append(FMEProxyDefinition(key, value, proxy_config[i + 3].lower()))
                 i += 4
                 continue
             if key == "use-system-proxy":
@@ -503,9 +492,7 @@ class FMEGeneralProxyHandler(object):
         self.use_pac = use_system_proxy and not self.proxies
 
         # Grab proxy credentials from Workbench. When a PAC is in use, we need these standalone values.
-        proxy_network_config = fmeSession.getProperties(
-            FMESESSION_PROP_NETWORK_PROXY_SETTINGS, {}
-        )
+        proxy_network_config = fmeSession.getProperties(FMESESSION_PROP_NETWORK_PROXY_SETTINGS, {})
         for i in range(0, len(proxy_network_config), 2):
             key, value = proxy_network_config[i], proxy_network_config[i + 1]
             if key == "system-proxy-user":
@@ -595,9 +582,7 @@ class FMECustomProxyMapHandler(object):
         ).lower()  # lower() for case-insensitive comparisons.
 
         proxy_map_info = stringArrayToDict(proxy_info.split(","))
-        proxy_url = fmesession.decodeFromFMEParsableText(
-            proxy_map_info["proxy-url"]
-        ).strip()
+        proxy_url = fmesession.decodeFromFMEParsableText(proxy_map_info["proxy-url"]).strip()
         if not proxy_url:
             # A proxy mapping that means 'do not use proxy for this URL'.
             return FMECustomProxyMap(url, "", "", False, "", "", "")
@@ -614,9 +599,7 @@ class FMECustomProxyMapHandler(object):
         )  # No credentials and no path.
         user = fmesession.decodeFromFMEParsableText(proxy_map_info["user"])
         password = fmesession.decodeFromFMEParsableText(proxy_map_info["password"])
-        requires_authentication = choiceToBool(
-            proxy_map_info["requires-authentication"]
-        )
+        requires_authentication = choiceToBool(proxy_map_info["requires-authentication"])
 
         proxy_url_with_creds = sanitized_proxy_url
         if requires_authentication:
@@ -628,9 +611,7 @@ class FMECustomProxyMapHandler(object):
                 if password:
                     creds += ":" + quote(password)
                 creds += "@"
-            proxy_url_with_creds = "{}://{}{}".format(
-                parsed_proxy.scheme, creds, netloc
-            )
+            proxy_url_with_creds = "{}://{}{}".format(parsed_proxy.scheme, creds, netloc)
 
         return FMECustomProxyMap(
             url,

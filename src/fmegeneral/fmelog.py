@@ -39,7 +39,8 @@ class FMELogFormatter(logging.Formatter):
                 pass
             # FMELogFile is local due to FMESession leak issues when participating in Python's singleton logging system.
             msg_string = FMELogFile().getMessage(
-                record.msg, FMELogFormatter.cast_msg_params(msg_params))
+                record.msg, FMELogFormatter.cast_msg_params(msg_params)
+            )
         else:
             # Only attempt substitutions in string messages if caller provided arguments.
             # Otherwise, '%xx' in message could be misinterpreted as placeholders and cause errors.
@@ -48,7 +49,7 @@ class FMELogFormatter(logging.Formatter):
                 msg_string = record.msg % record.args
 
         if record.levelno == logging.DEBUG:
-            msg_string = 'DEBUG: ' + msg_string
+            msg_string = "DEBUG: " + msg_string
 
         return msg_string
 
@@ -131,12 +132,12 @@ class FMELoggerAdapter(logging.LoggerAdapter):
         self.prepended_params = None
 
     def process(self, msg, kwargs):
-        if 'extra' not in kwargs:
-            kwargs['extra'] = {}
-        extra = kwargs['extra']
+        if "extra" not in kwargs:
+            kwargs["extra"] = {}
+        extra = kwargs["extra"]
         extra.update(self.extra)
-        if not extra.get('no_prepend_args', False):
-            extra['prepended_params'] = self.prepended_params
+        if not extra.get("no_prepend_args", False):
+            extra["prepended_params"] = self.prepended_params
         return msg, kwargs
 
     def warn(self, msg, *args, **kwargs):
@@ -145,7 +146,7 @@ class FMELoggerAdapter(logging.LoggerAdapter):
         return self.warning(msg, *args, **kwargs)
 
 
-def get_configured_logger(name='fmelog', debug=None):
+def get_configured_logger(name="fmelog", debug=None):
     """Get an object that can be used for Python-style logging.
 
     :param str name: Logger name to obtain.

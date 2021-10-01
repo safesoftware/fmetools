@@ -1,6 +1,6 @@
 """Utilities sharable between internal plugin python modules."""
 
-#--- Import FME and sys requirements
+# --- Import FME and sys requirements
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import os
@@ -29,6 +29,7 @@ class FMELocale(object):
     This class serves no purpose for end users. Use
     :func:`getSystemLocale` instead.
     """
+
     # See PR#53541 and PR#52908.
 
     def __init__(self):
@@ -58,7 +59,7 @@ def choiceToBool(boolean):
     :param str boolean: yes|no. Case-insensitive.
     :rtype: bool
     """
-    return str(boolean).lower() == 'yes'
+    return str(boolean).lower() == "yes"
 
 
 def boolToChoice(boolean):
@@ -68,7 +69,7 @@ def boolToChoice(boolean):
     :return: Yes|No
     :rtype: str
     """
-    return 'Yes' if boolean else 'No'
+    return "Yes" if boolean else "No"
 
 
 def stringArrayToDict(stringArray):
@@ -119,21 +120,18 @@ def stringToBool(string):
 def exceptionToDebugStr():
     """Get the last raised exception trace, type, and message as one line.
 
-   :return: The last raised exception as a one line combined exception trace, type and message.
-   :rtype: str
-   """
-    return repr(
-        traceback.format_exception(sys.exc_info()[0],
-                                   sys.exc_info()[1],
-                                   sys.exc_info()[2]))
+    :return: The last raised exception as a one line combined exception trace, type and message.
+    :rtype: str
+    """
+    return repr(traceback.format_exception(sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]))
 
 
 def exceptionToStr():
     """Get the last raised exception message.
 
-   :return: The last raised exception message.
-   :rtype: str
-   """
+    :return: The last raised exception message.
+    :rtype: str
+    """
     return str(sys.exc_info()[1])
 
 
@@ -164,12 +162,11 @@ def unicodeToSystem(original):
     """
     # See PRs #52906-52909.
 
-    if (PY2 and isinstance(original, binary_type)) or \
-       (PY3 and isinstance(original, text_type)):
+    if (PY2 and isinstance(original, binary_type)) or (PY3 and isinstance(original, text_type)):
         # If input is already a non-Unicode string, return it as-is.
         # In Py3, Unicode strings are returned.
         return original
-    return original.encode(getSystemLocale(), 'replace')
+    return original.encode(getSystemLocale(), "replace")
 
 
 def castToUnicode(string):
@@ -200,14 +197,14 @@ def systemToUnicode(original):
     if isinstance(original, text_type):
         # If input is already a Unicode string, return it as-is.
         return original
-    return original.decode(getSystemLocale(), 'replace')
+    return original.decode(getSystemLocale(), "replace")
 
 
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Attempts to convert the given system value to utf-8 encoding
 # All characters that failed to encode will be replaced by ?
 # Initially added for PRs #53185
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 def systemToUtf8(original):
     """Try to convert the given system-encoded string to a UTF-8 encoded
     string. Characters that could not be converted are replaced with '?'.
@@ -217,8 +214,8 @@ def systemToUtf8(original):
     :return: UTF-8 encoded string - not a `unicode` string.
     :rtype: six.binary_type
     """
-    unicodeVal = original.decode(getSystemLocale(), 'replace')
-    return unicodeVal.encode('utf8', 'replace')
+    unicodeVal = original.decode(getSystemLocale(), "replace")
+    return unicodeVal.encode("utf8", "replace")
 
 
 def utf8ToSystem(original):
@@ -231,8 +228,8 @@ def utf8ToSystem(original):
     """
     # See PR#53185.
 
-    unicodeVal = original.decode('utf8', 'replace')
-    return unicodeVal.encode(getSystemLocale(), 'replace')
+    unicodeVal = original.decode("utf8", "replace")
+    return unicodeVal.encode(getSystemLocale(), "replace")
 
 
 def decodeWWJDString(encoded):
@@ -243,8 +240,11 @@ def decodeWWJDString(encoded):
     :return: Decoded WWJD string or input value unchanged.
     :rtype: six.text_type or type(encoded)
     """
-    return FMESession().decodeFromFMEParsableText(encoded) \
-       if isinstance(encoded, six.string_types) else encoded
+    return (
+        FMESession().decodeFromFMEParsableText(encoded)
+        if isinstance(encoded, six.string_types)
+        else encoded
+    )
 
 
 class Logger(object):
@@ -255,16 +255,16 @@ class Logger(object):
 
     def __init__(self, debug=False):
         """
-      :param bool debug: Whether this instance should emit debug messages.
-      """
+        :param bool debug: Whether this instance should emit debug messages.
+        """
         self.debug_ = debug
         self.fmeLogfile_ = fmeobjects.FMELogFile()
 
     def setDebugMode(self, debug=True):
         """Tells the logger whether to emit debug messages or not.
 
-      :param bool debug: Whether this instance should emit debug messages.
-      """
+        :param bool debug: Whether this instance should emit debug messages.
+        """
         self.debug_ = debug
 
     def logMessageString(self, message, level=FME_INFORM, debug=False):
@@ -281,10 +281,9 @@ class Logger(object):
 
         # Output debug messages
         elif self.debug_:
-            self.fmeLogfile_.logMessageString('DEBUG: %s' % message, level)
+            self.fmeLogfile_.logMessageString("DEBUG: %s" % message, level)
 
-    def logMessage(self, messageID, params=None, level=FME_INFORM,
-                   debug=False):
+    def logMessage(self, messageID, params=None, level=FME_INFORM, debug=False):
         """Write message based on its message ID or string to the FME logfile.
 
         :type messageID: str or int
@@ -340,13 +339,14 @@ class Logger(object):
         :param str proxy_url: Proxy URL, which may contain the username and password.
         :rtype: None
         """
-        credentials_separator_index = proxy_url.rfind('@')
+        credentials_separator_index = proxy_url.rfind("@")
         if credentials_separator_index > -1:
             # Strip out credentials if they're present.
-            proxy_url = proxy_url[:proxy_url.find(
-                '://') + 3] + proxy_url[credentials_separator_index + 1:]
-        self.logMessage(fmeconstants.kFME_MSGNUM_USING_PROXY,
-                        [log_prefix, proxy_url])
+            proxy_url = (
+                proxy_url[: proxy_url.find("://") + 3]
+                + proxy_url[credentials_separator_index + 1 :]
+            )
+        self.logMessage(fmeconstants.kFME_MSGNUM_USING_PROXY, [log_prefix, proxy_url])
 
     def allowDuplicateMessages(self, allowDuplicateMessages):
         """If True, tells the logger not to hide repeated messages.  If False
@@ -385,8 +385,8 @@ class FMETZInfo(tzinfo):
 
     def __init__(self, offset):
         """
-      :param int offset: Time zone offset, in minutes
-      """
+        :param int offset: Time zone offset, in minutes
+        """
         super(FMETZInfo, self).__init__()
         self.offset = offset
 
@@ -414,27 +414,27 @@ def fmeDateToPython(dateStr):
 
     def microsecond_format(value):
         """
-      :param value: Microseconds or nanoseconds. Can be `None`.
-         Though FME datetime format supports nanoseconds, Python datetime does not, so it's truncated.
-      :rtype: str
-      :returns: 6-character value suitable for parsing as `%f` in :meth:`datetime.strptime`.
-      """
+        :param value: Microseconds or nanoseconds. Can be `None`.
+           Though FME datetime format supports nanoseconds, Python datetime does not, so it's truncated.
+        :rtype: str
+        :returns: 6-character value suitable for parsing as `%f` in :meth:`datetime.strptime`.
+        """
         if value is None:
-            value = ''
+            value = ""
         # Python 2 rejects unicode fill character, and we have unicode_literals on.
-        return value.ljust(6, b'0' if six.PY2 else '0')[:6]
+        return value.ljust(6, b"0" if six.PY2 else "0")[:6]
 
     # Ensure it's a string.
     if not isinstance(dateStr, string_types):
         dateStr = str(dateStr)
 
-    regex = r'(?P<dt>\d+)(?:\.(?P<us>\d+))?(?:(?P<tzs>[\-+])(?P<tzh>[01][0-9])(?::(?P<tzm>[0-5][0-9]))?)?'
+    regex = r"(?P<dt>\d+)(?:\.(?P<us>\d+))?(?:(?P<tzs>[\-+])(?P<tzh>[01][0-9])(?::(?P<tzm>[0-5][0-9]))?)?"
     match = re.match(regex, dateStr)
     if match is None:
         # If regex doesn't match, then it's unparseable.
         return None, False, False
 
-    dt, us, tzs, tzh, tzm = match.group('dt', 'us', 'tzs', 'tzh', 'tzm')
+    dt, us, tzs, tzh, tzm = match.group("dt", "us", "tzs", "tzh", "tzm")
 
     tz = None
     if tzs is not None:
@@ -443,11 +443,11 @@ def fmeDateToPython(dateStr):
         tz = int(tzh) * 60
         if tzm:
             tz += int(tzm)
-        if tzs == '-':
+        if tzs == "-":
             tz *= -1
         tz = FMETZInfo(tz)
 
-    fmeDateFormat, fmeTimeFormat = '%Y%m%d', '%H%M%S%f'
+    fmeDateFormat, fmeTimeFormat = "%Y%m%d", "%H%M%S%f"
 
     dtSize = len(dt)
     try:
@@ -489,21 +489,20 @@ def pythonDateTimeToFMEFormat(theDateTime):
     # Time tuple doesn't contain time zone or microseconds, so those parts are added separately.
     timetuple = theDateTime.timetuple()
     result = str(timetuple.tm_year).zfill(4)
-    result += ''.join(str(timetuple[i]).zfill(2) for i in range(1, 6))
+    result += "".join(str(timetuple[i]).zfill(2) for i in range(1, 6))
 
     # Add microseconds if they're not zero.
     microseconds = theDateTime.microsecond
     if microseconds > 0:
-        result += '.' + str(microseconds).zfill(6)
+        result += "." + str(microseconds).zfill(6)
 
     # Add time zone offset if the datetime has a time zone.
     tz = theDateTime.tzinfo
     if tz:
         # Get time zone offset in minutes.  The // operator is discard floor division.
         totalOffsetMinutes = int(tz.utcoffset(False).total_seconds()) // 60
-        offsetH, offsetM = abs(totalOffsetMinutes) // 60, abs(
-            totalOffsetMinutes) % 60
-        result += '+' if totalOffsetMinutes >= 0 else '-'  # Sign.
+        offsetH, offsetM = abs(totalOffsetMinutes) // 60, abs(totalOffsetMinutes) % 60
+        result += "+" if totalOffsetMinutes >= 0 else "-"  # Sign.
         result += str(offsetH).zfill(2)  # Hours.
         if offsetM > 0:  # Include minutes if they're not zero.
             result += str(offsetM).zfill(2)
@@ -525,11 +524,12 @@ def unixtimeToPython(timestamp_ms):
     """
     timestamp_s, timestamp_ms_part = timestamp_ms // 1000, timestamp_ms % 1000
     if timestamp_ms < 0:
-        return datetime(
-            1970, 1, 1, tzinfo=UTC_TZ) + timedelta(
-                seconds=timestamp_s, milliseconds=timestamp_ms_part)
-    return datetime.fromtimestamp(
-        timestamp_s, tz=UTC_TZ).replace(microsecond=timestamp_ms_part * 1000)
+        return datetime(1970, 1, 1, tzinfo=UTC_TZ) + timedelta(
+            seconds=timestamp_s, milliseconds=timestamp_ms_part
+        )
+    return datetime.fromtimestamp(timestamp_s, tz=UTC_TZ).replace(
+        microsecond=timestamp_ms_part * 1000
+    )
 
 
 def isoTimestampToFMEFormat(isoTimestamp):
@@ -559,19 +559,18 @@ def isoTimestampToFMEFormat(isoTimestamp):
             return None
 
     # Remove date/time separator, time part, and timezone part separator.
-    formatted = isoTimestamp.replace('T', '')
-    formatted = formatted.replace(' ', '')
-    formatted = formatted.replace(':', '')
-    formatted = formatted.replace(
-        '-', '', 2)  # Remove first 2 dashes: the date part separator.
+    formatted = isoTimestamp.replace("T", "")
+    formatted = formatted.replace(" ", "")
+    formatted = formatted.replace(":", "")
+    formatted = formatted.replace("-", "", 2)  # Remove first 2 dashes: the date part separator.
 
     # Minimum timestamp length is 14 characters/digits to represent both date and time.
     if len(formatted) < 14:
         return None
 
     # Replace Z timezone with explicit offset.
-    if formatted[-1] == 'Z':
-        formatted = formatted.replace('Z', '+00')
+    if formatted[-1] == "Z":
+        formatted = formatted.replace("Z", "+00")
 
     return formatted
 
@@ -591,21 +590,23 @@ def parse_gui_date(value, raise_on_error=True):
     """
     # For details about this discrepancy, see PR77997.
 
-    value = value.replace('-', '')
+    value = value.replace("-", "")
     try:
-        return datetime.strptime(value, '%Y%m%d')
+        return datetime.strptime(value, "%Y%m%d")
     except:
         if not raise_on_error:
             return
         raise
 
 
-def retryOnException(exception,
-                     maxTries,
-                     logWrapper=lambda attempt, maximum: None,
-                     action=lambda *x: None,
-                     *actionArgs,
-                     **actionKwargs):
+def retryOnException(
+    exception,
+    maxTries,
+    logWrapper=lambda attempt, maximum: None,
+    action=lambda *x: None,
+    *actionArgs,
+    **actionKwargs
+):
     """Function generating a decorator to retry a function several times,
     taking an action on a specific exception. When maximum retries have been
     made, the exception is raised again.
@@ -666,7 +667,7 @@ def mangleDuplicateName(candidateName, usedNames):
         mangleIndex += 1
 
 
-def parseMultiParam(multiparam, delim=';', decode=False):
+def parseMultiParam(multiparam, delim=";", decode=False):
     """Creates a dictionary from an FME MULTIPARAM
 
     Example:
@@ -688,10 +689,9 @@ def parseMultiParam(multiparam, delim=';', decode=False):
             while True:
                 key, value = next(iterator), next(iterator)
                 # PR70661: Generically apply @Concatenate() to decrypt fme_decrypt() values.
-                if value.startswith('fme_decrypt('):
-                    value = FMEFeature().performFunction(
-                        '@Concatenate({})'.format(value))
-                if value != '':
+                if value.startswith("fme_decrypt("):
+                    value = FMEFeature().performFunction("@Concatenate({})".format(value))
+                if value != "":
                     yield key, value
                 else:
                     continue
@@ -704,7 +704,7 @@ def parseMultiParam(multiparam, delim=';', decode=False):
     return dict(generatePairs(multiparam))
 
 
-def replaceMultiparam(multi, param, value, delim=';'):
+def replaceMultiparam(multi, param, value, delim=";"):
     """Sets the multiparameter with a new value for attribute.
 
     :param str multi: The multiparam string
@@ -722,11 +722,11 @@ def replaceMultiparam(multi, param, value, delim=';'):
         findIndex = len(multi)
         attr = delim + attr
     prefix = multi[0:findIndex]
-    remove = multi[findIndex:len(multi)]
+    remove = multi[findIndex : len(multi)]
     findIndex = remove.find(delim, len(attr))
     if findIndex < 0:
         findIndex = len(remove)
-    suffix = remove[findIndex:len(remove)]
+    suffix = remove[findIndex : len(remove)]
     return prefix + attr + str(value) + suffix
 
 
@@ -752,11 +752,7 @@ def zipProperties(category, properties):
     return completed
 
 
-def build_feature(feature_type,
-                  attrs=None,
-                  attr_types=None,
-                  geometry=None,
-                  coord_sys=None):
+def build_feature(feature_type, attrs=None, attr_types=None, geometry=None, coord_sys=None):
     """Build an :class:`fmeobjects.FMEFeature` instance with the most frequently used
     parameters.
 
@@ -791,8 +787,8 @@ def build_feature(feature_type,
                     attr_types = {}
                 # FME_ATTR_UNDEFINED is silently interpreted as FME_ATTR_STRING.
                 feature.setAttributeNullWithType(
-                    attr_name,
-                    attr_types.get(attr_name, fmeobjects.FME_ATTR_STRING))
+                    attr_name, attr_types.get(attr_name, fmeobjects.FME_ATTR_STRING)
+                )
             else:
                 feature.setAttribute(attr_name, value)
 
@@ -829,10 +825,7 @@ def build_schema_feature(feature_type, schema_attrs=None, fme_geometries=None):
     return feature
 
 
-def set_list_attribute_with_properties(feature,
-                                       index,
-                                       property_attrs,
-                                       attr_types=None):
+def set_list_attribute_with_properties(feature, index, property_attrs, attr_types=None):
     """Set a list attribute entry onto a feature, where the entry is comprised
     of one or more properties, e.g.: ``name{i}.property``.
 
@@ -850,15 +843,15 @@ def set_list_attribute_with_properties(feature,
        then the null value will be set with :data:`fmeobjects.FME_ATTR_STRING`.
     """
     for attr_name, value in iteritems(property_attrs):
-        assert '{}' in attr_name
-        final_attr_name = attr_name.replace('{}', '{%s}' % index, 1)
+        assert "{}" in attr_name
+        final_attr_name = attr_name.replace("{}", "{%s}" % index, 1)
         if value is None:
             if attr_types is None:
                 attr_types = {}
             # FME_ATTR_UNDEFINED is silently interpreted as FME_ATTR_STRING.
             feature.setAttributeNullWithType(
-                final_attr_name,
-                attr_types.get(attr_name, fmeobjects.FME_ATTR_STRING))
+                final_attr_name, attr_types.get(attr_name, fmeobjects.FME_ATTR_STRING)
+            )
         else:
             feature.setAttribute(final_attr_name, value)
 
@@ -891,14 +884,14 @@ def remove_invalid_path_chars(path, allow_separators=True):
     :rtype: str
     """
 
-    pattern = r'[\r\n\t\0'
+    pattern = r"[\r\n\t\0"
 
     # Windows is stricter than posix
-    if os.name == 'nt':
+    if os.name == "nt":
         pattern += r'<>:"|?*'
 
     if not allow_separators:
-        pattern += r'\\\/'
-    pattern += r']'
+        pattern += r"\\\/"
+    pattern += r"]"
 
-    return re.sub(pattern, '_', path)
+    return re.sub(pattern, "_", path)
