@@ -1,0 +1,201 @@
+"""
+Helpers for working with FME Named Connections and Web Service
+Connections.
+"""
+
+from __future__ import absolute_import, division, print_function, unicode_literals
+
+import six
+from fmewebservices import (
+    FMENamedConnectionManager,
+    FMEBasicConnection,
+    FME_HTTP_AUTH_METHOD_BASIC,
+    FME_HTTP_AUTH_METHOD_DIGEST,
+    FME_HTTP_AUTH_METHOD_NTLM,
+    FME_HTTP_AUTH_METHOD_NONE,
+    FMEOAuthV2Connection,
+    FMETokenConnection,
+)
+
+from fmeobjects import FMEException, FMESession
+from requests.auth import AuthBase
+
+from fmegeneral.fmeconstants import kFME_MSGNUM_NAMED_CONNECTION_NOT_FOUND
+from fmegeneral.fmehttp import get_auth_object
+from fmegeneral.fmeutil import systemToUnicode
+
+# FIXME: Kerberos isn't in this list.
+# 'Dynamic' in Workbench GUI means the auth method is set in
+# the Web Connection definition instead of the Web Service definition.
+AUTH_KEYWORDS = {
+    FME_HTTP_AUTH_METHOD_BASIC: "BASIC",
+    FME_HTTP_AUTH_METHOD_DIGEST: "DIGEST",
+    FME_HTTP_AUTH_METHOD_NTLM: "NTLM",
+    FME_HTTP_AUTH_METHOD_NONE: "NONE",
+}
+
+
+def getConnectionFromFormatParameters(mappingFile):
+    """Return a named connection based on the mapping file parameters.  If a
+    connection can not be made, NULL is returned.
+
+    :param FMEMappingFileWrapper mappingFile: A mapping file object.
+    """
+    props = [
+        "FORMAT_NAME",
+        mappingFile._pluginType,
+        "FORMAT_DIRECTION",
+        "SOURCE",
+        "FORMAT_PROPERTY",
+        "FORMAT_FAMILY",
+    ]
+    session = FMESession()
+    family = session.getProperties("fme_session_prop_format_property", props)
+    if len(family) > 1:
+        familyParam = family[1]
+        props = ["FORMAT_NAME", mappingFile._pluginType, "FORMAT_DIRECTION", "SOURCE"]
+        connectionParameters = session.getProperties(
+            "fme_session_prop_format_connection_params", props
+        )
+        conParamVals = []
+        for conParam in connectionParameters:
+            connParamVal = mappingFile.get("_" + conParam, None, False)
+            if connParamVal is not None:
+                conParamVals.append(systemToUnicode(conParam))
+                conParamVals.append(systemToUnicode(connParamVal))
+        return FMENamedConnectionManager().getConnectionFromFormatSettings(
+            systemToUnicode(familyParam), conParamVals
+        )
+    return None
+
+
+class NamedConnectionManager(FMENamedConnectionManager):
+    """This subclass exists to make superclass methods writeable for unit test
+    mocking purposes."""
+
+    def __init__(self):
+        super(NamedConnectionManager, self).__init__()
+
+
+class FMETokenConnectionWrapper(object):
+    """Wrapper around token-based FME Web Connections, to interoperate better
+    with Requests."""
+
+    def __init__(self, token_connection):
+        """
+        :type token_connection: FMETokenConnection or FMEOAuthV2Connection
+        :param token_connection: The token-based connection to wrap.
+        """
+        self.wrapped_conn = token_connection
+
+    def get_authorization_header(self):
+        """Gets the authorization header name and its value.
+
+      :return: Authorization header name, and its value.
+         Unlike the original `getAuthorizationHeader()`, these values are cleaned up for use with Requests.
+         The trailing colon is removed from the header.
+         Then both the header and value have leading and trailing spaces stripped, as required by
+         `Requests 2.11 <https://github.com/requests/requests/issues/3488>`_.
+      :rtype: str
+      """
+        header, value = self.wrapped_conn.getAuthorizationHeader()
+        header = header.replace(":", "").strip()
+        value = value.strip()
+        return header, value
+
+    def get_access_token(self):
+        """Gets the token value.
+
+        :returns: Token value, stripped of leading and trailing spaces."""
+        return self.wrapped_conn.getAccessToken().strip()
+
+    def set_suspect_expired(self):
+        """Set by clients when they received a 401 call failure. The infrastructure
+        will then always consider the token expired."""
+        return self.wrapped_conn.setSuspectExpired()
+
+
+def get_named_connection_auth(connection_name, client_name):
+    """Look up a Named Connection and get a configured authentication object
+    for use with Requests.
+
+    :param str connection_name: Name of the Named Connection / Web Connection. It's an error if no such connection exists.
+    :param str client_name: Name to use for the log message prefix in the failure case, e.g. format or transformer name.
+    :raises NamedConnectionNotFound: If connection does not exist.
+    :rtype: AuthBase
+    """
+    conn = NamedConnectionManager().getNamedConnection(connection_name)
+    if not conn:
+        raise NamedConnectionNotFound(client_name, connection_name)
+    if isinstance(conn, FMEBasicConnection):
+        auth_type = conn.getAuthenticationMethod()
+        user, pwd = conn.getUserName(), conn.getPassword()
+        if auth_type not in AUTH_KEYWORDS:
+            raise ValueError("Unrecognized auth method %d".format(auth_type))
+        return get_auth_object(AUTH_KEYWORDS[auth_type], user, pwd, client_name)
+    if isinstance(conn, (FMEOAuthV2Connection, FMETokenConnection)):
+        return FMEWebConnectionTokenBasedAuth(FMETokenConnectionWrapper(conn))
+    raise TypeError("Unexpected connection type {}".format(repr(conn)))
+
+
+class FMEWebConnectionTokenBasedAuth(AuthBase):
+    """A Requests authentication handler that authenticates using tokens
+    obtained from FME Web Service Connections.
+
+    These tokens are either arbitrary tokens, or OAuth 2.0 access
+    tokens.
+    """
+
+    def __init__(self, wrapped_conn, token_location=None, header_and_url=False):
+        """
+      :param FMETokenConnectionWrapper wrapped_conn:
+         Wrapped OAuth 2.0 or token-based connection from which to obtain tokens.
+      :param str token_location: If None, the token is treated as an OAuth 2.0 access token and put in the header.
+         Otherwise, this is the query string parameter name for the token.
+      :param bool header_and_url: If true, then assume token is an OAuth 2.0 token,
+         but include it in both the Authorization header and token_location.
+         This is intended for use by ArcGIS Online only.
+      """
+        assert (header_and_url and token_location) or not header_and_url
+        self.conn = wrapped_conn
+        self.token_location = token_location
+        self.header_and_url = header_and_url
+
+    def __call__(self, prepared_request):
+        (
+            header,
+            value,
+        ) = (
+            self.conn.get_authorization_header()
+        )  # This secretly contains an expiry and refresh check.
+
+        if self.token_location:
+            # Include token in GET parameters. `params` is not available in `preparedRequest`.
+            prepared_request.prepare_url(
+                prepared_request.url,
+                {
+                    self.token_location: self.conn.get_access_token()  # Returns header value without 'Bearer', if OAuth 2.0.
+                },
+            )
+        if not self.token_location or self.header_and_url:
+            # Key must be bytestring on PY27.
+            # Unicode key on PY27 will cause UnicodeDecodeError in httplib when body is binary.
+            if six.PY2:
+                header = header.encode("ascii")
+            prepared_request.headers[header] = value
+
+        return prepared_request
+
+    def set_suspect_expired(self):
+        """Set by clients when they received a 401 call failure. The infrastructure
+        will then always consider the token expired."""
+        self.conn.set_suspect_expired()
+
+
+class NamedConnectionNotFound(FMEException):
+    """Exception raised when a named connection is invalid."""
+
+    def __init__(self, client_name, connection_name):
+        super(NamedConnectionNotFound, self).__init__(
+            kFME_MSGNUM_NAMED_CONNECTION_NOT_FOUND, [client_name, connection_name]
+        )
