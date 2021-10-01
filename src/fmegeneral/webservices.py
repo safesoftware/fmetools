@@ -22,7 +22,6 @@ from requests.auth import AuthBase
 
 from fmegeneral.fmehttp import get_auth_object
 
-# FIXME: Kerberos isn't in this list.
 # 'Dynamic' in Workbench GUI means the auth method is set in
 # the Web Connection definition instead of the Web Service definition.
 AUTH_KEYWORDS = {
@@ -34,16 +33,20 @@ AUTH_KEYWORDS = {
 
 
 class NamedConnectionManager(FMENamedConnectionManager):
-    """This subclass exists to make superclass methods writeable for unit test
-    mocking purposes."""
+    """
+    This subclass exists to make superclass methods writeable for unit test
+    mocking purposes.
+    """
 
     def __init__(self):
         super(NamedConnectionManager, self).__init__()
 
 
 class FMETokenConnectionWrapper(object):
-    """Wrapper around token-based FME Web Connections, to interoperate better
-    with Requests."""
+    """
+    Wrapper around token-based FME Web Connections, to interoperate better
+    with Requests.
+    """
 
     def __init__(self, token_connection):
         """
@@ -53,13 +56,15 @@ class FMETokenConnectionWrapper(object):
         self.wrapped_conn = token_connection
 
     def get_authorization_header(self):
-        """Gets the authorization header name and its value.
+        """
+        Gets the authorization header name and its value.
 
         :return: Authorization header name, and its value.
-           Unlike the original `getAuthorizationHeader()`, these values are cleaned up for use with Requests.
+           Unlike the original `getAuthorizationHeader()`,
+           these values are cleaned up for use with Requests.
            The trailing colon is removed from the header.
-           Then both the header and value have leading and trailing spaces stripped, as required by
-           `Requests 2.11 <https://github.com/requests/requests/issues/3488>`_.
+           Then both the header and value have leading and trailing spaces stripped,
+           as required by `Requests 2.11 <https://github.com/requests/requests/issues/3488>`_.
         :rtype: str
         """
         header, value = self.wrapped_conn.getAuthorizationHeader()
@@ -68,23 +73,30 @@ class FMETokenConnectionWrapper(object):
         return header, value
 
     def get_access_token(self):
-        """Gets the token value.
+        """
+        Gets the token value.
 
-        :returns: Token value, stripped of leading and trailing spaces."""
+        :returns: Token value, stripped of leading and trailing spaces.
+        """
         return self.wrapped_conn.getAccessToken().strip()
 
     def set_suspect_expired(self):
-        """Set by clients when they received a 401 call failure. The infrastructure
-        will then always consider the token expired."""
+        """
+        Set by clients when they received an HTTP 401 response.
+        The infrastructure will then always consider the token expired.
+        """
         return self.wrapped_conn.setSuspectExpired()
 
 
 def get_named_connection_auth(connection_name, client_name):
-    """Look up a Named Connection and get a configured authentication object
+    """
+    Look up a Named Connection and get a configured authentication object
     for use with Requests.
 
-    :param str connection_name: Name of the Named Connection / Web Connection. It's an error if no such connection exists.
-    :param str client_name: Name to use for the log message prefix in the failure case, e.g. format or transformer name.
+    :param str connection_name: Name of the Named Connection / Web Connection.
+        It's an error if no such connection exists.
+    :param str client_name: Name to use for the log message prefix in the failure case,
+        e.g. format or transformer name.
     :raises NamedConnectionNotFound: If connection does not exist.
     :rtype: AuthBase
     """
@@ -103,7 +115,8 @@ def get_named_connection_auth(connection_name, client_name):
 
 
 class FMEWebConnectionTokenBasedAuth(AuthBase):
-    """A Requests authentication handler that authenticates using tokens
+    """
+    A Requests authentication handler that authenticates using tokens
     obtained from FME Web Service Connections.
 
     These tokens are either arbitrary tokens, or OAuth 2.0 access
@@ -113,12 +126,13 @@ class FMEWebConnectionTokenBasedAuth(AuthBase):
     def __init__(self, wrapped_conn, token_location=None, header_and_url=False):
         """
         :param FMETokenConnectionWrapper wrapped_conn:
-           Wrapped OAuth 2.0 or token-based connection from which to obtain tokens.
-        :param str token_location: If None, the token is treated as an OAuth 2.0 access token and put in the header.
-           Otherwise, this is the query string parameter name for the token.
+            Wrapped OAuth 2.0 or token-based connection from which to obtain tokens.
+        :param str token_location: If None, the token is treated as an
+            OAuth 2.0 access token and put in the header.
+            Otherwise, this is the query string parameter name for the token.
         :param bool header_and_url: If true, then assume token is an OAuth 2.0 token,
-           but include it in both the Authorization header and token_location.
-           This is intended for use by ArcGIS Online only.
+            but include it in both the Authorization header and token_location.
+            This is intended for use by ArcGIS Online only.
         """
         assert (header_and_url and token_location) or not header_and_url
         self.conn = wrapped_conn
@@ -151,13 +165,17 @@ class FMEWebConnectionTokenBasedAuth(AuthBase):
         return prepared_request
 
     def set_suspect_expired(self):
-        """Set by clients when they received a 401 call failure. The infrastructure
-        will then always consider the token expired."""
+        """
+        Set by clients when they received a 401 call failure. The infrastructure
+        will then always consider the token expired.
+        """
         self.conn.set_suspect_expired()
 
 
 class NamedConnectionNotFound(FMEException):
-    """Exception raised when a named connection is invalid."""
+    """
+    Exception raised when a named connection doesn't exist with the given name.
+    """
 
     def __init__(self, client_name, connection_name):
         super(NamedConnectionNotFound, self).__init__(
