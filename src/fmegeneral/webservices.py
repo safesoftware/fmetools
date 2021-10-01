@@ -17,11 +17,10 @@ from fmewebservices import (
     FMETokenConnection,
 )
 
-from fmeobjects import FMEException, FMESession
+from fmeobjects import FMEException
 from requests.auth import AuthBase
 
 from fmegeneral.fmehttp import get_auth_object
-from fmegeneral.fmeutil import systemToUnicode
 
 # FIXME: Kerberos isn't in this list.
 # 'Dynamic' in Workbench GUI means the auth method is set in
@@ -32,40 +31,6 @@ AUTH_KEYWORDS = {
     FME_HTTP_AUTH_METHOD_NTLM: "NTLM",
     FME_HTTP_AUTH_METHOD_NONE: "NONE",
 }
-
-
-def getConnectionFromFormatParameters(mappingFile):
-    """Return a named connection based on the mapping file parameters.  If a
-    connection can not be made, NULL is returned.
-
-    :param FMEMappingFileWrapper mappingFile: A mapping file object.
-    """
-    props = [
-        "FORMAT_NAME",
-        mappingFile._pluginType,
-        "FORMAT_DIRECTION",
-        "SOURCE",
-        "FORMAT_PROPERTY",
-        "FORMAT_FAMILY",
-    ]
-    session = FMESession()
-    family = session.getProperties("fme_session_prop_format_property", props)
-    if len(family) > 1:
-        familyParam = family[1]
-        props = ["FORMAT_NAME", mappingFile._pluginType, "FORMAT_DIRECTION", "SOURCE"]
-        connectionParameters = session.getProperties(
-            "fme_session_prop_format_connection_params", props
-        )
-        conParamVals = []
-        for conParam in connectionParameters:
-            connParamVal = mappingFile.get("_" + conParam, None, False)
-            if connParamVal is not None:
-                conParamVals.append(systemToUnicode(conParam))
-                conParamVals.append(systemToUnicode(connParamVal))
-        return FMENamedConnectionManager().getConnectionFromFormatSettings(
-            systemToUnicode(familyParam), conParamVals
-        )
-    return None
 
 
 class NamedConnectionManager(FMENamedConnectionManager):
