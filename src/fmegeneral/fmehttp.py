@@ -1,5 +1,13 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+# PR72320/PR72321: Import this now, to guarantee that worker threads can access it.
+# Needed when running with standard-library-in-zip (i.e. embedded Python) and using
+# Requests in threads.
+# See http://stackoverflow.com/a/13057751 and
+# https://github.com/kennethreitz/requests/issues/3578.
+# noinspection PyUnresolvedReferences
+import encodings.idna
+
 import json
 import logging
 import os
@@ -9,31 +17,22 @@ import warnings
 from collections import namedtuple
 
 import fme
-from fmeobjects import FMEException, FMESession, FME_ASSEMBLY_VERSION
-
 import requests
+import urllib3
+from fmeobjects import FMEException, FMESession, FME_ASSEMBLY_VERSION
 from pypac import PACSession
+from requests.adapters import HTTPAdapter
 from requests.auth import AuthBase, HTTPProxyAuth, HTTPBasicAuth, HTTPDigestAuth
 from requests.exceptions import SSLError
-import urllib3
-from requests.adapters import HTTPAdapter
-
-from fmegeneral import fmelog
 from six.moves.urllib.parse import urlparse, quote
 
+from fmegeneral import fmelog
 from fmegeneral.fmeutil import stringArrayToDict, choiceToBool
-
-# PR72320/PR72321: Import this now, to guarantee that worker threads can access it.
-# Needed when running with standard-library-in-zip (i.e. embedded Python) and using
-# Requests in threads.
-# See http://stackoverflow.com/a/13057751 and
-# https://github.com/kennethreitz/requests/issues/3578.
-# noinspection PyUnresolvedReferences
-import encodings.idna
 
 # PR65941: Disable lower-level SSL warnings.
 # https://urllib3.readthedocs.io/en/latest/advanced-usage.html#ssl-warnings
 urllib3.disable_warnings()
+
 
 GENERIC_LOGGER_NAME = "FMERequestsSession"
 _no_prepend_args = {"no_prepend_args": True}
