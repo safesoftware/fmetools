@@ -34,25 +34,19 @@ from fmegeneral.fmeutil import stringArrayToDict, choiceToBool
 urllib3.disable_warnings()
 
 
-GENERIC_LOGGER_NAME = "FMERequestsSession"
+_GENERIC_LOGGER_NAME = "FMERequestsSession"
 _no_prepend_args = {"no_prepend_args": True}
 
 # For FMESession.getProperties(). For the result format, see fmesession.h getProxy().
 FMESESSION_PROP_NETWORK_PROXY = "fme_session_prop_network_proxy"
 FMESESSION_PROP_NETWORK_PROXY_SETTINGS = "fme_session_prop_network_proxy_settings"
-# Proxy environment variables.
-ENV_HTTP_PROXY = "http_proxy"
-ENV_HTTPS_PROXY = "https_proxy"
-ENV_NO_PROXY = "no_proxy"
-
-REQUEST_DEFAULT_TIMEOUT = 60
 
 # A proxy config of empty string tells Requests to ignore environment proxies too.
 # Tested with Fiddler.
-REQUESTS_NO_PROXY_CONFIG = {"http": "", "https": ""}
+_REQUESTS_NO_PROXY_CONFIG = {"http": "", "https": ""}
 
 
-def get_env_var(var_name_lowercase):
+def _get_env_var(var_name_lowercase):
     """
     Look for an environment variable, first looking for the lowercase
     version, then the uppercase version if lowercase was missing/empty.
@@ -66,7 +60,7 @@ def get_env_var(var_name_lowercase):
     )
 
 
-def toggle_http_debug_logging(enabled):
+def _toggle_http_debug_logging(enabled):
     """
     Globally toggle debug logging in urllib3 and the standard library's HTTP client.
     """
@@ -162,7 +156,7 @@ class FMERequestsSession(PACSession):
 
         self._log = log
         if not self._log:
-            self._log = fmelog.get_configured_logger(GENERIC_LOGGER_NAME)
+            self._log = fmelog.get_configured_logger(_GENERIC_LOGGER_NAME)
 
         self._generalProxyConfig, self._customProxyMap = self._loadProxySettings(
             fmeSession if fmeSession else FMESession()
@@ -180,7 +174,7 @@ class FMERequestsSession(PACSession):
 
         # FMEENGINE-68435: Toggle library-level debug logging based on workspace debug flags.
         try:
-            toggle_http_debug_logging(
+            _toggle_http_debug_logging(
                 "HTTP_DEBUG" in fme.macroValues.get("FME_DEBUG", "")
             )
         except AttributeError:
@@ -204,8 +198,8 @@ class FMERequestsSession(PACSession):
         # Get the configured HTTP/HTTPS proxies, if any, and log about their use.
         # If both HTTP and HTTPS are configured and they're identical, log once.
         # Otherwise, log whatever is configured.
-        httpProxy = get_env_var(ENV_HTTP_PROXY)
-        httpsProxy = get_env_var(ENV_HTTPS_PROXY)
+        httpProxy = _get_env_var("http_proxy")
+        httpsProxy = _get_env_var("https_proxy")
         if httpProxy is not None and httpProxy == httpsProxy:
             self._logProxy(httpProxy)
         else:
@@ -239,7 +233,7 @@ class FMERequestsSession(PACSession):
 
         # PR70705: Honour system proxy exceptions on Windows.
         if generalProxyConfig.proxies and os.name == "nt":
-            configure_proxy_exceptions()
+            _configure_proxy_exceptions()
 
         # PR70807: FME Custom Proxy Map.
         customProxyMap = FMECustomProxyMapHandler()
@@ -287,14 +281,14 @@ class FMERequestsSession(PACSession):
 
         # PR62730: Specify a timeout if not already specified, as the default is no timeout.
         if "timeout" not in kwargs:
-            kwargs["timeout"] = REQUEST_DEFAULT_TIMEOUT
+            kwargs["timeout"] = 60
 
         # FMEENGINE-63687: Non-proxy hosts.
         if not kwargs.get("proxies"):
             try:
                 if self._generalProxyConfig.is_non_proxy_host(urlparse(url).hostname):
                     self._log.debug("Non-Proxy Hosts: Directly accessing '%s'", url)
-                    kwargs["proxies"] = REQUESTS_NO_PROXY_CONFIG
+                    kwargs["proxies"] = _REQUESTS_NO_PROXY_CONFIG
             except ValueError:
                 pass  # Ignore malformed URLs.
 
@@ -304,7 +298,7 @@ class FMERequestsSession(PACSession):
             customProxyForUrl = self._customProxyMap.custom_proxy_for_url(url)
             if customProxyForUrl and not customProxyForUrl.proxy_url:
                 self._log.debug("Custom Proxy Map: Directly accessing '%s'", url)
-                kwargs["proxies"] = REQUESTS_NO_PROXY_CONFIG
+                kwargs["proxies"] = _REQUESTS_NO_PROXY_CONFIG
             elif customProxyForUrl:
                 self._log.debug(
                     "Custom Proxy Map: Using proxy '%s' for URL '%s'",
@@ -671,7 +665,7 @@ class UnsupportedProxyAuthenticationMethod(FMEException):
         )
 
 
-def configure_proxy_exceptions():
+def _configure_proxy_exceptions():
     """Set the `NO_PROXY` environment variable based on Windows Internet
     Options. Requests and other Python HTTP libraries should transparently
     honour this environment variable. No-op on non-Windows, or if `NO_PROXY` is
@@ -681,7 +675,7 @@ def configure_proxy_exceptions():
        and the `NO_PROXY` environment variable was set using it.
     :rtype: bool
     """
-    if get_env_var(ENV_NO_PROXY) or os.name != "nt":
+    if _get_env_var("no_proxy") or os.name != "nt":
         return False
 
     try:
@@ -704,7 +698,7 @@ def configure_proxy_exceptions():
     )
     if len(no_proxy_entries) < len(overrides):
         no_proxy_entries.extend(["localhost", "127.0.0.1", "::1"])
-    os.environ[ENV_NO_PROXY] = ", ".join(no_proxy_entries)
+    os.environ["no_proxy"] = ", ".join(no_proxy_entries)
     return True
 
 
