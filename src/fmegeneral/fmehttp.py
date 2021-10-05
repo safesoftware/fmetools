@@ -128,10 +128,10 @@ class FMERequestsSession(PACSession):
     :ivar int requestCount: Increments every time a request is made.
     """
 
-    def __init__(self, logPrefix, log=None, fmeSession=None, legacy_verify_mode=True):
+    def __init__(self, log_prefix, log=None, fme_session=None, legacy_verify_mode=True):
         """
 
-        :param str logPrefix: The prefix to use for all log messages from this class,
+        :param str log_prefix: The prefix to use for all log messages from this class,
             e.g. "[format name] [direction]".
         :param fmelog.FMELoggerAdapter log: Python standard library logger to use.
             If provided, it *must* be able to gracefully handle FME message numbers
@@ -139,7 +139,7 @@ class FMERequestsSession(PACSession):
             like the root logger.
             If None, a generic Logger instance is instantiated,
             which won't output anything to the FME log.
-        :param FMESession fmeSession: Load proxy configuration from this session.
+        :param FMESession fme_session: Load proxy configuration from this session.
             Intended for testing purposes only.
             If not provided, a new FMESession object is used for this purpose.
         :param bool legacy_verify_mode: If true, then certificate verification failure
@@ -152,16 +152,16 @@ class FMERequestsSession(PACSession):
         for scheme in ("http://", "https://"):
             self.mount(scheme, adapter)
 
-        self.logPrefix = logPrefix
+        self.logPrefix = log_prefix
 
         self._log = log
         if not self._log:
             self._log = fmelog.get_configured_logger(_GENERIC_LOGGER_NAME)
 
-        self._generalProxyConfig, self._customProxyMap = self._loadProxySettings(
-            fmeSession if fmeSession else FMESession()
+        self._general_proxy_config, self._custom_proxy_map = self._load_proxy_settings(
+            fme_session if fme_session else FMESession()
         )
-        self._lastUsedCustomProxy = None
+        self._last_used_custom_proxy = None
 
         self._legacy_verify_mode = legacy_verify_mode
         self.requestCount = 0
@@ -180,17 +180,18 @@ class FMERequestsSession(PACSession):
         except AttributeError:
             pass
 
-    def _loadProxySettings(self, fmeSession):
+    def _load_proxy_settings(self, fme_session):
         """
         Load all proxy configuration from the given FMESession, as well as
         from environment variables.
+
 
         If proxies are configured using environment variables, mention it in the log.
         Proxy environment variables are honoured by Requests,
         but this method does not set them.
         Instead, this class expects them to be set in FME's fmesite.py startup script.
 
-        :param FMESession fmeSession: Load proxy configuration from this session.
+        :param FMESession fme_session: Load proxy configuration from this session.
         :returns: FMEGeneralProxyHandler, FMECustomProxyMapHandler
         :raises UnsupportedProxyAuthenticationMethod:
             If the proxy authentication method for the environment proxy is unsupported.
@@ -201,47 +202,47 @@ class FMERequestsSession(PACSession):
         httpProxy = _get_env_var("http_proxy")
         httpsProxy = _get_env_var("https_proxy")
         if httpProxy is not None and httpProxy == httpsProxy:
-            self._logProxy(httpProxy)
+            self._log_proxy(httpProxy)
         else:
             if httpProxy:
-                self._logProxy(httpProxy)
+                self._log_proxy(httpProxy)
             if httpsProxy:
-                self._logProxy(httpsProxy)
+                self._log_proxy(httpsProxy)
 
         # Load the top-level proxy configuration.
-        generalProxyConfig = FMEGeneralProxyHandler()
-        generalProxyConfig.configure(fmeSession)
-        self.pac_enabled = generalProxyConfig.use_pac
+        general_proxy_config = FMEGeneralProxyHandler()
+        general_proxy_config.configure(fme_session)
+        self.pac_enabled = general_proxy_config.use_pac
 
         # If proxies are configured, or PAC is enabled, and a proxy username specified,
         # then ensure the proxy authentication method is supported.
         enforce_proxy_auth_method = (
-            generalProxyConfig.use_pac or generalProxyConfig.proxies
-        ) and generalProxyConfig.user
-        if enforce_proxy_auth_method and not self._isProxyAuthMethodSupported(
-            generalProxyConfig.auth_method
+            general_proxy_config.use_pac or general_proxy_config.proxies
+        ) and general_proxy_config.user
+        if enforce_proxy_auth_method and not self._is_proxy_auth_method_supported(
+            general_proxy_config.auth_method
         ):
             raise UnsupportedProxyAuthenticationMethod(
-                self.logPrefix, generalProxyConfig.auth_method
+                self.logPrefix, general_proxy_config.auth_method
             )
 
         # Configure PyPAC with proxy credentials, if any.
-        if generalProxyConfig.user:
+        if general_proxy_config.user:
             self.proxy_auth = HTTPProxyAuth(
-                generalProxyConfig.user, generalProxyConfig.password
+                general_proxy_config.user, general_proxy_config.password
             )
 
         # PR70705: Honour system proxy exceptions on Windows.
-        if generalProxyConfig.proxies and os.name == "nt":
+        if general_proxy_config.proxies and os.name == "nt":
             _configure_proxy_exceptions()
 
         # PR70807: FME Custom Proxy Map.
-        customProxyMap = FMECustomProxyMapHandler()
-        customProxyMap.configure(fmeSession)
+        custom_proxy_map = FMECustomProxyMapHandler()
+        custom_proxy_map.configure(fme_session)
 
-        return generalProxyConfig, customProxyMap
+        return general_proxy_config, custom_proxy_map
 
-    def _logProxy(self, proxy_url):
+    def _log_proxy(self, proxy_url):
         """Log about a proxy being used."""
         self._log.info(
             926850,
@@ -251,7 +252,7 @@ class FMERequestsSession(PACSession):
         )
 
     @staticmethod
-    def _isProxyAuthMethodSupported(auth_method):
+    def _is_proxy_auth_method_supported(auth_method):
         """
         :returns: True if there's no proxy authentication or if it's Basic.
             NTLM and Digest aren't supported.
@@ -286,7 +287,7 @@ class FMERequestsSession(PACSession):
         # FMEENGINE-63687: Non-proxy hosts.
         if not kwargs.get("proxies"):
             try:
-                if self._generalProxyConfig.is_non_proxy_host(urlparse(url).hostname):
+                if self._general_proxy_config.is_non_proxy_host(urlparse(url).hostname):
                     self._log.debug("Non-Proxy Hosts: Directly accessing '%s'", url)
                     kwargs["proxies"] = _REQUESTS_NO_PROXY_CONFIG
             except ValueError:
@@ -295,28 +296,28 @@ class FMERequestsSession(PACSession):
         # PR70807: FME Custom Proxy Map.
         # Only use custom proxy map if caller did not specify any proxies.
         if not kwargs.get("proxies"):
-            customProxyForUrl = self._customProxyMap.custom_proxy_for_url(url)
-            if customProxyForUrl and not customProxyForUrl.proxy_url:
+            proxy_for_url = self._custom_proxy_map.custom_proxy_for_url(url)
+            if proxy_for_url and not proxy_for_url.proxy_url:
                 self._log.debug("Custom Proxy Map: Directly accessing '%s'", url)
                 kwargs["proxies"] = _REQUESTS_NO_PROXY_CONFIG
-            elif customProxyForUrl:
+            elif proxy_for_url:
                 self._log.debug(
                     "Custom Proxy Map: Using proxy '%s' for URL '%s'",
-                    customProxyForUrl.sanitized_proxy_url,
+                    proxy_for_url.sanitized_proxy_url,
                     url,
                 )
-                if not self._isProxyAuthMethodSupported(customProxyForUrl.auth_method):
+                if not self._is_proxy_auth_method_supported(proxy_for_url.auth_method):
                     raise UnsupportedProxyAuthenticationMethod(
-                        self.logPrefix, customProxyForUrl.auth_method
+                        self.logPrefix, proxy_for_url.auth_method
                     )
                 kwargs["proxies"] = {
-                    "http": customProxyForUrl.proxy_url,
-                    "https": customProxyForUrl.proxy_url,
+                    "http": proxy_for_url.proxy_url,
+                    "https": proxy_for_url.proxy_url,
                 }
                 # Log about the custom proxy every time it changes to a different proxy.
-                if self._lastUsedCustomProxy != customProxyForUrl.sanitized_proxy_url:
-                    self._lastUsedCustomProxy = customProxyForUrl.sanitized_proxy_url
-                    self._logProxy(customProxyForUrl.sanitized_proxy_url)
+                if self._last_used_custom_proxy != proxy_for_url.sanitized_proxy_url:
+                    self._last_used_custom_proxy = proxy_for_url.sanitized_proxy_url
+                    self._log_proxy(proxy_for_url.sanitized_proxy_url)
 
         try:
             return super(FMERequestsSession, self).request(method, url, **kwargs)
@@ -392,6 +393,7 @@ def get_auth_object(auth_type, user="", password="", format_name=""):
     if auth_type == "NONE":
         return None
     elif auth_type == "KERBEROS":
+        # FIXME: Kerberos loading.
         from fmegeneral.kerberos import getRequestsKerberosAuthObject
 
         return getRequestsKerberosAuthObject(format_name)
@@ -469,12 +471,12 @@ class FMEGeneralProxyHandler(object):
         self.password = ""
         self._auth_method = None
 
-    def configure(self, fmeSession):
+    def configure(self, fme_session):
         """Load general proxy configuration from FME.
 
-        :param FMESession fmeSession: Configuration is loaded from this.
+        :param FMESession fme_session: Configuration is loaded from this.
         """
-        proxy_config = fmeSession.getProperties(FMESESSION_PROP_NETWORK_PROXY, {})
+        proxy_config = fme_session.getProperties(FMESESSION_PROP_NETWORK_PROXY, {})
         use_system_proxy = False
         i = 0
         while i < len(proxy_config):
@@ -505,7 +507,7 @@ class FMEGeneralProxyHandler(object):
 
         # Grab proxy credentials from Workbench.
         # When a PAC is in use, we need these standalone values.
-        proxy_network_config = fmeSession.getProperties(
+        proxy_network_config = fme_session.getProperties(
             FMESESSION_PROP_NETWORK_PROXY_SETTINGS, {}
         )
         for i in range(0, len(proxy_network_config), 2):
@@ -569,41 +571,41 @@ class FMECustomProxyMapHandler(object):
                 return proxyMap
         return None
 
-    def configure(self, fmeSession):
+    def configure(self, fme_session):
         """
         Load Custom Proxy Map configuration from FME.
 
-        :param FMESession fmeSession: Configuration is loaded from this.
+        :param FMESession fme_session: Configuration is loaded from this.
         """
-        proxy_config = fmeSession.getProperties(FMESESSION_PROP_NETWORK_PROXY, {})
+        proxy_config = fme_session.getProperties(FMESESSION_PROP_NETWORK_PROXY, {})
         i = 0
         while i < len(proxy_config):
             key, value = proxy_config[i], proxy_config[i + 1]
             if key == "source-url" and proxy_config[i + 2] == "proxy-info":
                 self._customProxyMap.append(
-                    self.parse_custom_proxy_map(fmeSession, value, proxy_config[i + 3])
+                    self.parse_custom_proxy_map(fme_session, value, proxy_config[i + 3])
                 )
                 i += 4
                 continue
             i += 2
 
     @staticmethod
-    def parse_custom_proxy_map(fmesession, url, proxy_info):
+    def parse_custom_proxy_map(fme_session, url, proxy_info):
         """
         Parse a serialized custom proxy map configuration entry from FME.
 
-        :param FMESession fmesession: For decoding FME-encoded strings.
+        :param FMESession fme_session: For decoding FME-encoded strings.
         :param str url: FME-encoded URL for the custom proxy map.
         :param str proxy_info: FME-encoded and comma-delimited proxy configuration for
             the custom proxy map.
         :rtype: FMECustomProxyMap
         """
-        url = fmesession.decodeFromFMEParsableText(
+        url = fme_session.decodeFromFMEParsableText(
             url
         ).lower()  # lower() for case-insensitive comparisons.
 
         proxy_map_info = stringArrayToDict(proxy_info.split(","))
-        proxy_url = fmesession.decodeFromFMEParsableText(
+        proxy_url = fme_session.decodeFromFMEParsableText(
             proxy_map_info["proxy-url"]
         ).strip()
         if not proxy_url:
@@ -620,8 +622,8 @@ class FMECustomProxyMapHandler(object):
         sanitized_proxy_url = "{}://{}".format(
             parsed_proxy.scheme, netloc
         )  # No credentials and no path.
-        user = fmesession.decodeFromFMEParsableText(proxy_map_info["user"])
-        password = fmesession.decodeFromFMEParsableText(proxy_map_info["password"])
+        user = fme_session.decodeFromFMEParsableText(proxy_map_info["user"])
+        password = fme_session.decodeFromFMEParsableText(proxy_map_info["password"])
         requires_authentication = choiceToBool(
             proxy_map_info["requires-authentication"]
         )
