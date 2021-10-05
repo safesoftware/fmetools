@@ -23,7 +23,6 @@ from fmeobjects import FMEException, FMESession, FME_ASSEMBLY_VERSION
 from pypac import PACSession
 from requests.adapters import HTTPAdapter
 from requests.auth import AuthBase, HTTPProxyAuth, HTTPBasicAuth, HTTPDigestAuth
-from requests.exceptions import SSLError
 from six.moves.urllib.parse import urlparse, quote
 
 from fmegeneral import fmelog
@@ -128,7 +127,7 @@ class FMERequestsSession(PACSession):
     :ivar int requestCount: Increments every time a request is made.
     """
 
-    def __init__(self, log_prefix, log=None, fme_session=None, legacy_verify_mode=True):
+    def __init__(self, log_prefix, log=None, fme_session=None):
         """
 
         :param str log_prefix: The prefix to use for all log messages from this class,
@@ -142,10 +141,6 @@ class FMERequestsSession(PACSession):
         :param FMESession fme_session: Load proxy configuration from this session.
             Intended for testing purposes only.
             If not provided, a new FMESession object is used for this purpose.
-        :param bool legacy_verify_mode: If true, then certificate verification failure
-            will warn, disable certificate verification in this session, and retry the request.
-            Starting in FME 2021.1, certificate verification should be toggled by
-            the "Verify SSL Certificates" option added to all Named Connections by FMEDESKTOP-10332.
         """
         super(FMERequestsSession, self).__init__()
         adapter = SystemCertStoreAdapter()
@@ -163,7 +158,6 @@ class FMERequestsSession(PACSession):
         )
         self._last_used_custom_proxy = None
 
-        self._legacy_verify_mode = legacy_verify_mode
         self.requestCount = 0
 
         # PR62339: Include FME version in User-Agent. Same format as in our HTTP library for C++.
@@ -319,39 +313,7 @@ class FMERequestsSession(PACSession):
                     self._last_used_custom_proxy = proxy_for_url.sanitized_proxy_url
                     self._log_proxy(proxy_for_url.sanitized_proxy_url)
 
-        try:
-            return super(FMERequestsSession, self).request(method, url, **kwargs)
-
-        except SSLError as e:
-            # FME 2021.1+: All the handling below is considered legacy. See FMEDESKTOP-10332.
-            if not self._legacy_verify_mode:
-                raise
-            # FYI: SSLError is a subclass of ConnectionError.
-            # There can be some triple-nested SSLError in e.message,
-            # so just cut to the chase and cast it to str to get the actual message.
-            message = str(e)
-
-            # PR52903: If SSL certificate verification fails, then stop trying to verify certificates.
-            # PR57640: After upgrading to Python 2.7.8 (PR54953), need to catch hostname mismatch exception too.
-            if "certificate verify failed" in message or "doesn't match" in message:
-                try:
-                    # Warn about certificate verification failure, and that we're proceeding without it.
-                    urlParts = urlparse(url)
-                    self._log.warning(
-                        926857,
-                        self.logPrefix,
-                        urlParts.netloc,
-                        message,
-                        extra=_no_prepend_args,
-                    )
-                except TypeError:
-                    pass  # Logger can't handle FME message numbers. Ignore.
-                self.verify = False  # This Session shall no longer verify certificates.
-                return super(FMERequestsSession, self).request(
-                    method, url, **kwargs
-                )  # Retry the same request.
-
-            raise  # Not the kind of SSLError handled by this class, so bubble it up.
+        return super(FMERequestsSession, self).request(method, url, **kwargs)
 
 
 class HTTPBearerAuth(AuthBase):
