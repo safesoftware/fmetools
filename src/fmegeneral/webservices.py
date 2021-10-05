@@ -24,7 +24,7 @@ from fmegeneral.fmehttp import get_auth_object
 
 # 'Dynamic' in Workbench GUI means the auth method is set in
 # the Web Connection definition instead of the Web Service definition.
-AUTH_KEYWORDS = {
+CONN_AUTH_METHOD_TO_KEYWORD = {
     FME_HTTP_AUTH_METHOD_BASIC: "BASIC",
     FME_HTTP_AUTH_METHOD_DIGEST: "DIGEST",
     FME_HTTP_AUTH_METHOD_NTLM: "NTLM",
@@ -65,7 +65,7 @@ class FMETokenConnectionWrapper(object):
            The trailing colon is removed from the header.
            Then both the header and value have leading and trailing spaces stripped,
            as required by `Requests 2.11 <https://github.com/requests/requests/issues/3488>`_.
-        :rtype: str
+        :rtype: str, str
         """
         header, value = self.wrapped_conn.getAuthorizationHeader()
         header = header.replace(":", "").strip()
@@ -106,9 +106,9 @@ def get_named_connection_auth(connection_name, client_name):
     if isinstance(conn, FMEBasicConnection):
         auth_type = conn.getAuthenticationMethod()
         user, pwd = conn.getUserName(), conn.getPassword()
-        if auth_type not in AUTH_KEYWORDS:
-            raise ValueError("Unrecognized auth method %d".format(auth_type))
-        return get_auth_object(AUTH_KEYWORDS[auth_type], user, pwd, client_name)
+        return get_auth_object(
+            CONN_AUTH_METHOD_TO_KEYWORD[auth_type], user, pwd, client_name
+        )
     if isinstance(conn, (FMEOAuthV2Connection, FMETokenConnection)):
         return FMEWebConnectionTokenBasedAuth(FMETokenConnectionWrapper(conn))
     raise TypeError("Unexpected connection type {}".format(repr(conn)))
@@ -140,20 +140,15 @@ class FMEWebConnectionTokenBasedAuth(AuthBase):
         self.header_and_url = header_and_url
 
     def __call__(self, prepared_request):
-        (
-            header,
-            value,
-        ) = (
-            self.conn.get_authorization_header()
-        )  # This secretly contains an expiry and refresh check.
+        header, value = self.conn.get_authorization_header()
+        # TODO: Remove token_location argument and get it from connection settings.
+        # TODO: Remove header_and_url argument and have AGOL implement it.
 
         if self.token_location:
             # Include token in GET parameters. `params` is not available in `preparedRequest`.
             prepared_request.prepare_url(
                 prepared_request.url,
-                {
-                    self.token_location: self.conn.get_access_token()  # Returns header value without 'Bearer', if OAuth 2.0.
-                },
+                {self.token_location: self.conn.get_access_token()},
             )
         if not self.token_location or self.header_and_url:
             # Key must be bytestring on PY27.
