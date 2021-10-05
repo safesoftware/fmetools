@@ -6,7 +6,6 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import os
 import re
 import sys
-import locale
 import traceback
 from collections import OrderedDict
 from datetime import datetime, tzinfo, timedelta
@@ -21,24 +20,6 @@ import fmeobjects
 from fmeobjects import FME_INFORM
 
 from fmegeneral import fmeconstants
-
-
-class FMELocale(object):
-    """Singleton for handling encoding on Mac.
-
-    This class serves no purpose for end users. Use
-    :func:`getSystemLocale` instead.
-    """
-
-    # See PR#53541 and PR#52908.
-
-    def __init__(self):
-        pass
-
-    #: Name of the detected system locale.
-    #:
-    #: :type: str
-    detectedSystemLocale = None
 
 
 def fmeBoolToBool(boolean):
@@ -123,7 +104,11 @@ def exceptionToDebugStr():
     :return: The last raised exception as a one line combined exception trace, type and message.
     :rtype: str
     """
-    return repr(traceback.format_exception(sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]))
+    return repr(
+        traceback.format_exception(
+            sys.exc_info()[0], sys.exc_info()[1], sys.exc_info()[2]
+        )
+    )
 
 
 def exceptionToStr():
@@ -133,103 +118,6 @@ def exceptionToStr():
     :rtype: str
     """
     return str(sys.exc_info()[1])
-
-
-def getSystemLocale():
-    """Get the system locale of the process. The return value is cached after the first time
-    this function is called.
-
-    :return: The system locale name.
-    :rtype: str
-    """
-    if FMELocale.detectedSystemLocale is None:
-        # FME may change the locale of the process, so query FME to get the system locale truth.
-        FMELocale.detectedSystemLocale = fme.systemEncoding
-
-    return FMELocale.detectedSystemLocale
-
-
-def unicodeToSystem(original):
-    """Try to convert the given Unicode string to the system encoding.
-    Characters that could not be converted are replaced with '?'. If input is
-    already a non-Unicode string, return unchanged. In Python 3, unicode
-    strings are returned.
-
-    :type original: `unicode <https://docs.python.org/2.7/library/functions.html#unicode>`_
-    :param original: Unicode string to convert.
-    :return: The converted string.
-    :rtype: six.binary_type or type(original)
-    """
-    # See PRs #52906-52909.
-
-    if (PY2 and isinstance(original, binary_type)) or (PY3 and isinstance(original, text_type)):
-        # If input is already a non-Unicode string, return it as-is.
-        # In Py3, Unicode strings are returned.
-        return original
-    return original.encode(getSystemLocale(), "replace")
-
-
-def castToUnicode(string):
-    """Method that will catch any edge cases, like floats in attribute
-    contents, when encoding in unicode.
-
-    :param str string: Content that is being encoded.
-    :return: Unicode content.
-    :rtype: six.text_type
-    """
-
-    if isinstance(string, string_types):
-        return systemToUnicode(string)
-    else:
-        return text_type(string)
-
-
-def systemToUnicode(original):
-    """Try to convert a system-encoded string to a Unicode string. Characters
-    that could not be converted are replaced with '?'.
-
-    :type original: str
-    :param original: System encoded string to convert.
-    :return: The converted string.
-    :rtype: six.text_type
-    """
-    # See PRs #52906-52909.
-    if isinstance(original, text_type):
-        # If input is already a Unicode string, return it as-is.
-        return original
-    return original.decode(getSystemLocale(), "replace")
-
-
-# -----------------------------------------------------------------------------
-# Attempts to convert the given system value to utf-8 encoding
-# All characters that failed to encode will be replaced by ?
-# Initially added for PRs #53185
-# -----------------------------------------------------------------------------
-def systemToUtf8(original):
-    """Try to convert the given system-encoded string to a UTF-8 encoded
-    string. Characters that could not be converted are replaced with '?'.
-
-    :type original: six.binary_type
-    :param original: System encoded string to convert.
-    :return: UTF-8 encoded string - not a `unicode` string.
-    :rtype: six.binary_type
-    """
-    unicodeVal = original.decode(getSystemLocale(), "replace")
-    return unicodeVal.encode("utf8", "replace")
-
-
-def utf8ToSystem(original):
-    """Try to convert the given UTF-8 string to system encoding. Characters
-    that could not be converted are replaced with '?'.
-
-    :param six.binary_type original: UTF-8 encoded string.
-    :return: System encoded string.
-    :rtype: six.binary_type
-    """
-    # See PR#53185.
-
-    unicodeVal = original.decode("utf8", "replace")
-    return unicodeVal.encode(getSystemLocale(), "replace")
 
 
 def decodeWWJDString(encoded):
@@ -562,7 +450,9 @@ def isoTimestampToFMEFormat(isoTimestamp):
     formatted = isoTimestamp.replace("T", "")
     formatted = formatted.replace(" ", "")
     formatted = formatted.replace(":", "")
-    formatted = formatted.replace("-", "", 2)  # Remove first 2 dashes: the date part separator.
+    formatted = formatted.replace(
+        "-", "", 2
+    )  # Remove first 2 dashes: the date part separator.
 
     # Minimum timestamp length is 14 characters/digits to represent both date and time.
     if len(formatted) < 14:
@@ -690,7 +580,9 @@ def parseMultiParam(multiparam, delim=";", decode=False):
                 key, value = next(iterator), next(iterator)
                 # PR70661: Generically apply @Concatenate() to decrypt fme_decrypt() values.
                 if value.startswith("fme_decrypt("):
-                    value = FMEFeature().performFunction("@Concatenate({})".format(value))
+                    value = FMEFeature().performFunction(
+                        "@Concatenate({})".format(value)
+                    )
                 if value != "":
                     yield key, value
                 else:
@@ -752,7 +644,9 @@ def zipProperties(category, properties):
     return completed
 
 
-def build_feature(feature_type, attrs=None, attr_types=None, geometry=None, coord_sys=None):
+def build_feature(
+    feature_type, attrs=None, attr_types=None, geometry=None, coord_sys=None
+):
     """Build an :class:`fmeobjects.FMEFeature` instance with the most frequently used
     parameters.
 
