@@ -13,16 +13,11 @@ from fmeobjects import FMEException, FMESession, FME_ASSEMBLY_VERSION
 
 import requests
 from pypac import PACSession
-from requests.auth import AuthBase, HTTPProxyAuth
+from requests.auth import AuthBase, HTTPProxyAuth, HTTPBasicAuth, HTTPDigestAuth
 from requests.exceptions import SSLError
-from requests.packages import urllib3
+import urllib3
 from requests.adapters import HTTPAdapter
 
-from fmegeneral.fmeconstants import (
-    kFME_MSGNUM_PROXY_AUTH_MODE_UNSUPPORTED,
-    kFME_MSGNUM_SSL_CERTIFICATE_VERIFY_FAILED,
-    kFME_MSGNUM_USING_PROXY,
-)
 from fmegeneral import fmelog
 from six.moves.urllib.parse import urlparse, quote
 
@@ -256,7 +251,7 @@ class FMERequestsSession(PACSession):
     def _logProxy(self, proxy_url):
         """Log about a proxy being used."""
         self._log.info(
-            kFME_MSGNUM_USING_PROXY,
+            926850,
             self.logPrefix,
             proxy_url_without_credentials(proxy_url),
             extra=_no_prepend_args,
@@ -349,7 +344,7 @@ class FMERequestsSession(PACSession):
                     # Warn about certificate verification failure, and that we're proceeding without it.
                     urlParts = urlparse(url)
                     self._log.warning(
-                        kFME_MSGNUM_SSL_CERTIFICATE_VERIFY_FAILED,
+                        926857,
                         self.logPrefix,
                         urlParts.netloc,
                         message,
@@ -416,12 +411,8 @@ def get_auth_object(auth_type, user="", password="", format_name=""):
 
     # These types need a username and password.
     if auth_type == "BASIC":
-        from requests.auth import HTTPBasicAuth
-
         return HTTPBasicAuth(user, password)
     elif auth_type == "DIGEST":
-        from requests.auth import HTTPDigestAuth
-
         return HTTPDigestAuth(user, password)
     elif auth_type == "NTLM":
         from requests_ntlm import HttpNtlmAuth
@@ -677,7 +668,7 @@ class UnsupportedProxyAuthenticationMethod(FMEException):
         :param str auth_method: Proxy authentication method.
         """
         super(UnsupportedProxyAuthenticationMethod, self).__init__(
-            kFME_MSGNUM_PROXY_AUTH_MODE_UNSUPPORTED, [log_prefix, auth_method]
+            926852, [log_prefix, auth_method]
         )
 
 
