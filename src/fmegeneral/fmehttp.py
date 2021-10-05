@@ -22,7 +22,7 @@ import urllib3
 from fmeobjects import FMEException, FMESession, FME_ASSEMBLY_VERSION
 from pypac import PACSession
 from requests.adapters import HTTPAdapter
-from requests.auth import AuthBase, HTTPProxyAuth, HTTPBasicAuth, HTTPDigestAuth
+from requests.auth import HTTPProxyAuth, HTTPBasicAuth, HTTPDigestAuth
 from six.moves.urllib.parse import urlparse, quote
 
 from fmegeneral import fmelog
@@ -314,26 +314,6 @@ class FMERequestsSession(PACSession):
                     self._log_proxy(proxy_for_url.sanitized_proxy_url)
 
         return super(FMERequestsSession, self).request(method, url, **kwargs)
-
-
-class HTTPBearerAuth(AuthBase):
-    """
-    An authentication object to add to the Requests session.
-
-    This object supplies the OAuth 2.0 access token required for all
-    authenticated requests via an HTTP header of the form
-    `Authorization: Bearer [token]`.
-    """
-
-    def __init__(self, access_token):
-        """
-        :param str access_token: The access token.
-        """
-        self.access_token = access_token
-
-    def __call__(self, req):
-        req.headers["Authorization"] = "Bearer " + self.access_token
-        return req
 
 
 def get_auth_object(auth_type, user="", password="", format_name=""):
