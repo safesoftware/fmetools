@@ -24,14 +24,15 @@ from fmegeneral.fmeconstants import (
     kFME_MSGNUM_USING_PROXY,
 )
 from fmegeneral import fmelog
-
 from six.moves.urllib.parse import urlparse, quote
 
 from fmegeneral.fmeutil import stringArrayToDict, choiceToBool
 
 # PR72320/PR72321: Import this now, to guarantee that worker threads can access it.
-# Needed when running with standard-library-in-zip (i.e. embedded Python) and using Requests in threads.
-# See http://stackoverflow.com/a/13057751 and https://github.com/kennethreitz/requests/issues/3578.
+# Needed when running with standard-library-in-zip (i.e. embedded Python) and using
+# Requests in threads.
+# See http://stackoverflow.com/a/13057751 and
+# https://github.com/kennethreitz/requests/issues/3578.
 # noinspection PyUnresolvedReferences
 import encodings.idna
 
@@ -52,12 +53,14 @@ ENV_NO_PROXY = "no_proxy"
 
 REQUEST_DEFAULT_TIMEOUT = 60
 
-# A proxy config of empty string tells Requests to ignore environment proxies too. Tested with Fiddler.
+# A proxy config of empty string tells Requests to ignore environment proxies too.
+# Tested with Fiddler.
 REQUESTS_NO_PROXY_CONFIG = {"http": "", "https": ""}
 
 
 def get_env_var(var_name_lowercase):
-    """Look for an environment variable, first looking for the lowercase
+    """
+    Look for an environment variable, first looking for the lowercase
     version, then the uppercase version if lowercase was missing/empty.
 
     This is how Requests handles proxy environment variable resolution.
@@ -90,14 +93,15 @@ class SystemCertStoreAdapter(HTTPAdapter):
     on Windows and Python 3 instead of the bundled root CAs from certifi.
 
     Python 3.4+ defaults to using the Windows Certificate Store on Windows.
-    urllib3 will fall back to Python's default certificate store if no CA bundle is given.
-    However, Requests always passes the certifi bundle to urllib3, which this adapter undoes.
+    urllib3 falls back to Python's default certificate store if no CA bundle is given.
+    But Requests always passes the certifi bundle to urllib3, which this adapter undoes.
 
     This class is a no-op for:
     - Python 2.7, because there's no fallback on Windows without certifi.
-    - MacOS, because Python 3.6+ stopped using Apple's OpenSSL and so can't access the keychain.
+    - MacOS, as Python 3.6+ stopped using Apple's OpenSSL and so can't use the keychain.
       Therefore the system certificate store as seen by Python could be empty.
-      certifi is recommended by Python maintainers. See https://bugs.python.org/issue28150.
+      certifi is recommended by Python maintainers.
+      See https://bugs.python.org/issue28150.
     - Linux, because certifi from the system package manager should be an alias to the
       system certificate store, like it is on CentOS and Debian.
     """
@@ -109,28 +113,29 @@ class SystemCertStoreAdapter(HTTPAdapter):
         # Let the overloaded method do all its config for urllib3:
         # set urllib3 behaviour for `verify` flag, and resolve certifi CAs
         super(SystemCertStoreAdapter, self).cert_verify(conn, url, verify, cert)
-        # If not on PY2, then undo certifi config so urllib3 falls back to system cert store.
+        # If applicable, undo certifi config so urllib3 falls back to system cert store.
         if sys.version_info.major > 2 and sys.platform == "win32":
             conn.ca_certs = None
             conn.ca_cert_dir = None
 
 
 class FMERequestsSession(PACSession):
-    """A wrapper around Requests that adds some FME-specific functionality that
-    any web-accessing code would want, such as proxy configuration based on
-    Workbench settings, and SSL certificate verification fallback.
+    """
+    A wrapper around Requests that adds FME-specific functionality around HTTP requests,
+    such as proxy configuration based on Workbench settings.
 
-    The superclass transparently provides Proxy Auto-Config file services.
+    HTTP access in FME should use this class instead of :class:`requests.Session`.
+
+    The superclass transparently provides Proxy Auto-Config (PAC) file services.
     This can be disabled by one of these methods:
 
     * Setting :attr:`pypac.PACSession.pac_enabled` to False after instantiation.
     * Setting Proxy Options to No Proxy in Workbench Options.
-    * Setting Proxy Options to Use System Proxy, and setting up general proxies in Internet Options
-      such that :class:`FMESession` returns these proxies.
-      This removes the performance impact of searching for a PAC when it's unlikely to exist,
-      and avoids having to decide between honouring PAC or falling back to general proxy settings for each request.
-
-    Any internal code running through FME that intends to use Requests should use this wrapper instead.
+    * Setting Proxy Options to Use System Proxy, and setting up general proxies in
+      Internet Options such that :class:`FMESession` returns these proxies.
+      This skips PAC discovery, which saves some time,
+      and avoids having to decide between using the PAC or falling back to
+      general proxy settings for each request.
 
     :ivar int requestCount: Increments every time a request is made.
     """
@@ -138,17 +143,21 @@ class FMERequestsSession(PACSession):
     def __init__(self, logPrefix, log=None, fmeSession=None, legacy_verify_mode=True):
         """
 
-        :param str logPrefix: The prefix to use for all log messages from this class, e.g. "[format name] [direction]".
+        :param str logPrefix: The prefix to use for all log messages from this class,
+            e.g. "[format name] [direction]".
         :param fmelog.FMELoggerAdapter log: Python standard library logger to use.
-           If provided, it *must* be able to gracefully handle FME message numbers
-           or otherwise not propagate integer messages to handlers that cannot handle it (like the root logger).
-           If None, a generic Logger instance is instantiated, which won't output anything to the FME log.
-        :param FMESession fmeSession: Load proxy configuration from this session. Intended for testing purposes only.
-           If not provided, a new FMESession object is used for this purpose.
+            If provided, it *must* be able to gracefully handle FME message numbers
+            or at least not propagate integer messages to handlers that can't handle it,
+            like the root logger.
+            If None, a generic Logger instance is instantiated,
+            which won't output anything to the FME log.
+        :param FMESession fmeSession: Load proxy configuration from this session.
+            Intended for testing purposes only.
+            If not provided, a new FMESession object is used for this purpose.
         :param bool legacy_verify_mode: If true, then certificate verification failure
-           will warn, disable certificate verification in this session, and retry the request.
-           Starting in FME 2021.1, certificate verification should be toggled by
-           the "Verify SSL Certificates" option added to all Named Connections by FMEDESKTOP-10332.
+            will warn, disable certificate verification in this session, and retry the request.
+            Starting in FME 2021.1, certificate verification should be toggled by
+            the "Verify SSL Certificates" option added to all Named Connections by FMEDESKTOP-10332.
         """
         super(FMERequestsSession, self).__init__()
         adapter = SystemCertStoreAdapter()
@@ -184,17 +193,19 @@ class FMERequestsSession(PACSession):
             pass
 
     def _loadProxySettings(self, fmeSession):
-        """Load all proxy configuration from the given FMESession, as well as
+        """
+        Load all proxy configuration from the given FMESession, as well as
         from environment variables.
 
         If proxies are configured using environment variables, mention it in the log.
-        Proxy environment variables are honoured by Requests, but this method does not set them.
-        Instead, this class expects them to be set in the fmesite.py startup script.
+        Proxy environment variables are honoured by Requests,
+        but this method does not set them.
+        Instead, this class expects them to be set in FME's fmesite.py startup script.
 
         :param FMESession fmeSession: Load proxy configuration from this session.
         :returns: FMEGeneralProxyHandler, FMECustomProxyMapHandler
         :raises UnsupportedProxyAuthenticationMethod:
-           If the proxy authentication method for the environment proxy is unsupported.
+            If the proxy authentication method for the environment proxy is unsupported.
         """
         # Get the configured HTTP/HTTPS proxies, if any, and log about their use.
         # If both HTTP and HTTPS are configured and they're identical, log once.
@@ -214,8 +225,8 @@ class FMERequestsSession(PACSession):
         generalProxyConfig.configure(fmeSession)
         self.pac_enabled = generalProxyConfig.use_pac
 
-        # If proxies are configured, or PAC is enabled, and a proxy username specified, then
-        # ensure the proxy authentication method is supported.
+        # If proxies are configured, or PAC is enabled, and a proxy username specified,
+        # then ensure the proxy authentication method is supported.
         enforce_proxy_auth_method = (
             generalProxyConfig.use_pac or generalProxyConfig.proxies
         ) and generalProxyConfig.user
@@ -253,7 +264,10 @@ class FMERequestsSession(PACSession):
 
     @staticmethod
     def _isProxyAuthMethodSupported(auth_method):
-        """:returns: True if there's no proxy authentication or if it's Basic. NTLM and Digest aren't supported."""
+        """
+        :returns: True if there's no proxy authentication or if it's Basic.
+            NTLM and Digest aren't supported.
+        """
         return not auth_method or auth_method == "basic"
 
     def request(self, method, url, **kwargs):
@@ -352,7 +366,8 @@ class FMERequestsSession(PACSession):
 
 
 class HTTPBearerAuth(AuthBase):
-    """An authentication object to add to the Requests session.
+    """
+    An authentication object to add to the Requests session.
 
     This object supplies the OAuth 2.0 access token required for all
     authenticated requests via an HTTP header of the form
@@ -371,11 +386,12 @@ class HTTPBearerAuth(AuthBase):
 
 
 def get_auth_object(auth_type, user="", password="", format_name=""):
-    """Get an appropriately-configured authentication object for use with the
+    """
+    Get an appropriately-configured authentication object for use with the
     Requests library.
 
     :param str auth_type: The type of authentication object to obtain.
-       Must be one of: `None`, `Kerberos`, `Basic`, `Digest`, `NTLM`. Case insensitive.
+        Must be one of: `None`, `Kerberos`, `Basic`, `Digest`, `NTLM`. Case insensitive.
     :param str user: Ignored if not applicable to the specified auth type.
     :param str password: Ignored if not applicable to the specified auth type.
     :param str format_name: Name of format to use if auth_type is `Kerberos`.
@@ -412,7 +428,6 @@ def get_auth_object(auth_type, user="", password="", format_name=""):
 
         return HttpNtlmAuth(user, password)
     else:
-        # This should not happen in production, as the GUI should restrict to valid types.
         raise ValueError("Unknown authentication type '%s'" % auth_type)
 
 
@@ -504,7 +519,8 @@ class FMEGeneralProxyHandler(object):
         # Use System Proxy but no general proxies must mean to find and honour any PAC.
         self.use_pac = use_system_proxy and not self.proxies
 
-        # Grab proxy credentials from Workbench. When a PAC is in use, we need these standalone values.
+        # Grab proxy credentials from Workbench.
+        # When a PAC is in use, we need these standalone values.
         proxy_network_config = fmeSession.getProperties(
             FMESESSION_PROP_NETWORK_PROXY_SETTINGS, {}
         )
@@ -542,7 +558,8 @@ class FMEGeneralProxyHandler(object):
 
 
 class FMECustomProxyMapHandler(object):
-    """Handles parsing of the FME Custom Proxy Map, which assigns proxies for
+    """
+    Handles parsing of the FME Custom Proxy Map, which assigns proxies for
     specific URLs.
     """
 
@@ -552,12 +569,14 @@ class FMECustomProxyMapHandler(object):
         self._customProxyMap = []
 
     def custom_proxy_for_url(self, url):
-        """Consult the FME custom proxy map for a proxy configuration to use
+        """
+        Consult the FME custom proxy map for a proxy configuration to use
         for the given URL. It's up to the caller to handle the proxy
         authentication method.
 
         :param str url: URL for which to find a custom proxy mapping. Case-insensitive.
-        :returns: Custom proxy map entry matching the given URL, or `None` if there's no match.
+        :returns: Custom proxy map entry matching the given URL,
+            or `None` if there's no match.
         :rtype: :class:`FMECustomProxyMap`
         """
         url = url.lower()
@@ -567,7 +586,8 @@ class FMECustomProxyMapHandler(object):
         return None
 
     def configure(self, fmeSession):
-        """Load Custom Proxy Map configuration from FME.
+        """
+        Load Custom Proxy Map configuration from FME.
 
         :param FMESession fmeSession: Configuration is loaded from this.
         """
@@ -585,12 +605,14 @@ class FMECustomProxyMapHandler(object):
 
     @staticmethod
     def parse_custom_proxy_map(fmesession, url, proxy_info):
-        """Parse a serialized custom proxy map configuration entry from FME.
+        """
+        Parse a serialized custom proxy map configuration entry from FME.
 
         :param FMESession fmesession: For decoding FME-encoded strings.
         :param str url: FME-encoded URL for the custom proxy map.
-        :param str proxy_info: FME-encoded and comma-delimited proxy configuration for the custom proxy map.
-        :rtype: :class:`FMECustomProxyMap`
+        :param str proxy_info: FME-encoded and comma-delimited proxy configuration for
+            the custom proxy map.
+        :rtype: FMECustomProxyMap
         """
         url = fmesession.decodeFromFMEParsableText(
             url
@@ -650,7 +672,8 @@ class UnsupportedProxyAuthenticationMethod(FMEException):
 
     def __init__(self, log_prefix, auth_method):
         """
-        :param str log_prefix: The prefix to use for all log messages from this class, e.g. "[format name] [direction]".
+        :param str log_prefix: The prefix to use for all log messages from this class,
+            e.g. "[format name] [direction]".
         :param str auth_method: Proxy authentication method.
         """
         super(UnsupportedProxyAuthenticationMethod, self).__init__(
@@ -685,7 +708,6 @@ def configure_proxy_exceptions():
     except WindowsError:
         return False
 
-    # Shortcomings: No automatic recognition of what a local address is. No IP range/wildcard support.
     overrides = [entry.strip() for entry in overrides.split(";")]
     no_proxy_entries = list(
         filter(lambda entry: entry not in ("<local>", "<-loopback>"), overrides)
