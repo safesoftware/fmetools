@@ -700,18 +700,3 @@ def _configure_proxy_exceptions():
         no_proxy_entries.extend(["localhost", "127.0.0.1", "::1"])
     os.environ["no_proxy"] = ", ".join(no_proxy_entries)
     return True
-
-
-def download_file(response, destination_path):
-    """Download a file to the local filesystem. The download is streamed so
-    that the whole file doesn't get loaded into memory.
-
-    :param requests.Response response: A response for the file to download, initialized
-       with stream=True
-    :param str destination_path: Path to destination file.
-    :returns: MIME type of the downloaded file.
-    """
-    with open(destination_path, "wb") as outf:
-        response.raise_for_status()
-        for chunk in response.iter_content(chunk_size=1024):
-            outf.write(chunk)
