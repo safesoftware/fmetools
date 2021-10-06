@@ -1,3 +1,8 @@
+"""
+Helpers for making HTTP requests within FME.
+
+The main class of interest is :class:`FMERequestsSession`.
+"""
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 # PR72320/PR72321: Import this now, to guarantee that worker threads can access it.
@@ -35,10 +40,6 @@ urllib3.disable_warnings()
 
 _GENERIC_LOGGER_NAME = "FMERequestsSession"
 _no_prepend_args = {"no_prepend_args": True}
-
-# For FMESession.getProperties(). For the result format, see fmesession.h getProxy().
-FMESESSION_PROP_NETWORK_PROXY = "fme_session_prop_network_proxy"
-FMESESSION_PROP_NETWORK_PROXY_SETTINGS = "fme_session_prop_network_proxy_settings"
 
 # A proxy config of empty string tells Requests to ignore environment proxies too.
 # Tested with Fiddler.
@@ -160,13 +161,13 @@ class FMERequestsSession(PACSession):
 
         self.requestCount = 0
 
-        # PR62339: Include FME version in User-Agent. Same format as in our HTTP library for C++.
+        # PR62339: Include FME version in User-Agent. Same format as FME core.
         self.headers["User-Agent"] = "FME/%s %s" % (
             FME_ASSEMBLY_VERSION,
             self.headers.get("User-Agent"),
         )
 
-        # FMEENGINE-68435: Toggle library-level debug logging based on workspace debug flags.
+        # FMEENGINE-68435: Set library debug logging based on workspace debug flags.
         try:
             _toggle_http_debug_logging(
                 "HTTP_DEBUG" in fme.macroValues.get("FME_DEBUG", "")
@@ -274,7 +275,7 @@ class FMERequestsSession(PACSession):
         """
         self.requestCount += 1
 
-        # PR62730: Specify a timeout if not already specified, as the default is no timeout.
+        # PR62730: Specify a default timeout, to prevent possibility of waiting forever.
         if "timeout" not in kwargs:
             kwargs["timeout"] = 60
 
@@ -360,7 +361,8 @@ def get_auth_object(auth_type, user="", password="", format_name=""):
 
 
 def proxy_url_without_credentials(proxy_url):
-    """Given a proxy URL, return it with any proxy credentials removed.
+    """
+    Given a proxy URL, return it with any proxy credentials removed.
 
     :param str proxy_url: The proxy url.
     """
@@ -374,6 +376,9 @@ def proxy_url_without_credentials(proxy_url):
     return proxy_url
 
 
+# For FMESession.getProperties(). For the result format, see fmesession.h getProxy().
+FMESESSION_PROP_NETWORK_PROXY = "fme_session_prop_network_proxy"
+FMESESSION_PROP_NETWORK_PROXY_SETTINGS = "fme_session_prop_network_proxy_settings"
 FMEProxyDefinition = namedtuple(
     "FMEProxyDefinition", ["env_var", "proxy_url", "auth_method"]
 )
@@ -392,10 +397,10 @@ FMECustomProxyMap = namedtuple(
 
 
 class FMEGeneralProxyHandler(object):
-    """Handles parsing of the proxy settings that apply to all requests by
-    default.
+    """
+    Handles parsing of the proxy settings that apply to all requests by default.
 
-    :type proxies: list[:class:`FMEProxyDefinition`]
+    :type proxies: list[FMEProxyDefinition]
     :ivar proxies: List of general proxy configs.
     :type non_proxy_hosts: list[re.Pattern]
     :ivar non_proxy_hosts: Skip proxies for any matching hostname regex.
@@ -443,7 +448,7 @@ class FMEGeneralProxyHandler(object):
                     warnings.warn("FME non-proxy-hosts: not JSON or bad regex")
             i += 2
 
-        # Use System Proxy plus presence of general proxies probably means a PAC isn't being used.
+        # Use System Proxy plus presence of general proxies implies that PAC
         # Use System Proxy but no general proxies must mean to find and honour any PAC.
         self.use_pac = use_system_proxy and not self.proxies
 
@@ -463,7 +468,8 @@ class FMEGeneralProxyHandler(object):
 
     @property
     def auth_method(self):
-        """Get the proxy authentication method, either at the system-level
+        """
+        Get the proxy authentication method, either at the system-level
         settings, or the one from the first general proxy config (if any).
 
         In practice, these values should be identical. They may differ
@@ -478,7 +484,7 @@ class FMEGeneralProxyHandler(object):
     def is_non_proxy_host(self, host):
         """
         :param host: Hostname to evaluate. Case-insensitive.
-        :return: True if the given hostname matches a hostname configured to use no proxy.
+        :return: True if the given hostname matches one configured to use no proxy.
         """
         if not host:
             return False
@@ -505,7 +511,7 @@ class FMECustomProxyMapHandler(object):
         :param str url: URL for which to find a custom proxy mapping. Case-insensitive.
         :returns: Custom proxy map entry matching the given URL,
             or `None` if there's no match.
-        :rtype: :class:`FMECustomProxyMap`
+        :rtype: FMECustomProxyMap
         """
         url = url.lower()
         for proxyMap in self._customProxyMap:
