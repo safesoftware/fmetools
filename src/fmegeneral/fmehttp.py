@@ -317,16 +317,47 @@ class FMERequestsSession(PACSession):
         return super(FMERequestsSession, self).request(method, url, **kwargs)
 
 
-def get_auth_object(auth_type, user="", password="", format_name=""):
+class KerberosUnsupportedException(FMEException):
+    """For use in :func:`getRequestsKerberosAuthObject`."""
+
+    def __init__(self, log_prefix):
+        """
+        :param str log_prefix: Name of caller to use in the log message.
+        """
+        super(KerberosUnsupportedException, self).__init__(926851, [log_prefix])
+
+
+def get_kerberos_auth(caller_name):
     """
-    Get an appropriately-configured authentication object for use with the
-    Requests library.
+    Try to get a Kerberos authentication object to use with :mod:`requests`. Raises
+    a user-friendly exception if dependencies couldn't be loaded.
+
+    :param str caller_name: Prefix to use in error message if Kerberos not available.
+    :rtype: requests_kerberos.HTTPKerberosAuth
+    :raises KerberosUnsupportedException:
+        If an ImportError occurred when trying to import :mod:`requests_kerberos`.
+       This is most likely because the `kerberos` module isn't available.
+    """
+    try:
+        import requests_kerberos as rk
+
+        # PR78426: Disable mutual auth to work with some customer configs.
+        return rk.HTTPKerberosAuth(
+            mutual_authentication=rk.DISABLED,
+        )
+    except ImportError:
+        raise KerberosUnsupportedException(caller_name)
+
+
+def get_auth_object(auth_type, user="", password="", caller_name=""):
+    """
+    Get a :class:`requests.auth.AuthBase` object configured for use with Requests.
 
     :param str auth_type: The type of authentication object to obtain.
         Must be one of: `None`, `Kerberos`, `Basic`, `Digest`, `NTLM`. Case insensitive.
     :param str user: Ignored if not applicable to the specified auth type.
     :param str password: Ignored if not applicable to the specified auth type.
-    :param str format_name: Name of format to use if auth_type is `Kerberos`.
+    :param str caller_name: Caller's name for log messages.
     :return: The configured authentication object.
     :rtype: requests.auth.AuthBase or None
     :raises ValueError: if authentication type is unrecognized.
@@ -336,16 +367,7 @@ def get_auth_object(auth_type, user="", password="", format_name=""):
     if auth_type == "NONE":
         return None
     elif auth_type == "KERBEROS":
-        # FIXME: Kerberos loading.
-        from fmegeneral.kerberos import getRequestsKerberosAuthObject
-
-        return getRequestsKerberosAuthObject(format_name)
-
-    # TODO: Convert to FME message.
-    if not user or not password:
-        raise ValueError(
-            "Authentication type '%s' requires a username and password" % auth_type
-        )
+        return get_kerberos_auth(caller_name)
 
     # These types need a username and password.
     if auth_type == "BASIC":
