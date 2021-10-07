@@ -125,7 +125,7 @@ class FMERequestsSession(PACSession):
       and avoids having to decide between using the PAC or falling back to
       general proxy settings for each request.
 
-    :ivar int requestCount: Increments every time a request is made.
+    :ivar int request_count: Increments every time a request is made.
     """
 
     def __init__(self, log_prefix, log=None, fme_session=None):
@@ -159,7 +159,7 @@ class FMERequestsSession(PACSession):
         )
         self._last_used_custom_proxy = None
 
-        self.requestCount = 0
+        self.request_count = 0
 
         # PR62339: Include FME version in User-Agent. Same format as FME core.
         self.headers["User-Agent"] = "FME/%s %s" % (
@@ -273,7 +273,7 @@ class FMERequestsSession(PACSession):
         :param kwargs: keyword arguments passed straight to Requests
         :rtype: requests.Response
         """
-        self.requestCount += 1
+        self.request_count += 1
 
         # PR62730: Specify a default timeout, to prevent possibility of waiting forever.
         if "timeout" not in kwargs:
