@@ -19,21 +19,21 @@ from fmegeneral.parsers import SearchEnvelope, OpenParameters
 class FMESimplifiedReader(FMEReader):
     """Base class for Python-based FME reader implementations.
 
-    :ivar str _typeName: The name used in the following contexts:
+    :ivar str _type_name: The name used in the following contexts:
 
         * the name of the format's .db file in the formats info folder
         * the format short name for the format within the .db file
         * ``FORMAT_NAME`` in the metafile
 
     :ivar str _keyword: A unique identifier for this reader instance.
-    :ivar FMEMappingFileWrapper _mappingFileWrapper: The :class:`FMEMappingFileWrapper`.
+    :ivar FMEMappingFileWrapper _mapping_file: The :class:`FMEMappingFileWrapper`.
     :ivar bool _debug: Toggle for debug mode.
     :ivar Logger _logger: Helper class for logging functionality.
     :ivar bool _using_constraints: True if :meth:`setConstraints` was called.
     :ivar bool _aborted: True if :meth:`abort` was called.
-    :ivar SearchEnvelope _searchEnvelope: An abstraction of the 2D search envelope given by FME
-        that's easier to understand.
-    :ivar list[str] _featureTypes: Ordered list of feature type names.
+    :ivar SearchEnvelope _search_envelope:
+        Rectangular search envelope, if any, from the mapping file.
+    :ivar list[str] _feature_types: Ordered list of feature type names.
     :ivar _readSchema_generator:
         Use this member to store any generator used for :meth:`readSchema`.
        Doing so means it'll be be explicitly closed for you in :meth:`close`.
@@ -45,18 +45,17 @@ class FMESimplifiedReader(FMEReader):
         whether it needs to re-instantiate its generator to honour new settings.
     """
 
-    def __init__(self, readerTypeName, readerKeyword, mappingFile):
+    def __init__(self, reader_type_name, reader_keyword, mapping_file):
         # super() is intentionally not called. Base class disallows it.
-        self._typeName = readerTypeName
-        self._keyword = readerKeyword
-        self._mappingFileWrapper = FMEMappingFileWrapper(
-            mappingFile, readerKeyword, readerTypeName
+        self._type_name = reader_type_name
+        self._keyword = reader_keyword
+        self._mapping_file = FMEMappingFileWrapper(
+            mapping_file, reader_keyword, reader_type_name
         )
 
         # Check if the debug flag is set
         self._debug = (
-            self._mappingFileWrapper.mappingFile.fetch(fmeconstants.kFME_DEBUG)
-            is not None
+            self._mapping_file.mapping_file.fetch(fmeconstants.kFME_DEBUG) is not None
         )
 
         # Instantiate a logger with the appropriate debug mode.
@@ -65,12 +64,12 @@ class FMESimplifiedReader(FMEReader):
 
         self._using_constraints = False
         self._aborted = False
-        self._searchEnvelope = None
-        self._featureTypes = []
+        self._search_envelope = None
+        self._feature_types = []
 
         self._readSchema_generator, self._read_generator = None, None
 
-    def open(self, datasetName, parameters):
+    def open(self, dataset_name, parameters):
         """Open the dataset for reading.
 
         Does these things for you:
@@ -80,32 +79,32 @@ class FMESimplifiedReader(FMEReader):
         * Calls :meth:`enhancedOpen`.
 
         If setConstraints() wasn't called earlier, then this method also:
-        * Sets `_searchEnvelope` using the mapping file.
-        * Sets `_featureTypes` using the mapping file and/or open parameters.
+        * Sets `_search_envelope` using the mapping file.
+        * Sets `_feature_types` using the mapping file and/or open parameters.
 
-        :param str datasetName: Name of the dataset.
+        :param str dataset_name: Name of the dataset.
         :param list[str] parameters: List of parameters.
         """
 
         # If not using setConstraints(), then get some basics from the mapping file.
         if not self._using_constraints:
-            self._searchEnvelope = self._mappingFileWrapper.getSearchEnvelope()
-            self._featureTypes = self._mappingFileWrapper.getFeatureTypes(parameters)
+            self._search_envelope = self._mapping_file.get_search_envelope()
+            self._feature_types = self._mapping_file.get_feature_types(parameters)
 
         # Look for the debug flag in the open() parameters.
-        openParameters = OpenParameters(datasetName, parameters)
-        if openParameters.get(fmeconstants.kFME_DEBUG):
+        open_parameters = OpenParameters(dataset_name, parameters)
+        if open_parameters.get(fmeconstants.kFME_DEBUG):
             self._debug = True
             self._logger.setDebugMode(self._debug)
             self._log = get_configured_logger(self.__class__.__name__, self._debug)
 
-        return self.enhancedOpen(openParameters)
+        return self.enhancedOpen(open_parameters)
 
-    def enhancedOpen(self, openParameters):
+    def enhancedOpen(self, open_parameters):
         """
         Implementations shall override this method instead of :meth:`open`.
 
-        :param OpenParameters openParameters: Parameters for the reader.
+        :param OpenParameters open_parameters: Parameters for the reader.
         """
         pass
 
@@ -172,33 +171,32 @@ class FMESimplifiedReader(FMEReader):
 class FMESimplifiedWriter(FMEWriter):
     """Base class for Python-based FME writer implementations.
 
-    :ivar str _typeName: The name used in the following contexts:
+    :ivar str _type_name: The name used in the following contexts:
 
         * the name of the format's .db file in the formats info folder
         * the format short name for the format within the .db file
         * ``FORMAT_NAME`` in the metafile
 
     :ivar str _keyword: A unique identifier for this writer instance.
-    :ivar FMEMappingFileWrapper _mappingFileWrapper: A wrapper for getting information
+    :ivar FMEMappingFileWrapper _mapping_file: A wrapper for getting information
         from the mapping file in a simplified way.
     :ivar bool _debug: Toggle for debug mode.
     :ivar Logger _logger: Helper class for logging functionality.
     :ivar bool _aborted: True if :meth:`abort` was called.
-    :ivar list[str] _featureTypes: Ordered list of feature types.
+    :ivar list[str] _feature_types: Ordered list of feature types.
     """
 
-    def __init__(self, writerTypeName, writerKeyword, mappingFile):
+    def __init__(self, writer_type_name, writer_keyword, mapping_file):
         # super() is intentionally not called. Base class disallows it.
-        self._typeName = writerTypeName
-        self._keyword = writerKeyword
-        self._mappingFileWrapper = FMEMappingFileWrapper(
-            mappingFile, writerKeyword, writerTypeName
+        self._type_name = writer_type_name
+        self._keyword = writer_keyword
+        self._mapping_file = FMEMappingFileWrapper(
+            mapping_file, writer_keyword, writer_type_name
         )
 
         # Check if the debug flag is set
         self._debug = (
-            self._mappingFileWrapper.mappingFile.fetch(fmeconstants.kFME_DEBUG)
-            is not None
+            self._mapping_file.mapping_file.fetch(fmeconstants.kFME_DEBUG) is not None
         )
 
         # Instantiate a logger with the appropriate debug mode.
@@ -207,40 +205,40 @@ class FMESimplifiedWriter(FMEWriter):
 
         self._aborted = False
         self._searchEnvelope = None
-        self._featureTypes = []
+        self._feature_types = []
 
-    def open(self, datasetName, parameters):
+    def open(self, dataset, parameters):
         """Open the dataset for writing.
 
         Does these things for you:
 
-        * Sets `_searchEnvelope` using the mapping file.
-        * Sets `_featureTypes` using the mapping file and/or open parameters.
+        * Sets `_search_envelope` using the mapping file.
+        * Sets `_feature_types` using the mapping file and/or open parameters.
         * Parses the open() parameters.
         * Checks for the debug flag in open() parameters,
           switching `_logger` to debug mode if present.
         * Calls :meth:`enhancedOpen`.
 
-        :param str datasetName: Name of the dataset.
+        :param str dataset: Dataset value, such as a file path or URL.
         :param list[str] parameters: List of parameters.
         """
 
-        self._featureTypes = self._mappingFileWrapper.getFeatureTypes(parameters)
+        self._feature_types = self._mapping_file.get_feature_types(parameters)
 
         # Look for the debug flag in the open() parameters.
-        openParameters = OpenParameters(datasetName, parameters)
-        if openParameters.get(fmeconstants.kFME_DEBUG):
+        open_parameters = OpenParameters(dataset, parameters)
+        if open_parameters.get(fmeconstants.kFME_DEBUG):
             self._debug = True
             self._logger.setDebugMode(self._debug)
             self._log = get_configured_logger(self.__class__.__name__, self._debug)
 
-        return self.enhancedOpen(openParameters)
+        return self.enhancedOpen(open_parameters)
 
-    def enhancedOpen(self, openParameters):
+    def enhancedOpen(self, open_parameters):
         """
         Implementations shall override this method instead of :meth:`open`.
 
-        :param OpenParameters openParameters: Parameters for the writer.
+        :param OpenParameters open_parameters: Parameters for the writer.
         """
         pass
 
@@ -263,7 +261,7 @@ class FMEMappingFileWrapper(object):
 
     Methods are similar to the 'withPrefix' methods on :class:`FMEMappingFile`.
     However, the plugin keyword and type are assumed to be the ones in the constructor.
-    If this assumption doesn't apply, then use the `mappingFile` member.
+    If this assumption doesn't apply, then use the `mapping_file` member.
 
     The functionality of this wrapper,
     combined with prefixing of directives in the metafile's `SOURCE_READER` with ``-_``,
@@ -271,32 +269,32 @@ class FMEMappingFileWrapper(object):
     mapping file for the same directive.
     Instead, the mapping file can be used exclusively.
 
-    :param FMEMappingFile mappingFile: The original mapping file object.
+    :ivar FMEMappingFile mapping_file: The original mapping file object.
     """
 
-    def __init__(self, mappingFile, pluginKeyword, pluginType):
+    def __init__(self, mapping_file, plugin_keyword, plugin_type):
         """
-        :param FMEMappingFile mappingFile: The original mapping file object.
-        :param str pluginKeyword: Plugin keyword string.
-        :param str pluginType: Plugin type string.
+        :param FMEMappingFile mapping_file: The original mapping file object.
+        :param str plugin_keyword: Plugin keyword string.
+        :param str plugin_type: Plugin type string.
         """
-        self.mappingFile = mappingFile
-        self._pluginKeyword = pluginKeyword
-        self._pluginType = pluginType
+        self.mapping_file = mapping_file
+        self._plugin_keyword = plugin_keyword
+        self._plugin_type = plugin_type
 
         self.__session = FMESession()
 
-    def defLines(self):
+    def def_lines(self):
         """Get an iterable over DEF lines for this plugin.
 
         :return: iterator
         """
-        defFilter = self._pluginKeyword + fmeconstants.kFME_DEFLINE_SUFFIX
-        self.mappingFile.startIteration()
-        defLineBuffer = self.mappingFile.nextLineWithFilter(defFilter)
-        while defLineBuffer is not None:
-            yield defLineBuffer
-            defLineBuffer = self.mappingFile.nextLineWithFilter(defFilter)
+        def_filter = self._plugin_keyword + fmeconstants.kFME_DEFLINE_SUFFIX
+        self.mapping_file.startIteration()
+        def_line_buffer = self.mapping_file.nextLineWithFilter(def_filter)
+        while def_line_buffer is not None:
+            yield def_line_buffer
+            def_line_buffer = self.mapping_file.nextLineWithFilter(def_filter)
 
     def fetchWithPrefix(self, pluginType, pluginKeyword, directive):
         """Like :meth:`FMEMappingFile.fetchWithPrefix`, except handles the
@@ -310,7 +308,7 @@ class FMEMappingFileWrapper(object):
             return the element. Otherwise, the list is returned as-is.
         :rtype: str
         """
-        value = self.mappingFile.fetchWithPrefix(pluginType, pluginKeyword, directive)
+        value = self.mapping_file.fetchWithPrefix(pluginType, pluginKeyword, directive)
         if isinstance(value, list) and len(value) == 2 and value[0] == value[1]:
             return value[0]
         return value
@@ -327,7 +325,7 @@ class FMEMappingFileWrapper(object):
             and return a list.
         :rtype: str, int, float, list, None
         """
-        value = self.fetchWithPrefix(self._pluginKeyword, self._pluginType, directive)
+        value = self.fetchWithPrefix(self._plugin_keyword, self._plugin_type, directive)
         if value is None:
             return default
         if asList and isinstance(value, six.string_types):
@@ -340,7 +338,7 @@ class FMEMappingFileWrapper(object):
             value = self.__session.decodeFromFMEParsableText(value)
         return value
 
-    def getFlag(self, directive, default=False):
+    def get_flag(self, directive, default=False):
         """Get the specified directive and interpret it as a boolean value.
 
         :param str directive: Name of the directive.
@@ -353,32 +351,32 @@ class FMEMappingFileWrapper(object):
 
         return fmeutil.stringToBool(value)
 
-    def getSearchEnvelope(self):
+    def get_search_envelope(self):
         """Get the search envelope, with coordinate system, if any.
 
         :returns: The search envelope, or None if not set.
         :rtype: parsers.SearchEnvelope, None
         """
-        env = self.mappingFile.fetchSearchEnvelope(
-            self._pluginKeyword, self._pluginType
+        env = self.mapping_file.fetchSearchEnvelope(
+            self._plugin_keyword, self._plugin_type
         )
         if not env:
             return None
-        coordSys = self.get("_SEARCH_ENVELOPE_COORDINATE_SYSTEM")
-        return SearchEnvelope(env, coordSys)
+        coordsys = self.get("_SEARCH_ENVELOPE_COORDINATE_SYSTEM")
+        return SearchEnvelope(env, coordsys)
 
-    def getFeatureTypes(
-        self, openParameters, fetchMode=fmeconstants.kFME_FETCH_IDS_AND_DEFS
+    def get_feature_types(
+        self, open_parameters, fetch_mode=fmeconstants.kFME_FETCH_IDS_AND_DEFS
     ):
         """Get the feature types, if any.
 
-        :param list[str] openParameters: Parameters for the reader.
-        :param int fetchMode: One of the valid feature type fetch modes from :mod:`fmegeneral.fmeconstants`.
+        :param list[str] open_parameters: Parameters for the reader.
+        :param int fetch_mode: One of the valid feature type fetch modes from :mod:`fmegeneral.fmeconstants`.
         :returns: List of feature types, in Unicode.
-        :rtype: list[six.text_type]
+        :rtype: list[str]
         """
-        featTypes = self.mappingFile.fetchFeatureTypes(
-            self._pluginKeyword, self._pluginType, openParameters, fetchMode
+        featTypes = self.mapping_file.fetchFeatureTypes(
+            self._plugin_keyword, self._plugin_type, open_parameters, fetch_mode
         )
         if featTypes is None:
             # Mapping file returns None when there are no feature types,
