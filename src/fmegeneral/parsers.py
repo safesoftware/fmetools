@@ -6,8 +6,56 @@ import six
 from fmeobjects import FMESession, FMEFeature
 from pluginbuilder import FMEReader, FMEWriter, FMEMappingFile
 from fmegeneral import fmeutil
-from fmegeneral.fmeutil import unicodeToSystem, systemToUnicode
 from six import string_types
+import fme
+
+
+class FMELocale(object):
+    """Singleton for handling encoding on Mac.
+
+    This class serves no purpose for end users. Use
+    :func:`getSystemLocale` instead.
+    """
+
+    # See PR#53541 and PR#52908.
+
+    def __init__(self):
+        pass
+
+    #: Name of the detected system locale.
+    #:
+    #: :type: str
+    detectedSystemLocale = None
+
+
+def systemToUnicode(original):
+    """Try to convert a system-encoded string to a Unicode string. Characters
+    that could not be converted are replaced with '?'.
+
+    :type original: str
+    :param original: System encoded string to convert.
+    :return: The converted string.
+    :rtype: six.text_type
+    """
+    # See PRs #52906-52909.
+    if isinstance(original, six.text_type):
+        # If input is already a Unicode string, return it as-is.
+        return original
+    return original.decode(getSystemLocale(), "replace")
+
+
+def getSystemLocale():
+    """Get the system locale of the process. The return value is cached after the first time
+    this function is called.
+
+    :return: The system locale name.
+    :rtype: str
+    """
+    if FMELocale.detectedSystemLocale is None:
+        # FME may change the locale of the process, so query FME to get the system locale truth.
+        FMELocale.detectedSystemLocale = fme.systemEncoding
+
+    return FMELocale.detectedSystemLocale
 
 
 class OpenParameters(OrderedDict):
