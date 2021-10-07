@@ -41,7 +41,7 @@ def systemToUnicode(original):
     if isinstance(original, six.text_type):
         # If input is already a Unicode string, return it as-is.
         return original
-    return original.decode(getSystemLocale(), "replace")
+    return original.decode(fme.systemEncoding, "replace")
 
 
 def getSystemLocale():
