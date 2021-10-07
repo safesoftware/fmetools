@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-from collections import OrderedDict
 from fmeobjects import FMESession
+from collections import OrderedDict, namedtuple
 from fmegeneral import fmeutil
 from fmegeneral.fmeutil import unicodeToSystem, systemToUnicode
 from six import string_types
@@ -100,31 +100,9 @@ class OpenParameters(OrderedDict):
         )
 
 
-class SearchEnvelope(object):
-    """An abstraction of the 2D search envelope given by FME that's easier to
-    understand.
-
-    Call :meth:`__dict__` to get members as a :class:`dict` for use in
-    string substitutions.
-    """
-
-    def __init__(self, envelope, coordsys=None):
-        """
-        :param list[list[float]] envelope: [[minX, minY], [maxX, maxY]]
-        """
-        self.envelope = envelope
-        self.bottomLeft = envelope[0]
-        self.topRight = envelope[1]
-        self.minX = envelope[0][0]
-        self.minY = envelope[0][1]
-        self.maxX = envelope[1][0]
-        self.maxY = envelope[1][1]
-        self.coordSys = coordsys
-
-    def __str__(self):
-        return "Envelope<({},{})({},{}) {}>".format(
-            self.minX, self.minY, self.maxX, self.maxY, self.coordSys
-        )
+SearchEnvelope = namedtuple(
+    "SearchEnvelope", "min_x min_y max_x max_y coordsys", defaults=(None,)
+)
 
 
 def parse_def_line(def_line, option_names):
