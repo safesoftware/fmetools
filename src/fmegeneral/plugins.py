@@ -252,7 +252,6 @@ class FMEMappingFileWrapper(object):
 
     Methods are similar to the 'withPrefix' methods on :class:`FMEMappingFile`.
     However, the plugin keyword and type are assumed to be the ones in the constructor.
-    If this assumption doesn't apply, then use the `mapping_file` member.
 
     The functionality of this wrapper,
     combined with prefixing of directives in the metafile's `SOURCE_READER` with ``-_``,
@@ -287,45 +286,49 @@ class FMEMappingFileWrapper(object):
             yield def_line_buffer
             def_line_buffer = self.mapping_file.nextLineWithFilter(def_filter)
 
-    def fetchWithPrefix(self, pluginType, pluginKeyword, directive):
-        """Like :meth:`FMEMappingFile.fetchWithPrefix`, except handles the
+    def fetch_with_prefix(self, plugin_type, plugin_keyword, directive):
+        """Like :meth:`FMEMappingFile.fetchWithPrefix`, but also handles the
         Python-specific situation where directive values are returned as
         2-element lists with identical values.
 
-        :param str pluginType: Plugin type string.
-        :param str pluginKeyword: Plugin keyword string.
+        :param str plugin_type: Plugin type string.
+        :param str plugin_keyword: Plugin keyword string.
         :param str directive: Name of the directive.
         :return: If the value is scalar or a 2-element list with identical elements,
             return the element. Otherwise, the list is returned as-is.
         :rtype: str
         """
-        value = self.mapping_file.fetchWithPrefix(pluginType, pluginKeyword, directive)
+        value = self.mapping_file.fetchWithPrefix(
+            plugin_type, plugin_keyword, directive
+        )
         if isinstance(value, list) and len(value) == 2 and value[0] == value[1]:
             return value[0]
         return value
 
-    def get(self, directive, default=None, decodeWWJD=True, asList=False):
+    def get(self, directive, default=None, decode=True, as_list=False):
         """Fetch a directive from the mapping file, assuming the given plugin
         keyword and type.
 
         :param str directive: Name of the directive.
         :param str default: Value to return if directive not present.
-        :param bool decodeWWJD: Whether to interpret the value as FME-encoded,
+        :param bool decode: Whether to interpret the value as FME-encoded,
             and return the decoded value.
-        :param bool asList:  If true, then parse the value as a space-delimited list,
+        :param bool as_list:  If true, then parse the value as a space-delimited list,
             and return a list.
         :rtype: str, int, float, list, None
         """
-        value = self.fetchWithPrefix(self._plugin_keyword, self._plugin_type, directive)
+        value = self.fetch_with_prefix(
+            self._plugin_keyword, self._plugin_type, directive
+        )
         if value is None:
             return default
-        if asList and isinstance(value, six.string_types):
+        if as_list and isinstance(value, six.string_types):
             value = value.split()
-            if decodeWWJD:
+            if decode:
                 value = [
                     self.__session.decodeFromFMEParsableText(entry) for entry in value
                 ]
-        elif decodeWWJD and isinstance(value, six.string_types):
+        elif decode and isinstance(value, six.string_types):
             value = self.__session.decodeFromFMEParsableText(value)
         return value
 
