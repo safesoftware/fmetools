@@ -10,25 +10,7 @@ from six import string_types
 import fme
 
 
-class FMELocale(object):
-    """Singleton for handling encoding on Mac.
-
-    This class serves no purpose for end users. Use
-    :func:`getSystemLocale` instead.
-    """
-
-    # See PR#53541 and PR#52908.
-
-    def __init__(self):
-        pass
-
-    #: Name of the detected system locale.
-    #:
-    #: :type: str
-    detectedSystemLocale = None
-
-
-def systemToUnicode(original):
+def _system_to_unicode(original):
     """Try to convert a system-encoded string to a Unicode string. Characters
     that could not be converted are replaced with '?'.
 
@@ -42,20 +24,6 @@ def systemToUnicode(original):
         # If input is already a Unicode string, return it as-is.
         return original
     return original.decode(fme.systemEncoding, "replace")
-
-
-def getSystemLocale():
-    """Get the system locale of the process. The return value is cached after the first time
-    this function is called.
-
-    :return: The system locale name.
-    :rtype: str
-    """
-    if FMELocale.detectedSystemLocale is None:
-        # FME may change the locale of the process, so query FME to get the system locale truth.
-        FMELocale.detectedSystemLocale = fme.systemEncoding
-
-    return FMELocale.detectedSystemLocale
 
 
 class OpenParameters(OrderedDict):
@@ -93,7 +61,7 @@ class OpenParameters(OrderedDict):
         self.original = parameters
 
         for i in range(1, len(parameters), 2):
-            key, value = systemToUnicode(parameters[i]), systemToUnicode(
+            key, value = _system_to_unicode(parameters[i]), _system_to_unicode(
                 parameters[i + 1]
             )
 
@@ -179,7 +147,7 @@ def parse_def_line(def_line, option_names):
 
     attributes, options = OrderedDict(), {}
     for index in range(2, len(def_line), 2):
-        key, value = systemToUnicode(def_line[index]), systemToUnicode(
+        key, value = _system_to_unicode(def_line[index]), _system_to_unicode(
             def_line[index + 1]
         )
 
@@ -188,7 +156,7 @@ def parse_def_line(def_line, option_names):
         else:
             attributes[key] = value
 
-    return systemToUnicode(def_line[1]), attributes, options
+    return _system_to_unicode(def_line[1]), attributes, options
 
 
 def get_template_feature_type(feature):
@@ -202,7 +170,7 @@ def get_template_feature_type(feature):
     :rtype: str
     """
     template_feature_type = feature.getAttribute("fme_template_feature_type")
-    return systemToUnicode(template_feature_type or feature.getFeatureType())
+    return _system_to_unicode(template_feature_type or feature.getFeatureType())
 
 
 class FMEMappingFileWrapper(object):
@@ -334,4 +302,4 @@ class FMEMappingFileWrapper(object):
             # but that requires a separate check for None in code that uses it.
             # Eliminate this distinction.
             return []
-        return [systemToUnicode(ft) for ft in featTypes]
+        return [_system_to_unicode(ft) for ft in featTypes]
