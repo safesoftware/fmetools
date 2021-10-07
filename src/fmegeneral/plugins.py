@@ -5,14 +5,11 @@ FME PluginBuilder subclasses that provide improved functionality.
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import fme
-from fmeobjects import FMEFeature, FMESession
-from pluginbuilder import FMEReader, FMEWriter, FMEMappingFile
+from fmeobjects import FMEFeature
+from pluginbuilder import FMEReader, FMEWriter
 
-import six
-from fmegeneral import fmeutil
 from fmegeneral.fmelog import get_configured_logger
-from fmegeneral.fmeutil import systemToUnicode
-from fmegeneral.parsers import SearchEnvelope, OpenParameters
+from fmegeneral.parsers import OpenParameters, FMEMappingFileWrapper
 
 
 class FMESimplifiedReader(FMEReader):
@@ -246,138 +243,6 @@ class FMESimplifiedWriter(FMEWriter):
         pass
 
 
-class FMEMappingFileWrapper(object):
-    """
-    A wrapper for accessing information from the mapping file in a simplified way.
-
-    Methods are similar to the 'withPrefix' methods on :class:`FMEMappingFile`.
-    However, the plugin keyword and type are assumed to be the ones in the constructor.
-
-    The functionality of this wrapper,
-    combined with prefixing of directives in the metafile's `SOURCE_READER` with ``-_``,
-    is designed to eliminate the need to look in both open() parameters and the
-    mapping file for the same directive.
-    Instead, the mapping file can be used exclusively.
-
-    :ivar FMEMappingFile mapping_file: The original mapping file object.
-    """
-
-    def __init__(self, mapping_file, plugin_keyword, plugin_type):
-        """
-        :param FMEMappingFile mapping_file: The original mapping file object.
-        :param str plugin_keyword: Plugin keyword string.
-        :param str plugin_type: Plugin type string.
-        """
-        self.mapping_file = mapping_file
-        self._plugin_keyword = plugin_keyword
-        self._plugin_type = plugin_type
-
-        self.__session = FMESession()
-
-    def def_lines(self):
-        """Get an iterable over DEF lines for this plugin.
-
-        :return: iterator
-        """
-        def_filter = self._plugin_keyword + "_DEF"
-        self.mapping_file.startIteration()
-        def_line_buffer = self.mapping_file.nextLineWithFilter(def_filter)
-        while def_line_buffer is not None:
-            yield def_line_buffer
-            def_line_buffer = self.mapping_file.nextLineWithFilter(def_filter)
-
-    def fetch_with_prefix(self, plugin_type, plugin_keyword, directive):
-        """Like :meth:`FMEMappingFile.fetchWithPrefix`, but also handles the
-        Python-specific situation where directive values are returned as
-        2-element lists with identical values.
-
-        :param str plugin_type: Plugin type string.
-        :param str plugin_keyword: Plugin keyword string.
-        :param str directive: Name of the directive.
-        :return: If the value is scalar or a 2-element list with identical elements,
-            return the element. Otherwise, the list is returned as-is.
-        :rtype: str
-        """
-        value = self.mapping_file.fetchWithPrefix(
-            plugin_type, plugin_keyword, directive
-        )
-        if isinstance(value, list) and len(value) == 2 and value[0] == value[1]:
-            return value[0]
-        return value
-
-    def get(self, directive, default=None, decode=True, as_list=False):
-        """Fetch a directive from the mapping file, assuming the given plugin
-        keyword and type.
-
-        :param str directive: Name of the directive.
-        :param str default: Value to return if directive not present.
-        :param bool decode: Whether to interpret the value as FME-encoded,
-            and return the decoded value.
-        :param bool as_list:  If true, then parse the value as a space-delimited list,
-            and return a list.
-        :rtype: str, int, float, list, None
-        """
-        value = self.fetch_with_prefix(
-            self._plugin_keyword, self._plugin_type, directive
-        )
-        if value is None:
-            return default
-        if as_list and isinstance(value, six.string_types):
-            value = value.split()
-            if decode:
-                value = [
-                    self.__session.decodeFromFMEParsableText(entry) for entry in value
-                ]
-        elif decode and isinstance(value, six.string_types):
-            value = self.__session.decodeFromFMEParsableText(value)
-        return value
-
-    def get_flag(self, directive, default=False):
-        """Get the specified directive and interpret it as a boolean value.
-
-        :param str directive: Name of the directive.
-        :param bool default: Value to return if directive not present.
-        :rtype: bool
-        """
-        value = self.get(directive)
-        if value is None:
-            return default
-
-        return fmeutil.stringToBool(value)
-
-    def get_search_envelope(self):
-        """Get the search envelope, with coordinate system, if any.
-
-        :returns: The search envelope, or None if not set.
-        :rtype: parsers.SearchEnvelope, None
-        """
-        env = self.mapping_file.fetchSearchEnvelope(
-            self._plugin_keyword, self._plugin_type
-        )
-        if not env:
-            return None
-        coordsys = self.get("_SEARCH_ENVELOPE_COORDINATE_SYSTEM")
-        return SearchEnvelope(env, coordsys)
-
-    def get_feature_types(self, open_parameters, fetch_mode="FETCH_IDS_AND_DEFS"):
-        """Get the feature types, if any.
-
-        :param list[str] open_parameters: Parameters for the reader.
-        :param str fetch_mode: `FETCH_IDS_AND_DEFS` or `FETCH_DEFS_ONLY`
-        :returns: List of feature types.
-        :rtype: list[str]
-        """
-        featTypes = self.mapping_file.fetchFeatureTypes(
-            self._plugin_keyword, self._plugin_type, open_parameters, fetch_mode
-        )
-        if featTypes is None:
-            # Mapping file returns None when there are no feature types,
-            # but that requires a separate check for None in code that uses it.
-            # Eliminate this distinction.
-            return []
-        return [systemToUnicode(ft) for ft in featTypes]
-
-
 class FMETransformer(object):
     """
     Base class that represents the interface expected by the FME
@@ -428,6 +293,8 @@ class FMETransformer(object):
     def total_features_passed_along(self):
         """
         Returns a count of features that have been processed to date, in all groups.
+
+        :rtype: int
         """
         # Stub. Implementation is injected at runtime.
         pass
