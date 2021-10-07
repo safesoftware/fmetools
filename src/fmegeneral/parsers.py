@@ -1,7 +1,8 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-from fmeobjects import FMESession
 from collections import OrderedDict, namedtuple
+from fmeobjects import FMESession, FMEFeature
+from pluginbuilder import FMEReader, FMEWriter, FMEMappingFile
 from fmegeneral import fmeutil
 from fmegeneral.fmeutil import unicodeToSystem, systemToUnicode
 from six import string_types
@@ -10,13 +11,13 @@ from six import string_types
 class OpenParameters(OrderedDict):
     """
     Provides convenient access to the open() parameters given to
-    :meth:`pluginbuilder.FMEReader.open` and :meth:`pluginbuilder.FMEWriter.open`.
+    :meth:`FMEReader.open` and :meth:`FMEWriter.open`.
 
     Parameter keys that appear multiple times in the parameters list will result in
     values of type :class:`list`.
     This scenario is most likely to be encountered with `+ID` keys,
     though such keys are usually handled
-    by :meth:`pluginbuilder.FMEMappingFile.fetchFeatureTypes` instead.
+    by :meth:`FMEMappingFile.fetchFeatureTypes` instead.
 
     :ivar str dataset: Dataset value from the first argument to `open()`.
         Should use `decodedDataset` instead.
@@ -142,8 +143,8 @@ def parse_def_line(def_line, option_names):
 
 def get_template_feature_type(feature):
     """Get the template feature type of a feature, which is the value of the
-    fme_template_feature_type attribute if present, or
-    :meth:`fmeobjects.FMEFeature.getFeatureType` otherwise. These are the feature types
+    `fme_template_feature_type` attribute if present, or
+    :meth:`FMEFeature.getFeatureType` otherwise. These are the feature types
     found on DEF lines when FME writers are in dynamic mode.
 
     :param FMEFeature feature: Feature to query.
