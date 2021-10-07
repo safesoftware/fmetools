@@ -27,7 +27,7 @@ class FMESimplifiedReader(FMEReader):
     :ivar str _keyword: A unique identifier for this reader instance.
     :ivar FMEMappingFileWrapper _mapping_file: The :class:`FMEMappingFileWrapper`.
     :ivar bool _debug: Toggle for debug mode.
-    :ivar Logger _logger: Helper class for logging functionality.
+    :ivar FMELoggerAdapter _log: Provides access to the FME log.
     :ivar bool _using_constraints: True if :meth:`setConstraints` was called.
     :ivar bool _aborted: True if :meth:`abort` was called.
     :ivar SearchEnvelope _search_envelope:
@@ -56,7 +56,6 @@ class FMESimplifiedReader(FMEReader):
         self._debug = self._mapping_file.mapping_file.fetch("FME_DEBUG") is not None
 
         # Instantiate a logger with the appropriate debug mode.
-        self._logger = fmeutil.Logger(self._debug)
         self._log = get_configured_logger(self.__class__.__name__, self._debug)
 
         self._using_constraints = False
@@ -92,7 +91,6 @@ class FMESimplifiedReader(FMEReader):
         open_parameters = OpenParameters(dataset_name, parameters)
         if open_parameters.get("FME_DEBUG"):
             self._debug = True
-            self._logger.setDebugMode(self._debug)
             self._log = get_configured_logger(self.__class__.__name__, self._debug)
 
         return self.enhancedOpen(open_parameters)
@@ -177,8 +175,8 @@ class FMESimplifiedWriter(FMEWriter):
     :ivar str _keyword: A unique identifier for this writer instance.
     :ivar FMEMappingFileWrapper _mapping_file: A wrapper for getting information
         from the mapping file in a simplified way.
+    :ivar FMELoggerAdapter _log: Provides access to the FME log.
     :ivar bool _debug: Toggle for debug mode.
-    :ivar Logger _logger: Helper class for logging functionality.
     :ivar bool _aborted: True if :meth:`abort` was called.
     :ivar list[str] _feature_types: Ordered list of feature types.
     """
@@ -195,7 +193,6 @@ class FMESimplifiedWriter(FMEWriter):
         self._debug = self._mapping_file.mapping_file.fetch("FME_DEBUG") is not None
 
         # Instantiate a logger with the appropriate debug mode.
-        self._logger = fmeutil.Logger(self._debug)
         self._log = get_configured_logger(self.__class__.__name__, self._debug)
 
         self._aborted = False
@@ -224,7 +221,6 @@ class FMESimplifiedWriter(FMEWriter):
         open_parameters = OpenParameters(dataset, parameters)
         if open_parameters.get("FME_DEBUG"):
             self._debug = True
-            self._logger.setDebugMode(self._debug)
             self._log = get_configured_logger(self.__class__.__name__, self._debug)
 
         return self.enhancedOpen(open_parameters)
@@ -450,6 +446,8 @@ class FMEEnhancedTransformer(FMETransformer):
        - :meth:`pre_close`
        - :meth:`finish`
        - :meth:`post_close`
+
+    :ivar FMELoggerAdapter _log: Provides access to the FME log.
     """
 
     def __init__(self):
