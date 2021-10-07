@@ -9,8 +9,7 @@ from fmeobjects import FMEFeature, FMESession
 from pluginbuilder import FMEReader, FMEWriter, FMEMappingFile
 
 import six
-from fmegeneral import fmeconstants, fmeutil
-from fmegeneral.fmeconstants import kFME_REJECTION_CODE, kFME_REJECTION_MESSAGE
+from fmegeneral import fmeutil
 from fmegeneral.fmelog import get_configured_logger
 from fmegeneral.fmeutil import systemToUnicode
 from fmegeneral.parsers import SearchEnvelope, OpenParameters
@@ -54,9 +53,7 @@ class FMESimplifiedReader(FMEReader):
         )
 
         # Check if the debug flag is set
-        self._debug = (
-            self._mapping_file.mapping_file.fetch(fmeconstants.kFME_DEBUG) is not None
-        )
+        self._debug = self._mapping_file.mapping_file.fetch("FME_DEBUG") is not None
 
         # Instantiate a logger with the appropriate debug mode.
         self._logger = fmeutil.Logger(self._debug)
@@ -93,7 +90,7 @@ class FMESimplifiedReader(FMEReader):
 
         # Look for the debug flag in the open() parameters.
         open_parameters = OpenParameters(dataset_name, parameters)
-        if open_parameters.get(fmeconstants.kFME_DEBUG):
+        if open_parameters.get("FME_DEBUG"):
             self._debug = True
             self._logger.setDebugMode(self._debug)
             self._log = get_configured_logger(self.__class__.__name__, self._debug)
@@ -195,9 +192,7 @@ class FMESimplifiedWriter(FMEWriter):
         )
 
         # Check if the debug flag is set
-        self._debug = (
-            self._mapping_file.mapping_file.fetch(fmeconstants.kFME_DEBUG) is not None
-        )
+        self._debug = self._mapping_file.mapping_file.fetch("FME_DEBUG") is not None
 
         # Instantiate a logger with the appropriate debug mode.
         self._logger = fmeutil.Logger(self._debug)
@@ -227,7 +222,7 @@ class FMESimplifiedWriter(FMEWriter):
 
         # Look for the debug flag in the open() parameters.
         open_parameters = OpenParameters(dataset, parameters)
-        if open_parameters.get(fmeconstants.kFME_DEBUG):
+        if open_parameters.get("FME_DEBUG"):
             self._debug = True
             self._logger.setDebugMode(self._debug)
             self._log = get_configured_logger(self.__class__.__name__, self._debug)
@@ -289,7 +284,7 @@ class FMEMappingFileWrapper(object):
 
         :return: iterator
         """
-        def_filter = self._plugin_keyword + fmeconstants.kFME_DEFLINE_SUFFIX
+        def_filter = self._plugin_keyword + "_DEF"
         self.mapping_file.startIteration()
         def_line_buffer = self.mapping_file.nextLineWithFilter(def_filter)
         while def_line_buffer is not None:
@@ -365,14 +360,12 @@ class FMEMappingFileWrapper(object):
         coordsys = self.get("_SEARCH_ENVELOPE_COORDINATE_SYSTEM")
         return SearchEnvelope(env, coordsys)
 
-    def get_feature_types(
-        self, open_parameters, fetch_mode=fmeconstants.kFME_FETCH_IDS_AND_DEFS
-    ):
+    def get_feature_types(self, open_parameters, fetch_mode="FETCH_IDS_AND_DEFS"):
         """Get the feature types, if any.
 
         :param list[str] open_parameters: Parameters for the reader.
-        :param int fetch_mode: One of the valid feature type fetch modes from :mod:`fmegeneral.fmeconstants`.
-        :returns: List of feature types, in Unicode.
+        :param str fetch_mode: `FETCH_IDS_AND_DEFS` or `FETCH_DEFS_ONLY`
+        :returns: List of feature types.
         :rtype: list[str]
         """
         featTypes = self.mapping_file.fetchFeatureTypes(
@@ -538,6 +531,6 @@ class FMEEnhancedTransformer(FMETransformer):
 
     def reject_feature(self, feature, code, reason):
         """Emit a feature to the transformer's rejection port."""
-        feature.setAttribute(kFME_REJECTION_CODE, code)
-        feature.setAttribute(kFME_REJECTION_MESSAGE, reason)
+        feature.setAttribute("fme_rejection_code", code)
+        feature.setAttribute("fme_rejection_message", reason)
         self.pyoutput(feature)
