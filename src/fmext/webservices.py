@@ -20,7 +20,7 @@ from fmewebservices import (
 from fmeobjects import FMEException
 from requests.auth import AuthBase
 
-from fmegeneral.fmehttp import get_auth_object
+from fmext.fmehttp import get_auth_object
 
 # 'Dynamic' in Workbench GUI means the auth method is set in
 # the Web Connection definition instead of the Web Service definition.

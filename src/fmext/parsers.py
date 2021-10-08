@@ -5,7 +5,7 @@ from collections import OrderedDict, namedtuple
 import six
 from fmeobjects import FMESession, FMEFeature
 from pluginbuilder import FMEMappingFile
-from fmegeneral import fmeutil
+from fmext import fmeutil
 from six import string_types
 import fme
 

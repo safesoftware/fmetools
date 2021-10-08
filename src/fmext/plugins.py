@@ -8,8 +8,8 @@ import fme
 from fmeobjects import FMEFeature
 from pluginbuilder import FMEReader, FMEWriter
 
-from fmegeneral.fmelog import get_configured_logger
-from fmegeneral.parsers import OpenParameters, FMEMappingFileWrapper
+from fmext.fmelog import get_configured_logger
+from fmext.parsers import OpenParameters, FMEMappingFileWrapper
 
 
 class FMESimplifiedReader(FMEReader):

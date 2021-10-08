@@ -10,16 +10,15 @@ import traceback
 from collections import OrderedDict
 from datetime import datetime, tzinfo, timedelta
 
-import fme
 from fmeobjects import FMEFeature, FMESession
 
 import six
-from six import string_types, iteritems, text_type, binary_type, PY2, PY3
+from six import string_types, iteritems, text_type
 
 import fmeobjects
 from fmeobjects import FME_INFORM
 
-from fmegeneral import fmeconstants
+from fmext import fmeconstants
 
 
 def fmeBoolToBool(boolean):
