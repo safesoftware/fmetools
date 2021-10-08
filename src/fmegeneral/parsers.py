@@ -4,7 +4,7 @@ from collections import OrderedDict, namedtuple
 
 import six
 from fmeobjects import FMESession, FMEFeature
-from pluginbuilder import FMEReader, FMEWriter, FMEMappingFile
+from pluginbuilder import FMEMappingFile
 from fmegeneral import fmeutil
 from six import string_types
 import fme
@@ -37,9 +37,8 @@ class OpenParameters(OrderedDict):
     though such keys are usually handled
     by :meth:`FMEMappingFile.fetchFeatureTypes` instead.
 
-    :ivar str dataset: Dataset value from the first argument to `open()`.
-        Should use `decodedDataset` instead.
-    :ivar list original: Original parameters passed to `open`.
+    :ivar str dataset: FME-decoded dataset value from the first argument to `open()`.
+    :ivar list original: Original parameters passed to `open()`.
     """
 
     def __init__(self, dataset, parameters):
@@ -56,7 +55,7 @@ class OpenParameters(OrderedDict):
         self.__session = FMESession()
 
         # If open() parameters aren't empty, the first element is the dataset.
-        self.dataset = dataset
+        self.dataset = self.__session.decodeFromFMEParsableText(dataset)
 
         self.original = parameters
 
@@ -77,16 +76,8 @@ class OpenParameters(OrderedDict):
             else:
                 self.__setitem__(key, value)
 
-    @property
-    def decodedDataset(self):
-        """
-        :returns: The FME-decoded value of the dataset.
-        :rtype: str
-        """
-        return self.__session.decodeFromFMEParsableText(self.dataset)
-
     def get(self, key, default=None, decode=True):
-        """Get an open() parameter.
+        """Get an `open()` parameter.
 
         :param str key: Key to look for.
         :param str default: Value to return if key not present.
@@ -100,7 +91,7 @@ class OpenParameters(OrderedDict):
         return value
 
     def get_flag(self, key, default=False):
-        """Get an open() parameter and interpret its value as a boolean.
+        """Get an `open()` parameter and interpret its value as a boolean.
 
         :param str key: Key to look for.
         :param bool default: Value to return if key not present.
