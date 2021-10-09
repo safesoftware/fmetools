@@ -4,8 +4,25 @@ Utilities for working with :class:`FMEFeature`.
 from collections import OrderedDict
 
 import fmeobjects
-from fmeobjects import FMEFeature
+from fmeobjects import FMEFeature, kFMERead_Geometry, FME_ATTR_STRING
 from six import iteritems
+
+
+def _set_attribute(feature, name, value, attr_type=None):
+    """
+    Set an attribute onto a feature, with null value handling.
+
+    :type feature: FMEFeature
+    :param str name: Attribute name.
+    :param value: Value to set.
+    :param int attr_type: Intended attribute type, used when the value is `None`.
+        Default is `fmeobjects.FME_ATTR_STRING`.
+    """
+    if value is None:
+        # FME_ATTR_UNDEFINED is silently interpreted as FME_ATTR_STRING.
+        feature.setAttributeNullWithType(name, attr_type or FME_ATTR_STRING)
+    else:
+        feature.setAttribute(name, value)
 
 
 def build_feature(
@@ -38,17 +55,11 @@ def build_feature(
     if coord_sys:
         feature.setCoordSys(coord_sys)
 
-    if attrs:
-        for attr_name, value in iteritems(attrs):
-            if value is None:
-                if attr_types is None:
-                    attr_types = {}
-                # FME_ATTR_UNDEFINED is silently interpreted as FME_ATTR_STRING.
-                feature.setAttributeNullWithType(
-                    attr_name, attr_types.get(attr_name, fmeobjects.FME_ATTR_STRING)
-                )
-            else:
-                feature.setAttribute(attr_name, value)
+    if not attrs:
+        return feature
+
+    for attr_name, value in iteritems(attrs):
+        _set_attribute(feature, attr_name, value, attr_types.get(attr_name))
 
     return feature
 
@@ -63,10 +74,11 @@ def build_schema_feature(feature_type, schema_attrs=None, fme_geometries=None):
     * Setting user attributes as regular attributes
 
     :param str feature_type: The feature type.
-    :param collections.OrderedDict schema_attrs:
+    :param OrderedDict schema_attrs:
         Ordered schema attributes for the feature type.
         Keys are attribute names, and values are format-specific attribute types.
-    :param list fme_geometries: Format-specific geometry types for this feature type.
+    :param list[str] fme_geometries:
+        Format-specific geometry types for this feature type.
     :rtype: FMEFeature
     """
     assert isinstance(schema_attrs, OrderedDict) or not schema_attrs
@@ -76,7 +88,7 @@ def build_schema_feature(feature_type, schema_attrs=None, fme_geometries=None):
     feature = FMEFeature()
     feature.setFeatureType(feature_type)
     if fme_geometries:
-        feature.setAttribute(fmeobjects.kFMERead_Geometry, fme_geometries)
+        feature.setAttribute(kFMERead_Geometry, fme_geometries)
 
     for attr_name, value in iteritems(schema_attrs):
         assert value
@@ -93,7 +105,7 @@ def set_list_attribute_with_properties(feature, index, property_attrs, attr_type
     To set a property-less list attribute comprised of strings,
     use :meth:`FMEFeature.setAttribute` instead.
 
-    :param fmeobjects.FMEFeature feature: Feature to receive the list attribute.
+    :param FMEFeature feature: Feature to receive the list attribute.
     :param int index: Index into the list attribute to set.
     :param dict property_attrs: List attribute names and values.
         All attribute names must follow the format ``name{}.property``.
@@ -106,12 +118,4 @@ def set_list_attribute_with_properties(feature, index, property_attrs, attr_type
     for attr_name, value in iteritems(property_attrs):
         assert "{}" in attr_name
         final_attr_name = attr_name.replace("{}", "{%s}" % index, 1)
-        if value is None:
-            if attr_types is None:
-                attr_types = {}
-            # FME_ATTR_UNDEFINED is silently interpreted as FME_ATTR_STRING.
-            feature.setAttributeNullWithType(
-                final_attr_name, attr_types.get(attr_name, fmeobjects.FME_ATTR_STRING)
-            )
-        else:
-            feature.setAttribute(final_attr_name, value)
+        _set_attribute(feature, final_attr_name, value, attr_types.get(attr_name))
