@@ -31,7 +31,7 @@ from requests.auth import HTTPProxyAuth, HTTPBasicAuth, HTTPDigestAuth
 from six.moves.urllib.parse import urlparse, quote
 
 from fmext import fmelog
-from fmext.fmeutil import stringArrayToDict, choiceToBool
+from fmext.utils import choice_to_bool, stringarray_to_dict
 
 # PR65941: Disable lower-level SSL warnings.
 # https://urllib3.readthedocs.io/en/latest/advanced-usage.html#ssl-warnings
@@ -461,7 +461,7 @@ class FMEGeneralProxyHandler(object):
                 i += 4
                 continue
             if key == "use-system-proxy":
-                use_system_proxy = choiceToBool(value)
+                use_system_proxy = choice_to_bool(value)
             if key == "non_proxy_hosts":
                 try:
                     for host_regex in json.loads(value):
@@ -574,7 +574,7 @@ class FMECustomProxyMapHandler(object):
             url
         ).lower()  # lower() for case-insensitive comparisons.
 
-        proxy_map_info = stringArrayToDict(proxy_info.split(","))
+        proxy_map_info = stringarray_to_dict(proxy_info.split(","))
         proxy_url = fme_session.decodeFromFMEParsableText(
             proxy_map_info["proxy-url"]
         ).strip()
@@ -594,7 +594,7 @@ class FMECustomProxyMapHandler(object):
         )  # No credentials and no path.
         user = fme_session.decodeFromFMEParsableText(proxy_map_info["user"])
         password = fme_session.decodeFromFMEParsableText(proxy_map_info["password"])
-        requires_authentication = choiceToBool(
+        requires_authentication = choice_to_bool(
             proxy_map_info["requires-authentication"]
         )
 

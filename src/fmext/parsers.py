@@ -5,7 +5,8 @@ from collections import OrderedDict, namedtuple
 import six
 from fmeobjects import FMESession, FMEFeature
 from pluginbuilder import FMEMappingFile
-from fmext import fmeutil
+
+import fmext.utils
 from six import string_types
 import fme
 
@@ -101,8 +102,8 @@ class OpenParameters(OrderedDict):
         if value is None:
             return default
         if isinstance(value, list):
-            return False not in map(fmeutil.stringToBool, value)
-        return fmeutil.stringToBool(value)
+            return False not in map(fmext.utils.string_to_bool, value)
+        return fmext.utils.string_to_bool(value)
 
     def __str__(self):
         return "Open parameters: " + ", ".join(
@@ -261,7 +262,7 @@ class FMEMappingFileWrapper(object):
         if value is None:
             return default
 
-        return fmeutil.stringToBool(value)
+        return fmext.utils.string_to_bool(value)
 
     def get_search_envelope(self):
         """Get the search envelope, with coordinate system, if any.
