@@ -12,17 +12,17 @@ def choice_to_bool(boolean):
     return str(boolean).lower() == "yes"
 
 
-def stringarray_to_dict(stringArray):
-    """Given a list, convert odd indicies to keys, and even indicies to values.
+def stringarray_to_dict(stringarray):
+    """Given a list, convert odd indices to keys, and even indices to values.
     Useful for converting IFMEStringArray-equivalents from the FMEObjects
     Python API into something easier to manipulate.
 
-    :param list stringArray: Must have an even length
+    :param list stringarray: Must have an even length
     :rtype: dict
     """
     result = {}
-    for index in range(0, len(stringArray), 2):
-        result[stringArray[index]] = stringArray[index + 1]
+    for index in range(0, len(stringarray), 2):
+        result[stringarray[index]] = stringarray[index + 1]
     return result
 
 
