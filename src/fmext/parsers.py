@@ -123,9 +123,7 @@ class OpenParameters(OrderedDict):
         )
 
 
-SearchEnvelope = namedtuple(
-    "SearchEnvelope", "min_x min_y max_x max_y coordsys", defaults=(None,)
-)
+DefLine = namedtuple("DefLine", "feature_type attributes options")
 
 
 def parse_def_line(def_line, option_names):
@@ -138,29 +136,23 @@ def parse_def_line(def_line, option_names):
         it'll be separated from the attributes.
     :return: Tuple of:
 
-        - feature type
-        - ordered dictionary of attributes and their types (values may be FME-encoded)
-        - dictionary of options and their values
-
-       All keys and values are strings.
-    :rtype: str, collections.OrderedDict, dict
+        - Feature type
+        - OrderedDict of attributes and their types
+        - dict of options and their values, FME-decoded.
+          All `option_names` are guaranteed to be keys in this dict,
+          with a value of `None` if the option wasn't present on the DEF line.
+    :rtype: DefLine
     """
     assert len(def_line) % 2 == 0
 
     session = FMESession()
 
-    attributes, options = OrderedDict(), {}
-    for index in range(2, len(def_line), 2):
-        key, value = _system_to_unicode(def_line[index]), _system_to_unicode(
-            def_line[index + 1]
-        )
+    def decode(v):
+        return v if v is not None else session.decodeFromFMEParsableText(v)
 
-        if key in option_names:
-            options[key] = session.decodeFromFMEParsableText(value)
-        else:
-            attributes[key] = value
-
-    return _system_to_unicode(def_line[1]), attributes, options
+    attributes = stringarray_to_dict(def_line, start=2)
+    options = {option: decode(attributes.pop(option, None)) for option in option_names}
+    return DefLine(_system_to_unicode(def_line[1]), attributes, options)
 
 
 def get_template_feature_type(feature):
@@ -175,6 +167,11 @@ def get_template_feature_type(feature):
     """
     template_feature_type = feature.getAttribute("fme_template_feature_type")
     return _system_to_unicode(template_feature_type or feature.getFeatureType())
+
+
+SearchEnvelope = namedtuple(
+    "SearchEnvelope", "min_x min_y max_x max_y coordsys", defaults=(None,)
+)
 
 
 class FMEMappingFileWrapper(object):
@@ -280,7 +277,7 @@ class FMEMappingFileWrapper(object):
         """Get the search envelope, with coordinate system, if any.
 
         :returns: The search envelope, or None if not set.
-        :rtype: parsers.SearchEnvelope, None
+        :rtype: SearchEnvelope
         """
         env = self.mapping_file.fetchSearchEnvelope(
             self._plugin_keyword, self._plugin_type
