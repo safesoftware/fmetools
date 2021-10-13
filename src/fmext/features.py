@@ -25,6 +25,43 @@ def set_attribute(feature, name, value, attr_type=None):
         feature.setAttribute(name, value)
 
 
+def get_attribute(feature, attr_name, default=None, pop=False):
+    """
+    Get an attribute from a feature.
+
+    :param FMEFeature feature: Feature to get an attribute from.
+    :param str attr_name: Attribute to get.
+    :param default: If the attribute is missing, then return this value.
+    :param bool pop: Whether the attribute is to be deleted from feature.
+    """
+    value = feature.getAttribute(attr_name)
+    if value is None:
+        return default
+    if value == "":
+        null, _, _ = feature.getAttributeNullMissingAndType(attr_name)
+        if null:
+            return None
+    if pop:
+        feature.removeAttribute(attr_name)
+    return value
+
+
+def get_attributes(feature, attr_names, default=None, pop=False):
+    """
+    Get attributes from a feature.
+
+    :param FMEFeature feature: Feature to get attributes from.
+    :param Iterable attr_names: Attributes to get.
+    :param default: If the attribute isn't present, then use this value.
+    :param bool pop: Whether the specified attributes are to be deleted from feature.
+    :rtype: dict
+    """
+    return {
+        name: get_attribute(feature, name, default=default, pop=pop)
+        for name in attr_names
+    }
+
+
 def build_feature(
     feature_type, attrs=None, attr_types=None, geometry=None, coord_sys=None
 ):
