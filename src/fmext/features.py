@@ -53,13 +53,31 @@ def get_attributes(feature, attr_names, default=None, pop=False):
     :param FMEFeature feature: Feature to get attributes from.
     :param Iterable attr_names: Attributes to get.
     :param default: If the attribute isn't present, then use this value.
-    :param bool pop: Whether the specified attributes are to be deleted from feature.
+    :param bool pop: Whether the attributes are to be deleted from feature.
     :rtype: dict
     """
     return {
         name: get_attribute(feature, name, default=default, pop=pop)
         for name in attr_names
     }
+
+
+def get_attributes_with_prefix(feature, prefix, default=None, pop=False):
+    """
+    Get attributes that start with a given prefix.
+
+    :param FMEFeature feature: Feature to get attributes from.
+    :param str prefix: Attributes to get.
+    :param default: If the attribute isn't present, then use this value.
+    :param bool pop: Whether the attributes are to be deleted from feature.
+    :rtype: dict
+    """
+    return get_attributes(
+        feature,
+        filter(lambda x: x.startswith(prefix), feature.getAllAttributeNames()),
+        default=default,
+        pop=pop,
+    )
 
 
 def build_feature(
