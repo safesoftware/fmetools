@@ -6,7 +6,7 @@ import six
 from fmeobjects import FMESession, FMEFeature
 from pluginbuilder import FMEMappingFile
 
-import fmext.utils
+from fmext.utils import string_to_bool, stringarray_to_dict
 from six import string_types
 import fme
 
@@ -59,23 +59,9 @@ class OpenParameters(OrderedDict):
         self.dataset = self.__session.decodeFromFMEParsableText(dataset)
 
         self.original = parameters
-
-        for i in range(1, len(parameters), 2):
-            key, value = _system_to_unicode(parameters[i]), _system_to_unicode(
-                parameters[i + 1]
-            )
-
-            if self.__contains__(key):
-                # Key already exists in this dictionary.
-                # If the existing value is a list, append this value to it.
-                # Otherwise, turn existing value into a list and append new value.
-                existingValue = self.__getitem__(key)
-                if isinstance(existingValue, list):
-                    existingValue.append(value)
-                else:
-                    self.__setitem__(key, [existingValue, value])
-            else:
-                self.__setitem__(key, value)
+        parameters = list(map(_system_to_unicode, parameters))
+        if parameters:
+            self.update(stringarray_to_dict(parameters, start=1))
 
     def get(self, key, default=None, decode=True):
         """Get an `open()` parameter.
@@ -102,8 +88,8 @@ class OpenParameters(OrderedDict):
         if value is None:
             return default
         if isinstance(value, list):
-            return False not in map(fmext.utils.string_to_bool, value)
-        return fmext.utils.string_to_bool(value)
+            return False not in map(string_to_bool, value)
+        return string_to_bool(value)
 
     def __str__(self):
         return "Open parameters: " + ", ".join(
@@ -262,7 +248,7 @@ class FMEMappingFileWrapper(object):
         if value is None:
             return default
 
-        return fmext.utils.string_to_bool(value)
+        return string_to_bool(value)
 
     def get_search_envelope(self):
         """Get the search envelope, with coordinate system, if any.

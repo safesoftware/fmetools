@@ -476,17 +476,14 @@ class FMEGeneralProxyHandler(object):
 
         # Grab proxy credentials from Workbench.
         # When a PAC is in use, we need these standalone values.
-        proxy_network_config = fme_session.getProperties(
-            FMESESSION_PROP_NETWORK_PROXY_SETTINGS, {}
+        proxy_network_config = stringarray_to_dict(
+            fme_session.getProperties(FMESESSION_PROP_NETWORK_PROXY_SETTINGS, {})
         )
-        for i in range(0, len(proxy_network_config), 2):
-            key, value = proxy_network_config[i], proxy_network_config[i + 1]
-            if key == "system-proxy-user":
-                self.user = value
-            elif key == "system-proxy-password":
-                self.password = value
-            elif key == "system-proxy-authentication-method":
-                self._auth_method = value
+        self.user = proxy_network_config.get("system-proxy-user", self.user)
+        self.password = proxy_network_config.get("system-proxy-password", self.password)
+        self._auth_method = proxy_network_config.get(
+            "system-proxy-authentication-method", self._auth_method
+        )
 
     @property
     def auth_method(self):
