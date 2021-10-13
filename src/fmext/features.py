@@ -8,7 +8,7 @@ from fmeobjects import FMEFeature, kFMERead_Geometry, FME_ATTR_STRING
 from six import iteritems
 
 
-def _set_attribute(feature, name, value, attr_type=None):
+def set_attribute(feature, name, value, attr_type=None):
     """
     Set an attribute onto a feature, with null value handling.
 
@@ -32,7 +32,7 @@ def build_feature(
     Build an :class:`FMEFeature` instance with the most frequently used parameters.
 
     This helper function simplifies the process of building a feature.
-    It also helps avoid common pitfalls such as:
+    This helps avoid common errors such as:
 
     * Undefined geometry on feature
     * Calling :meth:`FMEFeature.setAttribute` with a `None` value
@@ -59,7 +59,7 @@ def build_feature(
         return feature
 
     for attr_name, value in iteritems(attrs):
-        _set_attribute(feature, attr_name, value, attr_types.get(attr_name))
+        set_attribute(feature, attr_name, value, attr_types.get(attr_name))
 
     return feature
 
@@ -67,7 +67,8 @@ def build_feature(
 def build_schema_feature(feature_type, schema_attrs=None, fme_geometries=None):
     """
     Build an :class:`FMEFeature` suitable for returning from
-    :meth:`pluginbuilder.FMEReader.readSchema`. Helps avoid common pitfalls such as:
+    :meth:`pluginbuilder.FMEReader.readSchema`.
+    This helps avoid common errors such as:
 
     * Setting any geometry on the feature
     * Setting non-user attributes as sequenced attributes
@@ -118,4 +119,4 @@ def set_list_attribute_with_properties(feature, index, property_attrs, attr_type
     for attr_name, value in iteritems(property_attrs):
         assert "{}" in attr_name
         final_attr_name = attr_name.replace("{}", "{%s}" % index, 1)
-        _set_attribute(feature, final_attr_name, value, attr_types.get(attr_name))
+        set_attribute(feature, final_attr_name, value, attr_types.get(attr_name))
