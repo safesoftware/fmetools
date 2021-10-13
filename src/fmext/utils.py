@@ -1,7 +1,6 @@
 """
 Miscellaneous utilities.
 """
-from collections import OrderedDict
 
 
 def choice_to_bool(boolean):
@@ -11,32 +10,6 @@ def choice_to_bool(boolean):
     :rtype: bool
     """
     return str(boolean).lower() == "yes"
-
-
-def stringarray_to_dict(stringarray, start=0):
-    """
-    Converts IFMEStringArray-equivalents from the FMEObjects Python API
-    into a `dict` that's easier to work with.
-
-    Given a list `stringarray`,
-    convert elements `start+(2*n)` to keys, and `start+n` to values.
-    Duplicate keys cause the corresponding values to be collected into a list.
-
-    :param list stringarray: Must have an even number of elements starting from `start`
-    :param int start: Start index
-    :rtype: OrderedDict
-    """
-    assert (len(stringarray) - start) % 2 == 0
-    result = OrderedDict()
-    for index in range(start, len(stringarray), 2):
-        key, value = stringarray[index], stringarray[index + 1]
-        if key in result:
-            if not isinstance(result[key], list):
-                result[key] = [result[key]]
-            result[key].append(value)
-        else:
-            result[key] = value
-    return result
 
 
 def string_to_bool(string):

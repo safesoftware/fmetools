@@ -6,7 +6,7 @@ import six
 from fmeobjects import FMESession, FMEFeature
 from pluginbuilder import FMEMappingFile
 
-from fmext.utils import string_to_bool, stringarray_to_dict
+from fmext.utils import string_to_bool
 from six import string_types
 import fme
 
@@ -25,6 +25,33 @@ def _system_to_unicode(original):
         # If input is already a Unicode string, return it as-is.
         return original
     return original.decode(fme.systemEncoding, "replace")
+
+
+def stringarray_to_dict(stringarray, start=0):
+    """
+    Converts IFMEStringArray-like lists from the FMEObjects Python API
+    into a `dict` that's easier to work with.
+
+    Given a list `stringarray`,
+    convert elements `start+(2*n)` to keys, and `start+n` to values.
+    Duplicate keys cause the corresponding values to be collected into a list.
+
+    :param list stringarray: Must have an even number of elements starting from `start`
+    :param int start: Start index
+    :rtype: OrderedDict
+    """
+    assert (len(stringarray) - start) % 2 == 0
+    result = OrderedDict()
+    for index in range(start, len(stringarray), 2):
+        key = _system_to_unicode(stringarray[index])
+        value = _system_to_unicode(stringarray[index + 1])
+        if key in result:
+            if not isinstance(result[key], list):
+                result[key] = [result[key]]
+            result[key].append(value)
+        else:
+            result[key] = value
+    return result
 
 
 class OpenParameters(OrderedDict):
@@ -59,8 +86,7 @@ class OpenParameters(OrderedDict):
         self.dataset = self.__session.decodeFromFMEParsableText(dataset)
 
         self.original = parameters
-        parameters = list(map(_system_to_unicode, parameters))
-        if parameters:
+        if len(parameters) >= 3:
             self.update(stringarray_to_dict(parameters, start=1))
 
     def get(self, key, default=None, decode=True):
