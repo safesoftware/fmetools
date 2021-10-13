@@ -25,6 +25,9 @@ def set_attribute(feature, name, value, attr_type=None):
         feature.setAttribute(name, value)
 
 
+_HAS_NULL_VALUE_METHOD = "isAttributeNull" in FMEFeature.__dict__
+
+
 def get_attribute(feature, attr_name, default=None, pop=False):
     """
     Get an attribute from a feature.
@@ -36,11 +39,16 @@ def get_attribute(feature, attr_name, default=None, pop=False):
     """
     value = feature.getAttribute(attr_name)
     if value is None:
-        return default
+        if pop:
+            feature.removeAttribute(attr_name)
+        return default  # Always means the attribute is missing.
     if value == "":
-        null, _, _ = feature.getAttributeNullMissingAndType(attr_name)
-        if null:
-            return None
+        if _HAS_NULL_VALUE_METHOD:
+            is_null = feature.isAttributeNull(attr_name)
+        else:
+            is_null = feature.getAttributeNullMissingAndType(attr_name)[0]
+        if is_null:
+            value = None
     if pop:
         feature.removeAttribute(attr_name)
     return value
