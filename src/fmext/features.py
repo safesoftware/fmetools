@@ -25,6 +25,22 @@ def set_attribute(feature, name, value, attr_type=None):
         feature.setAttribute(name, value)
 
 
+def set_attributes(feature, attrs, attr_types=None):
+    """
+    Set attributes onto a feature, with null value handling.
+
+    :type feature: FMEFeature
+    :param dict attrs: Attribute names and values.
+    :param dict attr_types: Attribute names and their fmeobjects type.
+        This is used for setting null attribute values.
+        If not specified, or if there's no mapping for a given attribute name,
+        then the null value will be set with :data:`fmeobjects.FME_ATTR_STRING`.
+    """
+    attr_types = attr_types or {}
+    for name, value in iteritems(attrs or {}):
+        set_attribute(feature, name, value, attr_types.get(name))
+
+
 _HAS_NULL_VALUE_METHOD = "isAttributeNull" in FMEFeature.__dict__
 
 
@@ -89,7 +105,7 @@ def get_attributes_with_prefix(feature, prefix, default=None, pop=False):
 
 
 def build_feature(
-    feature_type, attrs=None, attr_types=None, geometry=None, coord_sys=None
+    feature_type, attrs=None, attr_types=None, geometry=None, coordsys=None
 ):
     """
     Build an :class:`FMEFeature` instance with the most frequently used parameters.
@@ -109,21 +125,15 @@ def build_feature(
         If not specified, or if there's no mapping for a given attribute name,
         then the null value will be set with :data:`fmeobjects.FME_ATTR_STRING`.
     :param fmeobjects.FMEGeometry geometry: Geometry to put on the feature.
-    :param str coord_sys: Coordinate system name to set.
+    :param str coordsys: Coordinate system name to set.
     :rtype: FMEFeature
     """
     feature = FMEFeature()
     feature.setFeatureType(feature_type)
     feature.setGeometry(geometry)
-    if coord_sys:
-        feature.setCoordSys(coord_sys)
-
-    if not attrs:
-        return feature
-
-    for attr_name, value in iteritems(attrs):
-        set_attribute(feature, attr_name, value, attr_types.get(attr_name))
-
+    if coordsys:
+        feature.setCoordSys(coordsys)
+    set_attributes(feature, attrs, attr_types)
     return feature
 
 
@@ -166,8 +176,8 @@ def set_list_attribute_with_properties(feature, index, property_attrs, attr_type
     Set a list attribute entry onto a feature, where the entry is comprised
     of one or more properties, e.g.: ``name{i}.property``.
 
-    To set a property-less list attribute comprised of strings,
-    use :meth:`FMEFeature.setAttribute` instead.
+    To set a property-less list attribute, use :meth:`FMEFeature.setAttribute`
+    or :func:`set_attribute`.
 
     :param FMEFeature feature: Feature to receive the list attribute.
     :param int index: Index into the list attribute to set.
@@ -179,7 +189,9 @@ def set_list_attribute_with_properties(feature, index, property_attrs, attr_type
         If not specified, or if there's no mapping for a given attribute name,
         then the null value will be set with :data:`fmeobjects.FME_ATTR_STRING`.
     """
+    attr_types = attr_types or {}
     for attr_name, value in iteritems(property_attrs):
-        assert "{}" in attr_name
+        if "{}" not in attr_name:
+            raise ValueError("List attribute name missing '{}'")
         final_attr_name = attr_name.replace("{}", "{%s}" % index, 1)
         set_attribute(feature, final_attr_name, value, attr_types.get(attr_name))
