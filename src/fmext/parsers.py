@@ -132,7 +132,7 @@ def parse_def_line(def_line, option_names):
     more convenient structures.
 
     :param list[str] def_line: The DEF line. Must have an even number of elements.
-    :param list[str] option_names: If a key matches one of these names,
+    :param set option_names: If a key matches one of these names,
         it'll be separated from the attributes.
     :return: Tuple of:
 
@@ -148,7 +148,9 @@ def parse_def_line(def_line, option_names):
     session = FMESession()
 
     def decode(v):
-        return v if v is not None else session.decodeFromFMEParsableText(v)
+        if isinstance(v, list):
+            return [decode(x) for x in v]
+        return v if v is None else session.decodeFromFMEParsableText(v)
 
     attributes = stringarray_to_dict(def_line, start=2)
     options = {option: decode(attributes.pop(option, None)) for option in option_names}
