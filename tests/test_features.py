@@ -17,7 +17,7 @@ from hypothesis.strategies import (
     lists,
 )
 
-from fmext.features import (
+from fmetools.features import (
     set_attribute,
     get_attribute,
     set_attributes,

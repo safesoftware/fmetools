@@ -3,7 +3,7 @@ from collections import Counter
 from hypothesis import given, assume, example, settings
 from hypothesis.strategies import integers, text, lists
 
-from fmext.parsers import stringarray_to_dict, parse_def_line
+from fmetools.parsers import stringarray_to_dict, parse_def_line
 
 
 @given(lists(text(), max_size=6), integers(min_value=0, max_value=6))
