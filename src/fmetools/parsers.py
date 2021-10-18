@@ -6,7 +6,7 @@ import six
 from fmeobjects import FMESession, FMEFeature
 from pluginbuilder import FMEMappingFile
 
-from fmext.utils import string_to_bool
+from fmetools.utils import string_to_bool
 from six import string_types
 import fme
 

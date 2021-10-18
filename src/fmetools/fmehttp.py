@@ -30,9 +30,9 @@ from requests.adapters import HTTPAdapter
 from requests.auth import HTTPProxyAuth, HTTPBasicAuth, HTTPDigestAuth
 from six.moves.urllib.parse import urlparse, quote
 
-from fmext import fmelog
-from fmext.utils import choice_to_bool
-from fmext.parsers import stringarray_to_dict
+from fmetools import fmelog
+from fmetools.utils import choice_to_bool
+from fmetools.parsers import stringarray_to_dict
 
 # PR65941: Disable lower-level SSL warnings.
 # https://urllib3.readthedocs.io/en/latest/advanced-usage.html#ssl-warnings
