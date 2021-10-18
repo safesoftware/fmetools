@@ -9,7 +9,7 @@ from fmeobjects import FMEFeature
 from pluginbuilder import FMEReader, FMEWriter
 
 from fmext.fmelog import get_configured_logger
-from fmext.parsers import OpenParameters, FMEMappingFileWrapper
+from fmext.parsers import OpenParameters, MappingFile
 
 
 class FMESimplifiedReader(FMEReader):
@@ -22,7 +22,8 @@ class FMESimplifiedReader(FMEReader):
         * ``FORMAT_NAME`` in the metafile
 
     :ivar str _keyword: A unique identifier for this reader instance.
-    :ivar FMEMappingFileWrapper _mapping_file: The :class:`FMEMappingFileWrapper`.
+    :ivar MappingFile _mapping_file:
+        Provides access into :class:`pluginbuilder.FMEMappingFile`.
     :ivar bool _debug: Toggle for debug mode.
     :ivar FMELoggerAdapter _log: Provides access to the FME log.
     :ivar bool _using_constraints: True if :meth:`setConstraints` was called.
@@ -45,9 +46,7 @@ class FMESimplifiedReader(FMEReader):
         # super() is intentionally not called. Base class disallows it.
         self._type_name = reader_type_name
         self._keyword = reader_keyword
-        self._mapping_file = FMEMappingFileWrapper(
-            mapping_file, reader_keyword, reader_type_name
-        )
+        self._mapping_file = MappingFile(mapping_file, reader_keyword, reader_type_name)
 
         # Check if the debug flag is set
         self._debug = self._mapping_file.mapping_file.fetch("FME_DEBUG") is not None
@@ -170,8 +169,8 @@ class FMESimplifiedWriter(FMEWriter):
         * ``FORMAT_NAME`` in the metafile
 
     :ivar str _keyword: A unique identifier for this writer instance.
-    :ivar FMEMappingFileWrapper _mapping_file: A wrapper for getting information
-        from the mapping file in a simplified way.
+    :ivar MappingFile _mapping_file:
+        Provides access into :class:`pluginbuilder.FMEMappingFile`.
     :ivar FMELoggerAdapter _log: Provides access to the FME log.
     :ivar bool _debug: Toggle for debug mode.
     :ivar bool _aborted: True if :meth:`abort` was called.
@@ -182,9 +181,7 @@ class FMESimplifiedWriter(FMEWriter):
         # super() is intentionally not called. Base class disallows it.
         self._type_name = writer_type_name
         self._keyword = writer_keyword
-        self._mapping_file = FMEMappingFileWrapper(
-            mapping_file, writer_keyword, writer_type_name
-        )
+        self._mapping_file = MappingFile(mapping_file, writer_keyword, writer_type_name)
 
         # Check if the debug flag is set
         self._debug = self._mapping_file.mapping_file.fetch("FME_DEBUG") is not None

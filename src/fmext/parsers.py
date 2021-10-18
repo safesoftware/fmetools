@@ -176,7 +176,7 @@ SearchEnvelope = namedtuple(
 )
 
 
-class FMEMappingFileWrapper(object):
+class MappingFile(object):
     """
     A wrapper for accessing information from the mapping file in a simplified way.
 
