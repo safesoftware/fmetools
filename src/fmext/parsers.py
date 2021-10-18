@@ -216,20 +216,20 @@ class FMEMappingFileWrapper(object):
             yield def_line_buffer
             def_line_buffer = self.mapping_file.nextLineWithFilter(def_filter)
 
-    def fetch_with_prefix(self, plugin_type, plugin_keyword, directive):
+    def fetch_with_prefix(self, plugin_keyword, plugin_type, directive):
         """Like :meth:`FMEMappingFile.fetchWithPrefix`, but also handles the
         Python-specific situation where directive values are returned as
         2-element lists with identical values.
 
-        :param str plugin_type: Plugin type string.
         :param str plugin_keyword: Plugin keyword string.
+        :param str plugin_type: Plugin type string.
         :param str directive: Name of the directive.
         :return: If the value is scalar or a 2-element list with identical elements,
             return the element. Otherwise, the list is returned as-is.
         :rtype: str
         """
         value = self.mapping_file.fetchWithPrefix(
-            plugin_type, plugin_keyword, directive
+            plugin_keyword, plugin_type, directive
         )
         if isinstance(value, list) and len(value) == 2 and value[0] == value[1]:
             return value[0]
