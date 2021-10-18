@@ -181,7 +181,6 @@ class FMERequestsSession(PACSession):
         Load all proxy configuration from the given FMESession, as well as
         from environment variables.
 
-
         If proxies are configured using environment variables, mention it in the log.
         Proxy environment variables are honoured by Requests,
         but this method does not set them.
@@ -256,9 +255,8 @@ class FMERequestsSession(PACSession):
         return not auth_method or auth_method == "basic"
 
     def request(self, method, url, **kwargs):
-        """Make a request. If the request fails due to SSL certificate
-        verification failure, a warning is logged, SSL certificate verification
-        is disabled for the rest of the session, and the request is retried.
+        """
+        Make a request.
 
         Proxy resolution order:
 
