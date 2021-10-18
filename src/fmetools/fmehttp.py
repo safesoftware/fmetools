@@ -634,10 +634,11 @@ class UnsupportedProxyAuthenticationMethod(FMEException):
 
 
 def _configure_proxy_exceptions():
-    """Set the `NO_PROXY` environment variable based on Windows Internet
-    Options. Requests and other Python HTTP libraries should transparently
-    honour this environment variable. No-op on non-Windows, or if `NO_PROXY` is
-    already set.
+    """
+    Set the `NO_PROXY` environment variable based on Windows Internet Options.
+    Requests and other Python HTTP libraries should automatically
+    honour this environment variable.
+    No-op on non-Windows, or if `NO_PROXY` is already set.
 
     :returns: True if proxy settings were picked up from the Windows Registry
        and the `NO_PROXY` environment variable was set using it.

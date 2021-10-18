@@ -284,24 +284,43 @@ def test_unrecognized():
         get_auth_object("foo", "foo", "foo")
 
 
-# system_proxy_exceptions tests
+@pytest.mark.parametrize(
+    "registry_value, expected_no_proxy_value",
+    [
+        ("", ""),
+        ("1.1.1.1", "1.1.1.1"),
+        ("1.1.1.1; <local>", "1.1.1.1, localhost, 127.0.0.1, ::1"),
+        ("1.1.1.1; <local>; <-loopback>", "1.1.1.1, localhost, 127.0.0.1, ::1"),
+        ("<local>", "localhost, 127.0.0.1, ::1"),
+    ],
+)
+def test_configure_proxy_exceptions(
+    registry_value, expected_no_proxy_value, monkeypatch
+):
+    if os.name != "nt":
+        assert not _configure_proxy_exceptions()
+        return
 
+    try:
+        import winreg
+    except ImportError:
+        import _winreg as winreg  # PY2.
 
-@pytest.mark.skipif(os.name == "nt", reason="on Windows")
-def test_non_windows():
-    no_proxy = os.environ.pop("no_proxy", None)
-    assert _configure_proxy_exceptions() is False
-    if no_proxy:
-        os.environ["no_proxy"] = no_proxy
+    def when_key_not_found(_, __):
+        raise WindowsError()
 
+    monkeypatch.delenv("no_proxy", raising=False)
 
-@pytest.mark.skipif(os.name != "nt", reason="not Windows")
-@pytest.mark.xfail(reason="Machine may not have proxy exceptions defined")
-def test_windows():
-    no_proxy = os.environ.pop("no_proxy", None)
-    assert "no_proxy" not in os.environ
-    assert _configure_proxy_exceptions() is True
-    no_proxy = os.environ["no_proxy"]
-    assert "localhost" in no_proxy
-    if no_proxy:
-        os.environ["no_proxy"] = no_proxy
+    monkeypatch.setattr(winreg, "QueryValueEx", when_key_not_found)
+    assert not _configure_proxy_exceptions()
+
+    try:
+        monkeypatch.setattr(
+            winreg, "QueryValueEx", lambda _, __: (registry_value, None)
+        )
+        assert _configure_proxy_exceptions()
+        assert os.environ["no_proxy"] == expected_no_proxy_value
+        if expected_no_proxy_value:
+            assert not _configure_proxy_exceptions()
+    finally:
+        os.environ.pop("no_proxy", None)  # teardown
