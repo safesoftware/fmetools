@@ -146,17 +146,15 @@ class FMERequestsSession(PACSession):
         """
         super(FMERequestsSession, self).__init__()
         adapter = SystemCertStoreAdapter()
-        for scheme in ("http://", "https://"):
-            self.mount(scheme, adapter)
+        self.mount("http://", adapter)
+        self.mount("https://", adapter)
 
         self.logPrefix = log_prefix
 
-        self._log = log
-        if not self._log:
-            self._log = fmelog.get_configured_logger(_GENERIC_LOGGER_NAME)
+        self._log = log or fmelog.get_configured_logger(_GENERIC_LOGGER_NAME)
 
         self._general_proxy_config, self._custom_proxy_map = self._load_proxy_settings(
-            fme_session if fme_session else FMESession()
+            fme_session or FMESession()
         )
         self._last_used_custom_proxy = None
 
@@ -194,15 +192,15 @@ class FMERequestsSession(PACSession):
         # Get the configured HTTP/HTTPS proxies, if any, and log about their use.
         # If both HTTP and HTTPS are configured and they're identical, log once.
         # Otherwise, log whatever is configured.
-        httpProxy = _get_env_var("http_proxy")
-        httpsProxy = _get_env_var("https_proxy")
-        if httpProxy is not None and httpProxy == httpsProxy:
-            self._log_proxy(httpProxy)
+        http_proxy = _get_env_var("http_proxy")
+        https_proxy = _get_env_var("https_proxy")
+        if http_proxy is not None and http_proxy == https_proxy:
+            self._log_proxy(http_proxy)
         else:
-            if httpProxy:
-                self._log_proxy(httpProxy)
-            if httpsProxy:
-                self._log_proxy(httpsProxy)
+            if http_proxy:
+                self._log_proxy(http_proxy)
+            if https_proxy:
+                self._log_proxy(https_proxy)
 
         # Load the top-level proxy configuration.
         general_proxy_config = FMEGeneralProxyHandler()
@@ -250,9 +248,9 @@ class FMERequestsSession(PACSession):
     def _is_proxy_auth_method_supported(auth_method):
         """
         :returns: True if there's no proxy authentication or if it's Basic.
-            NTLM and Digest aren't supported.
+            Other methods, like NTLM and Digest, aren't supported.
         """
-        return not auth_method or auth_method == "basic"
+        return not auth_method or auth_method.lower() == "basic"
 
     def request(self, method, url, **kwargs):
         """
@@ -290,28 +288,28 @@ class FMERequestsSession(PACSession):
         # PR70807: FME Custom Proxy Map.
         # Only use custom proxy map if caller did not specify any proxies.
         if not kwargs.get("proxies"):
-            proxy_for_url = self._custom_proxy_map.custom_proxy_for_url(url)
-            if proxy_for_url and not proxy_for_url.proxy_url:
+            custom_proxy = self._custom_proxy_map.custom_proxy_for_url(url)
+            if custom_proxy and not custom_proxy.proxy_url:
                 self._log.debug("Custom Proxy Map: Directly accessing '%s'", url)
                 kwargs["proxies"] = _REQUESTS_NO_PROXY_CONFIG
-            elif proxy_for_url:
+            elif custom_proxy:
                 self._log.debug(
                     "Custom Proxy Map: Using proxy '%s' for URL '%s'",
-                    proxy_for_url.sanitized_proxy_url,
+                    custom_proxy.sanitized_proxy_url,
                     url,
                 )
-                if not self._is_proxy_auth_method_supported(proxy_for_url.auth_method):
+                if not self._is_proxy_auth_method_supported(custom_proxy.auth_method):
                     raise UnsupportedProxyAuthenticationMethod(
-                        self.logPrefix, proxy_for_url.auth_method
+                        self.logPrefix, custom_proxy.auth_method
                     )
                 kwargs["proxies"] = {
-                    "http": proxy_for_url.proxy_url,
-                    "https": proxy_for_url.proxy_url,
+                    "http": custom_proxy.proxy_url,
+                    "https": custom_proxy.proxy_url,
                 }
                 # Log about the custom proxy every time it changes to a different proxy.
-                if self._last_used_custom_proxy != proxy_for_url.sanitized_proxy_url:
-                    self._last_used_custom_proxy = proxy_for_url.sanitized_proxy_url
-                    self._log_proxy(proxy_for_url.sanitized_proxy_url)
+                if self._last_used_custom_proxy != custom_proxy.sanitized_proxy_url:
+                    self._last_used_custom_proxy = custom_proxy.sanitized_proxy_url
+                    self._log_proxy(custom_proxy.sanitized_proxy_url)
 
         return super(FMERequestsSession, self).request(method, url, **kwargs)
 
@@ -450,7 +448,7 @@ class FMEGeneralProxyHandler(object):
         while i < len(proxy_config):
             key, value = proxy_config[i], proxy_config[i + 1]
             if (
-                key in ("http_proxy", "https_proxy", "ftp_proxy")
+                key in {"http_proxy", "https_proxy", "ftp_proxy"}
                 and proxy_config[i + 2] == "proxy_auth_method"
             ):
                 # Proxy values are not FME-encoded.
@@ -518,7 +516,7 @@ class FMECustomProxyMapHandler(object):
     # See PR70807.
 
     def __init__(self):
-        self._customProxyMap = []
+        self._custom_proxy_map = []
 
     def custom_proxy_for_url(self, url):
         """
@@ -532,7 +530,7 @@ class FMECustomProxyMapHandler(object):
         :rtype: FMECustomProxyMap
         """
         url = url.lower()
-        for proxyMap in self._customProxyMap:
+        for proxyMap in self._custom_proxy_map:
             if url.startswith(proxyMap.url):
                 return proxyMap
         return None
@@ -548,7 +546,7 @@ class FMECustomProxyMapHandler(object):
         while i < len(proxy_config):
             key, value = proxy_config[i], proxy_config[i + 1]
             if key == "source-url" and proxy_config[i + 2] == "proxy-info":
-                self._customProxyMap.append(
+                self._custom_proxy_map.append(
                     self.parse_custom_proxy_map(fme_session, value, proxy_config[i + 3])
                 )
                 i += 4
@@ -566,9 +564,7 @@ class FMECustomProxyMapHandler(object):
             the custom proxy map.
         :rtype: FMECustomProxyMap
         """
-        url = fme_session.decodeFromFMEParsableText(
-            url
-        ).lower()  # lower() for case-insensitive comparisons.
+        url = fme_session.decodeFromFMEParsableText(url).lower()
 
         proxy_map_info = stringarray_to_dict(proxy_info.split(","))
         proxy_url = fme_session.decodeFromFMEParsableText(
