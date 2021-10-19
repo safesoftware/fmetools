@@ -31,6 +31,7 @@ from requests.auth import HTTPProxyAuth, HTTPBasicAuth, HTTPDigestAuth
 from six.moves.urllib.parse import urlparse, quote
 
 from fmetools import fmelog
+from fmetools.fmelog import FMELoggerAdapter
 from fmetools.utils import choice_to_bool
 from fmetools.parsers import stringarray_to_dict
 
@@ -129,12 +130,9 @@ class FMERequestsSession(PACSession):
     :ivar int request_count: Increments every time a request is made.
     """
 
-    def __init__(self, log_prefix, log=None, fme_session=None):
+    def __init__(self, log=None, fme_session=None):
         """
-
-        :param str log_prefix: The prefix to use for all log messages from this class,
-            e.g. "[format name] [direction]".
-        :param fmelog.FMELoggerAdapter log: Python standard library logger to use.
+        :param FMELoggerAdapter log: Python standard library logger to use.
             If provided, it *must* be able to gracefully handle FME message numbers
             or at least not propagate integer messages to handlers that can't handle it,
             like the root logger.
@@ -142,16 +140,17 @@ class FMERequestsSession(PACSession):
             which won't output anything to the FME log.
         :param FMESession fme_session: Load proxy configuration from this session.
             Intended for testing purposes only.
-            If not provided, a new FMESession object is used for this purpose.
+            Defaults to a new :class:`FMESession` instance.
         """
         super(FMERequestsSession, self).__init__()
         adapter = SystemCertStoreAdapter()
         self.mount("http://", adapter)
         self.mount("https://", adapter)
 
-        self.logPrefix = log_prefix
-
         self._log = log or fmelog.get_configured_logger(_GENERIC_LOGGER_NAME)
+        self._log_prefix = self.__class__.__name__
+        if isinstance(self._log, FMELoggerAdapter):
+            self._log_prefix = " ".join(self._log.prepended_params) or self._log_prefix
 
         self._general_proxy_config, self._custom_proxy_map = self._load_proxy_settings(
             fme_session or FMESession()
@@ -216,7 +215,7 @@ class FMERequestsSession(PACSession):
             general_proxy_config.auth_method
         ):
             raise UnsupportedProxyAuthenticationMethod(
-                self.logPrefix, general_proxy_config.auth_method
+                self._log_prefix, general_proxy_config.auth_method
             )
 
         # Configure PyPAC with proxy credentials, if any.
@@ -239,7 +238,7 @@ class FMERequestsSession(PACSession):
         """Log about a proxy being used."""
         self._log.info(
             926850,
-            self.logPrefix,
+            self._log_prefix,
             proxy_url_without_credentials(proxy_url),
             extra=_no_prepend_args,
         )
@@ -300,7 +299,7 @@ class FMERequestsSession(PACSession):
                 )
                 if not self._is_proxy_auth_method_supported(custom_proxy.auth_method):
                     raise UnsupportedProxyAuthenticationMethod(
-                        self.logPrefix, custom_proxy.auth_method
+                        self._log_prefix, custom_proxy.auth_method
                     )
                 kwargs["proxies"] = {
                     "http": custom_proxy.proxy_url,

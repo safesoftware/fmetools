@@ -113,7 +113,7 @@ def test_parse_and_lookup():
 
 def test_reject_unsupported_auth_method_in_custom_proxy_map():
     mockSession = MockFMESession(mock_proxy_config)
-    reqSession = FMERequestsSession("foo", fme_session=mockSession)
+    reqSession = FMERequestsSession(fme_session=mockSession)
     with pytest.raises(UnsupportedProxyAuthenticationMethod):
         reqSession.get("http://google.ca/foo")
 
@@ -175,10 +175,10 @@ def test_reject_unsupported_auth_method_in_general_proxy_settings():
         ]
     )
     with pytest.raises(UnsupportedProxyAuthenticationMethod):
-        FMERequestsSession("foo", fme_session=mockSession)
+        FMERequestsSession(fme_session=mockSession)
 
 
-def test_log_environment_proxies():
+def test_log_env_proxies():
     # Coverage only.
     proxy = "http://127.0.0.1:8080"
     env_var_combos = [
@@ -188,27 +188,26 @@ def test_log_environment_proxies():
     ]
     for env_vars in env_var_combos:
         with patch.dict("os.environ", env_vars):
-            FMERequestsSession("foo")
+            FMERequestsSession()
 
 
 # FMERequestSession tests
 
 
 @pytest.mark.parametrize(
-    "expected,input",
+    "expected,proxy_url",
     [
         ("http://127.0.0.1:8080", "http://127.0.0.1:8080"),
         ("http://127.0.0.1:8080", "http://foo:bar@127.0.0.1:8080"),
     ],
 )
-def test_proxy_url_without_credentials(expected, input):
-    assert expected == proxy_url_without_credentials(input)
+def test_proxy_url_without_credentials(expected, proxy_url):
+    assert expected == proxy_url_without_credentials(proxy_url)
 
 
 def test_simple_request():
-    session = FMERequestsSession(
-        "foo", fme_session=MockFMESession([])
-    )  # Ensure proxy map is not used.
+    # Ensure proxy map is not used.
+    session = FMERequestsSession(fme_session=MockFMESession([]))
     session.pac_enabled = False  # Don't go looking for a PAC file.
     with patch("requests.Session.request") as request:
         session.get("http://example.org")
@@ -222,7 +221,7 @@ def test_simple_request():
 
 
 def test_request_with_proxy_map():
-    session = FMERequestsSession("foo", fme_session=MockFMESession(mock_proxy_config))
+    session = FMERequestsSession(fme_session=MockFMESession(mock_proxy_config))
     session.pac_enabled = False  # Don't go looking for a PAC file.
     with patch("requests.Session.request") as request:
         session.get("http://google.ca/blah")
@@ -245,9 +244,8 @@ def test_request_with_proxy_map():
 
 
 def test_ssl_fail_reraise():
-    session = FMERequestsSession(
-        "foo", fme_session=MockFMESession([])
-    )  # Ensure proxy map is not used.
+    # Ensure proxy map is not used.
+    session = FMERequestsSession(fme_session=MockFMESession([]))
     with pytest.raises(SSLError):
         with patch(
             "requests.Session.request",
