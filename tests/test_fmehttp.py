@@ -22,14 +22,14 @@ from six.moves.urllib.parse import urlparse
 try:
     from unittest.mock import patch
 except ImportError:
-    from mock import patch
+    from mock import patch  # PY2 backport library
 
 
 REQUEST_DEFAULT_TIMEOUT = 60  # Assumed from fmehttp
 
 
 class MockFMESession(FMESession):
-    # Python classes from C can't be modified with unittest.mock.
+    # Superclass can't be modified with unittest.mock.
     def __init__(self, retval):
         super(MockFMESession, self).__init__()
         self.retval = retval
@@ -111,7 +111,7 @@ def test_parse_and_lookup():
     assert handler.custom_proxy_for_url("http://example.com") is None
 
 
-def test_reject_unsupported_auth_method():
+def test_reject_unsupported_auth_method_in_custom_proxy_map():
     mockSession = MockFMESession(mock_proxy_config)
     reqSession = FMERequestsSession("foo", fme_session=mockSession)
     with pytest.raises(UnsupportedProxyAuthenticationMethod):
@@ -127,7 +127,7 @@ def test_empty_proxy_url():
 # General proxy config tests
 
 
-def test_parse():
+def test_generalproxyhandler_parse():
     mockSession = MockFMESession(mock_proxy_config)
     handler = FMEGeneralProxyHandler()
     handler.configure(mockSession)
@@ -137,18 +137,12 @@ def test_parse():
     assert handler.use_pac is False  # General proxy config present, so don't use PAC.
 
 
-def test_parse_pac_enabled():
-    mockSession = MockFMESession(["use-system-proxy", "yes"])
+@pytest.mark.parametrize("value", ["yes", "no"])
+def test_generalproxyhandler_use_system_proxy_flag(value):
+    mockSession = MockFMESession(["use-system-proxy", value])
     handler = FMEGeneralProxyHandler()
     handler.configure(mockSession)
-    assert handler.use_pac is True
-
-
-def test_no_use_system_proxy():
-    mockSession = MockFMESession(["use-system-proxy", "no"])
-    handler = FMEGeneralProxyHandler()
-    handler.configure(mockSession)
-    assert handler.use_pac is False
+    assert handler.use_pac == (value is "yes")
 
 
 @pytest.mark.parametrize(
@@ -162,15 +156,14 @@ def test_no_use_system_proxy():
         ("https://example.com", False),
     ],
 )
-def test_request_with_non_proxy_Host(url, expected_value):
+def test_generalproxyhandler_is_non_proxy_host(url, expected_value):
     handler = FMEGeneralProxyHandler()
     handler.configure(MockFMESession(mock_proxy_config))
     host = urlparse(url).hostname
     assert handler.is_non_proxy_host(host) is expected_value
 
 
-def test_reject_unsupported_auth_method():
-    # To simplify things, this mock combines settings found in 2 different FME proxy config keys.
+def test_reject_unsupported_auth_method_in_general_proxy_settings():
     mockSession = MockFMESession(
         [
             "http_proxy",
