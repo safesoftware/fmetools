@@ -3,6 +3,8 @@ import os
 import pytest
 
 from fmeobjects import FMESession
+from hypothesis import given, assume
+from hypothesis.strategies import none, text, one_of
 
 from fmetools.fmehttp import (
     FMECustomProxyMapHandler,
@@ -13,7 +15,7 @@ from fmetools.fmehttp import (
     get_auth_object,
     _configure_proxy_exceptions,
 )
-from requests.exceptions import SSLError, ConnectionError
+from requests.exceptions import SSLError
 
 from six.moves.urllib.parse import urlparse
 
@@ -261,27 +263,22 @@ def test_ssl_fail_reraise():
             session.get("http://example.org")
 
 
-# get_auth_object tests
-
-
-def test_none():
-    assert get_auth_object("none") is None
-
-
-def test_simple_auth_types():
-    for auth_method in ("basic", "digest"):
-        assert get_auth_object(auth_method, "foo", "bar")
-
-
-def test_ntlm():
-    assert get_auth_object("ntlm", "domain\\user", "bar")
-    assert get_auth_object("ntlm", "foo", "bar")
-    assert get_auth_object("ntlm")
-
-
-def test_unrecognized():
-    with pytest.raises(ValueError):
-        get_auth_object("foo", "foo", "foo")
+@pytest.mark.parametrize(
+    "auth_type", ["none", "BaSiC", "digest", "ntlm", "kerberos", "foo"]
+)
+@given(user=one_of(text(max_size=1), none()), password=one_of(text(max_size=1), none()))
+def test_get_auth_object(auth_type, user, password):
+    if auth_type == "foo":
+        with pytest.raises(ValueError):
+            get_auth_object(auth_type, user, password)
+        return
+    if auth_type == "ntlm":
+        assume(user is not None)
+    auth = get_auth_object(auth_type, user, password)
+    if auth_type == "none":
+        assert auth is None
+    else:
+        assert auth
 
 
 @pytest.mark.parametrize(
