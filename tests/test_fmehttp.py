@@ -1,5 +1,7 @@
 import json
 import os
+
+import fme
 import pytest
 
 from fmeobjects import FMESession
@@ -205,7 +207,7 @@ def test_proxy_url_without_credentials(expected, proxy_url):
     assert expected == proxy_url_without_credentials(proxy_url)
 
 
-def test_simple_request():
+def test_mock_request():
     # Ensure proxy map is not used.
     session = FMERequestsSession(fme_session=MockFMESession([]))
     session.pac_enabled = False  # Don't go looking for a PAC file.
@@ -220,7 +222,31 @@ def test_simple_request():
     )
 
 
-def test_request_with_proxy_map():
+@pytest.mark.vcr
+def test_live_request():
+    """
+    Make a GET request without mocking.
+    """
+    # Ensure proxy map is not used.
+    session = FMERequestsSession(fme_session=MockFMESession([]))
+    session.pac_enabled = False  # Don't go looking for a PAC file.
+    resp = session.get("https://httpbin.org/json")
+    assert resp.ok
+    assert resp.json()
+    user_agent = resp.request.headers["User-Agent"]
+    assert user_agent.startswith("FME/") and "python-requests/" in user_agent
+
+
+def test_missing_macrovalues(monkeypatch):
+    """
+    In older FME, `fme.macroValues` is only defined when FME is running Python.
+    Make sure :class:`FMERequestsSession` can still instantiate when it's undefined.
+    """
+    monkeypatch.delattr(fme, "macroValues")
+    FMERequestsSession()
+
+
+def test_mock_request_with_proxy_map():
     session = FMERequestsSession(fme_session=MockFMESession(mock_proxy_config))
     session.pac_enabled = False  # Don't go looking for a PAC file.
     with patch("requests.Session.request") as request:

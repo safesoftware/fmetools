@@ -1,4 +1,4 @@
 black
 pytest
+pytest-vcr
 hypothesis
-
