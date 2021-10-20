@@ -153,6 +153,12 @@ class FMESimplifiedReader(FMEReader):
         if self._read_generator:
             self._read_generator.close()
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
 
 class FMESimplifiedWriter(FMEWriter):
     """Base class for Python-based FME writer implementations.
@@ -231,6 +237,12 @@ class FMESimplifiedWriter(FMEWriter):
         overridden.
         """
         pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
 
 
 class FMETransformer(object):
