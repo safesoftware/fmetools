@@ -1,6 +1,5 @@
 """
-Helpers for working with FME Named Connections and Web Service
-Connections.
+Helpers for working with FME Named Connections and FME Web Services.
 """
 
 from __future__ import absolute_import, division, print_function, unicode_literals
@@ -60,11 +59,11 @@ class FMETokenConnectionWrapper(object):
         Gets the authorization header name and its value.
 
         :return: Authorization header name, and its value.
-           Unlike the original `getAuthorizationHeader()`,
-           these values are cleaned up for use with Requests.
-           The trailing colon is removed from the header.
-           Then both the header and value have leading and trailing spaces stripped,
-           as required by `Requests 2.11 <https://github.com/requests/requests/issues/3488>`_.
+            Unlike the original `getAuthorizationHeader()`,
+            these values are cleaned up for use with Requests.
+            The trailing colon is removed from the header.
+            Then both the header and value have leading and trailing spaces stripped,
+            as required by `Requests 2.11 <https://github.com/requests/requests/issues/3488>`_.
         :rtype: str, str
         """
         header, value = self.wrapped_conn.getAuthorizationHeader()
@@ -119,8 +118,7 @@ class FMEWebConnectionTokenBasedAuth(AuthBase):
     A Requests authentication handler that authenticates using tokens
     obtained from FME Web Service Connections.
 
-    These tokens are either arbitrary tokens, or OAuth 2.0 access
-    tokens.
+    These tokens are either arbitrary tokens, or OAuth 2.0 access tokens.
     """
 
     def __init__(self, wrapped_conn, token_location=None, header_and_url=False):
@@ -161,8 +159,9 @@ class FMEWebConnectionTokenBasedAuth(AuthBase):
 
     def set_suspect_expired(self):
         """
-        Set by clients when they received a 401 call failure. The infrastructure
-        will then always consider the token expired.
+        Call this method to inform the FME infrastructure that the token may be expired.
+        The infrastructure will attempt to get a new token the next time a token is
+        requested.
         """
         self.conn.set_suspect_expired()
 

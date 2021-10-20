@@ -272,8 +272,7 @@ class FMERequestsSession(PACSession):
         self.request_count += 1
 
         # PR62730: Specify a default timeout, to prevent possibility of waiting forever.
-        if "timeout" not in kwargs:
-            kwargs["timeout"] = 60
+        kwargs.setdefault("timeout", 60)
 
         # FMEENGINE-63687: Non-proxy hosts.
         if not kwargs.get("proxies"):
