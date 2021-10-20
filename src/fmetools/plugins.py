@@ -98,7 +98,7 @@ class FMESimplifiedReader(FMEReader):
         """
         Reset any existing feature generator that represents the state for :meth:`read`.
 
-        :param fmeobjects.FMEFeature feature: The constraint feature.
+        :param FMEFeature feature: The constraint feature.
         """
         assert isinstance(feature, FMEFeature)
         self._using_constraints = True

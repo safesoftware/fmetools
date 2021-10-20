@@ -241,7 +241,7 @@ def test_missing_macrovalues(monkeypatch):
     In older FME, `fme.macroValues` is only defined when FME is running Python.
     Make sure :class:`FMERequestsSession` can still instantiate when it's undefined.
     """
-    monkeypatch.delattr(fme, "macroValues")
+    monkeypatch.delattr(fme, "macroValues", raising=False)
     FMERequestsSession()
 
 
