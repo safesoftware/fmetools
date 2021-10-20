@@ -193,9 +193,6 @@ def test_log_env_proxies():
             FMERequestsSession()
 
 
-# FMERequestSession tests
-
-
 @pytest.mark.parametrize(
     "expected,proxy_url",
     [
@@ -207,12 +204,17 @@ def test_proxy_url_without_credentials(expected, proxy_url):
     assert expected == proxy_url_without_credentials(proxy_url)
 
 
-def test_mock_request():
+@pytest.fixture
+def no_proxy_requests_session():
     # Ensure proxy map is not used.
     session = FMERequestsSession(fme_session=MockFMESession([]))
     session.pac_enabled = False  # Don't go looking for a PAC file.
+    return session
+
+
+def test_mock_request(no_proxy_requests_session):
     with patch("requests.Session.request") as request:
-        session.get("http://example.org")
+        no_proxy_requests_session.get("http://example.org")
     request.assert_called_once_with(
         "GET",
         "http://example.org",
@@ -223,14 +225,11 @@ def test_mock_request():
 
 
 @pytest.mark.vcr
-def test_live_request():
+def test_live_request(no_proxy_requests_session):
     """
     Make a GET request without mocking.
     """
-    # Ensure proxy map is not used.
-    session = FMERequestsSession(fme_session=MockFMESession([]))
-    session.pac_enabled = False  # Don't go looking for a PAC file.
-    resp = session.get("https://httpbin.org/json")
+    resp = no_proxy_requests_session.get("https://httpbin.org/json")
     assert resp.ok
     assert resp.json()
     user_agent = resp.request.headers["User-Agent"]
@@ -269,15 +268,13 @@ def test_mock_request_with_proxy_map():
     )
 
 
-def test_ssl_fail_reraise():
-    # Ensure proxy map is not used.
-    session = FMERequestsSession(fme_session=MockFMESession([]))
+def test_ssl_fail_reraise(no_proxy_requests_session):
     with pytest.raises(SSLError):
         with patch(
             "requests.Session.request",
             side_effect=SSLError("unrecognized error message"),
         ):
-            session.get("http://example.org")
+            no_proxy_requests_session.get("http://example.org")
 
 
 @pytest.mark.parametrize(
