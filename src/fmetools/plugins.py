@@ -28,8 +28,6 @@ class FMESimplifiedReader(FMEReader):
     :ivar FMELoggerAdapter _log: Provides access to the FME log.
     :ivar bool _using_constraints: True if :meth:`setConstraints` was called.
     :ivar bool _aborted: True if :meth:`abort` was called.
-    :ivar SearchEnvelope _search_envelope:
-        Rectangular search envelope, if any, from the mapping file.
     :ivar list[str] _feature_types: Ordered list of feature type names.
     :ivar _readSchema_generator:
         Use this member to store any generator used for :meth:`readSchema`.
@@ -56,7 +54,6 @@ class FMESimplifiedReader(FMEReader):
 
         self._using_constraints = False
         self._aborted = False
-        self._search_envelope = None
         self._feature_types = []
 
         self._readSchema_generator, self._read_generator = None, None
@@ -71,7 +68,6 @@ class FMESimplifiedReader(FMEReader):
         * Calls :meth:`enhancedOpen`.
 
         If setConstraints() wasn't called earlier, then this method also:
-        * Sets `_search_envelope` using the mapping file.
         * Sets `_feature_types` using the mapping file and/or open parameters.
 
         :param str dataset_name: Name of the dataset.
@@ -80,7 +76,6 @@ class FMESimplifiedReader(FMEReader):
 
         # If not using setConstraints(), then get some basics from the mapping file.
         if not self._using_constraints:
-            self._search_envelope = self._mapping_file.get_search_envelope()
             self._feature_types = self._mapping_file.get_feature_types(parameters)
 
         # Look for the debug flag in the open() parameters.
@@ -190,7 +185,6 @@ class FMESimplifiedWriter(FMEWriter):
         self._log = get_configured_logger(self.__class__.__name__, self._debug)
 
         self._aborted = False
-        self._searchEnvelope = None
         self._feature_types = []
 
     def open(self, dataset, parameters):
@@ -198,7 +192,6 @@ class FMESimplifiedWriter(FMEWriter):
 
         Does these things for you:
 
-        * Sets `_search_envelope` using the mapping file.
         * Sets `_feature_types` using the mapping file and/or open parameters.
         * Parses the open() parameters.
         * Checks for the debug flag in open() parameters,
