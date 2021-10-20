@@ -15,6 +15,7 @@ from hypothesis.strategies import (
     binary,
     dictionaries,
     lists,
+    characters,
 )
 
 from fmetools.features import (
@@ -52,6 +53,7 @@ def test_set_and_get_attribute_values(value):
     set_attribute(f, "name", value)
     if isinstance(value, float) and math.isnan(value):
         assert math.isnan(get_attribute(f, "name"))
+        return
     elif isinstance(value, list):
         if len(value) == 0:
             assert not [x for x in f.getAllAttributeNames() if x.startswith("name")]
@@ -67,7 +69,7 @@ def test_set_and_get_attribute_values(value):
     assert get_attribute(f, "missing", default=value) == value
 
 
-@given(one_of(text(min_size=1, max_size=1), binary(min_size=1, max_size=1)))
+@given(characters(blacklist_categories=("C",)))
 @settings(deadline=None)
 def test_get_and_set_attribute_names(name):
     f = FMEFeature()
