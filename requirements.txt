@@ -1,4 +1,5 @@
 black
+build
 pytest
 pytest-vcr
 hypothesis
