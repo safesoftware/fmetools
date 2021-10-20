@@ -296,16 +296,18 @@ class FMEEnhancedTransformer(FMETransformer):
 
     This class adds methods to introduce more granularity to the transformer lifecycle.
 
-    :meth:`input` is broken down to:
+    :meth:`input` is broken down to these methods for implementations to overwrite:
        - :meth:`pre_input`
-          - :meth:`setup` (first call only)
-       - :meth:`receive_feature`
+          - :meth:`setup` - only called for the first input feature
+       - :meth:`receive_feature` - should contain the bulk of the main logic
        - :meth:`post_input`
 
-    :meth:`close` is broken down to:
+    :meth:`close` is broken down to these methods for implementations to overwrite:
        - :meth:`pre_close`
-       - :meth:`finish`
+       - :meth:`finish` - should contain any cleanup tasks, such as deleting temp files
        - :meth:`post_close`
+
+    Note that unlike readers and writers, transformers do not receive abort signals.
 
     :ivar FMELoggerAdapter _log: Provides access to the FME log.
     """
@@ -387,8 +389,28 @@ class FMEEnhancedTransformer(FMETransformer):
         self.finish()
         self.post_close()
 
-    def reject_feature(self, feature, code, reason):
-        """Emit a feature to the transformer's rejection port."""
+    def reject_feature(self, feature, code, message):
+        """
+        Emit a feature, with conventional attributes that represent rejection.
+
+        To work as intended, the transformer's FMX needs some corresponding lines:
+
+        * `OUTPUT_TAGS` includes `<REJECTED>`. This defines the rejection port.
+        * A `TestFactory` definition that sends features with
+          the `fme_rejection_code` attribute to the rejection port.
+        * Handling for the possibility of the transformer's initiator/input feature
+          coming in with `fme_rejection_code` already defined.
+          The transformer should not send features to the rejection port unless
+          the feature was actually rejected by the transformer.
+          If the input feature included rejection attributes,
+          the transformer should pass them through in its output features.
+          Of course, if the transformer happens to reject such a feature,
+          it's free to overwrite those existing attributes.
+
+        :param FMEFeature feature: Feature to emit, with rejection attributes added.
+        :param str code: Value for `fme_rejection_code` attribute.
+        :param str message: Value for `fme_rejection_message` attribute.
+        """
         feature.setAttribute("fme_rejection_code", code)
-        feature.setAttribute("fme_rejection_message", reason)
+        feature.setAttribute("fme_rejection_message", message)
         self.pyoutput(feature)
