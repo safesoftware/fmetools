@@ -1,8 +1,8 @@
 # fmetools: helpers for FME Python
 
-_fmetools_ is a Python library containing functions and classes for use with
-Safe Software's FME. It streamlines the development of Python-based
+_fmetools_ is a Python library that streamlines the development of Python-based
 formats and transformers that can be shared as FME Packages on FME Hub.
+It provides base classes and utilities that make it easy to get started.
 
 This library is built on top of the
 [Python `fmeobjects` API](https://docs.safe.com/fme/html/fmepython/index.html)
@@ -14,7 +14,7 @@ Developers of FME Packages use _fmetools_ by including a private copy it
 in their FME Package. This process is called vendorization, and can be done
 using the [vendorize](https://pypi.org/project/vendorize/) tool on PyPI.
 
-_fmetools_ is distributed as a wheel, but it should _not_ be installed
+This library is distributed as a wheel, but it should _not_ be installed
 with `pip install`.
 
 

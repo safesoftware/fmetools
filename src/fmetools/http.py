@@ -147,7 +147,7 @@ class FMERequestsSession(PACSession):
         self.mount("http://", adapter)
         self.mount("https://", adapter)
 
-        self._log = log or fmelog.get_configured_logger(_GENERIC_LOGGER_NAME)
+        self._log = log or logfile.get_configured_logger(_GENERIC_LOGGER_NAME)
         self._log_prefix = self.__class__.__name__
         if isinstance(self._log, FMELoggerAdapter):
             self._log_prefix = " ".join(self._log.prepended_params) or self._log_prefix
