@@ -8,7 +8,7 @@ import fme
 from fmeobjects import FMEFeature
 from pluginbuilder import FMEReader, FMEWriter
 
-from fmetools.fmelog import get_configured_logger
+from fmetools.logfile import get_configured_logger
 from fmetools.parsers import OpenParameters, MappingFile
 
 

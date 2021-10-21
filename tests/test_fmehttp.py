@@ -8,7 +8,7 @@ from fmeobjects import FMESession
 from hypothesis import given, assume
 from hypothesis.strategies import none, text, one_of
 
-from fmetools.fmehttp import (
+from fmetools.http import (
     FMECustomProxyMapHandler,
     FMEGeneralProxyHandler,
     FMERequestsSession,

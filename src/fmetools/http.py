@@ -30,8 +30,8 @@ from requests.adapters import HTTPAdapter
 from requests.auth import HTTPProxyAuth, HTTPBasicAuth, HTTPDigestAuth
 from six.moves.urllib.parse import urlparse, quote
 
-from fmetools import fmelog
-from fmetools.fmelog import FMELoggerAdapter
+from fmetools import logfile
+from fmetools.logfile import FMELoggerAdapter
 from fmetools.utils import choice_to_bool
 from fmetools.parsers import stringarray_to_dict
 
