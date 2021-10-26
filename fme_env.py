@@ -34,8 +34,9 @@ if __name__ == "__main__":
         raise ValueError(
             "FME_HOME environment variable not defined, so --fme-home must be given"
         )
+    print("Using FME install dir: " + args.fme_home)
     if not os.path.isdir(args.fme_home):
-        raise ValueError("FME_HOME does not appear to be valid")
+        raise ValueError("FME_HOME is not a directory")
 
     leaf_dir = "python%s%s" % (sys.version_info.major, sys.version_info.minor)
     paths_to_add = [
@@ -56,6 +57,9 @@ if __name__ == "__main__":
     dst_py = os.path.join(site_packages_dir, "fme_env.py")
     print("Writing " + dst_py)
     shutil.copyfile(__file__, dst_py)
+
+    print("\nThis virtualenv is now set up for access to FME and fmeobjects.")
+    print("If the FME install location changes, re-run this script to update paths.")
 else:
     # Running in site-packages as part of interpreter's site setup
     # First line from .pth is FME_HOME
