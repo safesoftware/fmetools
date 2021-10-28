@@ -41,7 +41,7 @@ urllib3.disable_warnings()
 
 
 _GENERIC_LOGGER_NAME = "FMERequestsSession"
-_no_prepend_args = {"no_prepend_args": True}
+_no_prefix = {"no_prefix": True}
 
 # A proxy config of empty string tells Requests to ignore environment proxies too.
 # Tested with Fiddler.
@@ -149,8 +149,6 @@ class FMERequestsSession(PACSession):
 
         self._log = log or logfile.get_configured_logger(_GENERIC_LOGGER_NAME)
         self._log_prefix = self.__class__.__name__
-        if isinstance(self._log, FMELoggerAdapter):
-            self._log_prefix = " ".join(self._log.prepended_params) or self._log_prefix
 
         self._general_proxy_config, self._custom_proxy_map = self._load_proxy_settings(
             fme_session or FMESession()
@@ -240,7 +238,7 @@ class FMERequestsSession(PACSession):
             926850,
             self._log_prefix,
             proxy_url_without_credentials(proxy_url),
-            extra=_no_prepend_args,
+            extra=_no_prefix,
         )
 
     @staticmethod
