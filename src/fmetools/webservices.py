@@ -172,6 +172,8 @@ class NamedConnectionNotFound(FMEException):
     """
 
     def __init__(self, client_name, connection_name):
+        base_message = "%s: Connection '%s' does not exist. Check connection parameter and connection definitions in FME options and try again"
+        message = base_message % (client_name, connection_name)
         super(NamedConnectionNotFound, self).__init__(
-            926882, [client_name, connection_name]
+            message
         )

@@ -234,10 +234,10 @@ class FMERequestsSession(PACSession):
 
     def _log_proxy(self, proxy_url):
         """Log about a proxy being used."""
+        base_message = "%s: Using proxy %s"
+        message = base_message % (self._log_prefix, proxy_url_without_credentials(proxy_url))
         self._log.info(
-            926850,
-            self._log_prefix,
-            proxy_url_without_credentials(proxy_url),
+            message,
             extra=_no_prefix,
         )
 
@@ -317,7 +317,10 @@ class KerberosUnsupportedException(FMEException):
         """
         :param str log_prefix: Name of caller to use in the log message.
         """
-        super(KerberosUnsupportedException, self).__init__(926851, [log_prefix])
+        base_message = """%s: Kerberos authentication on this system requires the installation for a Kerberos library for Python. \
+        Otherwise, try NTLM authentication if it's enabled by the host, or please visit http://www.safe.com/support"""
+        message = base_message % log_prefix
+        super(KerberosUnsupportedException, self).__init__(message)
 
 
 def get_kerberos_auth(caller_name):
@@ -620,8 +623,10 @@ class UnsupportedProxyAuthenticationMethod(FMEException):
             e.g. "[format name] [direction]".
         :param str auth_method: Proxy authentication method.
         """
+        base_message = "%s: Proxy authentication mode '%s' is not supported by this format"
+        message = base_message % (log_prefix, auth_method)
         super(UnsupportedProxyAuthenticationMethod, self).__init__(
-            926852, [log_prefix, auth_method]
+            message
         )
 
 
