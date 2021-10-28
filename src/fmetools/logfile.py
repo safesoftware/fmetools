@@ -15,6 +15,8 @@ from fmeobjects import (
 )
 import fme
 
+from fmetools import tr
+
 import logging
 from six import string_types
 
@@ -169,5 +171,6 @@ def get_configured_logger(name="fmelog", debug=None):
     logger.addHandler(handler)
 
     log_adapter = FMELoggerAdapter(logger, {})
-    log_adapter.debug("Configured logging for %s" % name)
+
+    log_adapter.debug(tr("Configured logging for %s") % name)
     return log_adapter

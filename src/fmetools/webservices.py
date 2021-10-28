@@ -15,7 +15,7 @@ from fmewebservices import (
     FMEOAuthV2Connection,
     FMETokenConnection,
 )
-
+from fmetools import tr
 from fmeobjects import FMEException
 from requests.auth import AuthBase
 
@@ -110,7 +110,7 @@ def get_named_connection_auth(connection_name, client_name):
         )
     if isinstance(conn, (FMEOAuthV2Connection, FMETokenConnection)):
         return FMEWebConnectionTokenBasedAuth(FMETokenConnectionWrapper(conn))
-    raise TypeError("Unexpected connection type {}".format(repr(conn)))
+    raise TypeError(tr("Unexpected connection type {}").format(repr(conn)))
 
 
 class FMEWebConnectionTokenBasedAuth(AuthBase):
@@ -172,7 +172,7 @@ class NamedConnectionNotFound(FMEException):
     """
 
     def __init__(self, client_name, connection_name):
-        base_message = "%s: Connection '%s' does not exist. Check connection parameter and connection definitions in FME options and try again"
+        base_message = tr("%s: Connection '%s' does not exist. Check connection parameter and connection definitions in FME options and try again")
         message = base_message % (client_name, connection_name)
         super(NamedConnectionNotFound, self).__init__(
             message

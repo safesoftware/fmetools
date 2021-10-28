@@ -34,7 +34,7 @@ from fmetools import logfile
 from fmetools.logfile import FMELoggerAdapter
 from fmetools.utils import choice_to_bool
 from fmetools.parsers import stringarray_to_dict
-
+from fmetools import tr
 # PR65941: Disable lower-level SSL warnings.
 # https://urllib3.readthedocs.io/en/latest/advanced-usage.html#ssl-warnings
 urllib3.disable_warnings()
@@ -234,7 +234,7 @@ class FMERequestsSession(PACSession):
 
     def _log_proxy(self, proxy_url):
         """Log about a proxy being used."""
-        base_message = "%s: Using proxy %s"
+        base_message = tr("%s: Using proxy %s")
         message = base_message % (self._log_prefix, proxy_url_without_credentials(proxy_url))
         self._log.info(
             message,
@@ -276,7 +276,7 @@ class FMERequestsSession(PACSession):
         if not kwargs.get("proxies"):
             try:
                 if self._general_proxy_config.is_non_proxy_host(urlparse(url).hostname):
-                    self._log.debug("Non-Proxy Hosts: Directly accessing '%s'", url)
+                    self._log.debug(tr("Non-Proxy Hosts: Directly accessing '%s'"), url)
                     kwargs["proxies"] = _REQUESTS_NO_PROXY_CONFIG
             except ValueError:
                 pass  # Ignore malformed URLs.
@@ -286,11 +286,11 @@ class FMERequestsSession(PACSession):
         if not kwargs.get("proxies"):
             custom_proxy = self._custom_proxy_map.custom_proxy_for_url(url)
             if custom_proxy and not custom_proxy.proxy_url:
-                self._log.debug("Custom Proxy Map: Directly accessing '%s'", url)
+                self._log.debug(tr("Custom Proxy Map: Directly accessing '%s'"), url)
                 kwargs["proxies"] = _REQUESTS_NO_PROXY_CONFIG
             elif custom_proxy:
                 self._log.debug(
-                    "Custom Proxy Map: Using proxy '%s' for URL '%s'",
+                    tr("Custom Proxy Map: Using proxy '%s' for URL '%s'"),
                     custom_proxy.sanitized_proxy_url,
                     url,
                 )
@@ -317,8 +317,8 @@ class KerberosUnsupportedException(FMEException):
         """
         :param str log_prefix: Name of caller to use in the log message.
         """
-        base_message = """%s: Kerberos authentication on this system requires the installation for a Kerberos library for Python. \
-        Otherwise, try NTLM authentication if it's enabled by the host, or please visit http://www.safe.com/support"""
+        base_message = tr("%s: Kerberos authentication on this system requires the installation for a Kerberos library for Python. " +
+        "Otherwise, try NTLM authentication if it's enabled by the host, or please visit http://www.safe.com/support")
         message = base_message % log_prefix
         super(KerberosUnsupportedException, self).__init__(message)
 
@@ -375,7 +375,7 @@ def get_auth_object(auth_type, user="", password="", caller_name=""):
 
         return HttpNtlmAuth(user, password)
     else:
-        raise ValueError("Unknown authentication type '%s'" % auth_type)
+        raise ValueError(tr("Unknown authentication type '%s'") % auth_type)
 
 
 def proxy_url_without_credentials(proxy_url):
@@ -463,7 +463,7 @@ class FMEGeneralProxyHandler(object):
                     for host_regex in json.loads(value):
                         self.non_proxy_hosts.append(re.compile(host_regex, re.I))
                 except (json.JSONDecodeError, re.error):
-                    warnings.warn("FME non-proxy-hosts: not JSON or bad regex")
+                    warnings.warn(tr("FME non-proxy-hosts: not JSON or bad regex"))
             i += 2
 
         # Use System Proxy plus presence of general proxies implies that PAC
@@ -623,7 +623,7 @@ class UnsupportedProxyAuthenticationMethod(FMEException):
             e.g. "[format name] [direction]".
         :param str auth_method: Proxy authentication method.
         """
-        base_message = "%s: Proxy authentication mode '%s' is not supported by this format"
+        base_message = tr("%s: Proxy authentication mode '%s' is not supported by this format")
         message = base_message % (log_prefix, auth_method)
         super(UnsupportedProxyAuthenticationMethod, self).__init__(
             message
