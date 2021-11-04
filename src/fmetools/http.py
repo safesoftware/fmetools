@@ -131,12 +131,8 @@ class FMERequestsSession(PACSession):
 
     def __init__(self, log=None, fme_session=None):
         """
-        :param FMELoggerAdapter log: Python standard library logger to use.
-            If provided, it *must* be able to gracefully handle FME message numbers
-            or at least not propagate integer messages to handlers that can't handle it,
-            like the root logger.
-            If None, a generic Logger instance is instantiated,
-            which won't output anything to the FME log.
+        :param None|FMELoggerAdapter log: Python standard library logger to use.
+            If None, a generic FMELoggerAdapter instance is instantiated
         :param FMESession fme_session: Load proxy configuration from this session.
             Intended for testing purposes only.
             Defaults to a new :class:`FMESession` instance.
@@ -146,8 +142,8 @@ class FMERequestsSession(PACSession):
         self.mount("http://", adapter)
         self.mount("https://", adapter)
 
-        self._log = log or logfile.get_configured_logger(_GENERIC_LOGGER_NAME)
         self._log_prefix = self.__class__.__name__
+        self._log = log or logfile.get_configured_logger(self._log_prefix)
 
         self._general_proxy_config, self._custom_proxy_map = self._load_proxy_settings(
             fme_session or FMESession()
