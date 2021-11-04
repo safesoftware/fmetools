@@ -1,6 +1,5 @@
 """
 Helpers for enabling localized strings in Python package code via gettext.
-
 """
 import os
 
@@ -24,6 +23,7 @@ def enable_module_localization(python_module_name, locale_dir=None, enable_fallb
     :return: configured gettext
     """
     import gettext
+
     if not locale_dir:
         locale_dir = _get_default_locale_dir()
     t = gettext.translation(python_module_name, locale_dir, fallback=enable_fallback, **kwargs)

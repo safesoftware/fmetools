@@ -103,8 +103,7 @@ def test_parse_and_lookup():
     handler = FMECustomProxyMapHandler()
     handler.configure(MockFMESession(mock_proxy_config))
     assert (
-        "http://1.1.1.1:80"
-        == handler.custom_proxy_for_url("http://google.ca/").sanitized_proxy_url
+        "http://1.1.1.1:80" == handler.custom_proxy_for_url("http://google.ca/").sanitized_proxy_url
     )
     assert (
         "http://0.0.0.0:80"
@@ -277,9 +276,7 @@ def test_ssl_fail_reraise(no_proxy_requests_session):
             no_proxy_requests_session.get("http://example.org")
 
 
-@pytest.mark.parametrize(
-    "auth_type", ["none", "BaSiC", "digest", "ntlm", "kerberos", "foo"]
-)
+@pytest.mark.parametrize("auth_type", ["none", "BaSiC", "digest", "ntlm", "kerberos", "foo"])
 @given(user=one_of(text(max_size=1), none()), password=one_of(text(max_size=1), none()))
 def test_get_auth_object(auth_type, user, password):
     if auth_type == "foo":
@@ -305,9 +302,7 @@ def test_get_auth_object(auth_type, user, password):
         ("<local>", "localhost, 127.0.0.1, ::1"),
     ],
 )
-def test_configure_proxy_exceptions(
-    registry_value, expected_no_proxy_value, monkeypatch
-):
+def test_configure_proxy_exceptions(registry_value, expected_no_proxy_value, monkeypatch):
     if os.name != "nt":
         assert not _configure_proxy_exceptions()
         return
@@ -326,9 +321,7 @@ def test_configure_proxy_exceptions(
     assert not _configure_proxy_exceptions()
 
     try:
-        monkeypatch.setattr(
-            winreg, "QueryValueEx", lambda _, __: (registry_value, None)
-        )
+        monkeypatch.setattr(winreg, "QueryValueEx", lambda _, __: (registry_value, None))
         assert _configure_proxy_exceptions()
         assert os.environ["no_proxy"] == expected_no_proxy_value
         if expected_no_proxy_value:

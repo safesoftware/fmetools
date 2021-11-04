@@ -171,9 +171,7 @@ def get_template_feature_type(feature):
     return _system_to_unicode(template_feature_type or feature.getFeatureType())
 
 
-SearchEnvelope = namedtuple(
-    "SearchEnvelope", "min_x min_y max_x max_y coordsys", defaults=(None,)
-)
+SearchEnvelope = namedtuple("SearchEnvelope", "min_x min_y max_x max_y coordsys", defaults=(None,))
 
 
 class MappingFile(object):
@@ -228,9 +226,7 @@ class MappingFile(object):
             return the element. Otherwise, the list is returned as-is.
         :rtype: str
         """
-        value = self.mapping_file.fetchWithPrefix(
-            plugin_keyword, plugin_type, directive
-        )
+        value = self.mapping_file.fetchWithPrefix(plugin_keyword, plugin_type, directive)
         if isinstance(value, list) and len(value) == 2 and value[0] == value[1]:
             return value[0]
         return value
@@ -247,17 +243,13 @@ class MappingFile(object):
             and return a list.
         :rtype: str, int, float, list, None
         """
-        value = self.fetch_with_prefix(
-            self._plugin_keyword, self._plugin_type, directive
-        )
+        value = self.fetch_with_prefix(self._plugin_keyword, self._plugin_type, directive)
         if value is None:
             return default
         if as_list and isinstance(value, six.string_types):
             value = value.split()
             if decode:
-                value = [
-                    self.__session.decodeFromFMEParsableText(entry) for entry in value
-                ]
+                value = [self.__session.decodeFromFMEParsableText(entry) for entry in value]
         elif decode and isinstance(value, six.string_types):
             value = self.__session.decodeFromFMEParsableText(value)
         return value
@@ -281,9 +273,7 @@ class MappingFile(object):
         :returns: The search envelope, or None if not set.
         :rtype: SearchEnvelope
         """
-        env = self.mapping_file.fetchSearchEnvelope(
-            self._plugin_keyword, self._plugin_type
-        )
+        env = self.mapping_file.fetchSearchEnvelope(self._plugin_keyword, self._plugin_type)
         if not env:
             return None
         coordsys = self.get("_SEARCH_ENVELOPE_COORDINATE_SYSTEM")

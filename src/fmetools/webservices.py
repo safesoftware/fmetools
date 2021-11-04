@@ -105,9 +105,7 @@ def get_named_connection_auth(connection_name, client_name):
     if isinstance(conn, FMEBasicConnection):
         auth_type = conn.getAuthenticationMethod()
         user, pwd = conn.getUserName(), conn.getPassword()
-        return get_auth_object(
-            CONN_AUTH_METHOD_TO_KEYWORD[auth_type], user, pwd, client_name
-        )
+        return get_auth_object(CONN_AUTH_METHOD_TO_KEYWORD[auth_type], user, pwd, client_name)
     if isinstance(conn, (FMEOAuthV2Connection, FMETokenConnection)):
         return FMEWebConnectionTokenBasedAuth(FMETokenConnectionWrapper(conn))
     raise TypeError(tr("Unexpected connection type {}").format(repr(conn)))
@@ -172,8 +170,9 @@ class NamedConnectionNotFound(FMEException):
     """
 
     def __init__(self, client_name, connection_name):
-        base_message = tr("%s: Connection '%s' does not exist. Check connection parameter and connection definitions in FME options and try again")
-        message = base_message % (client_name, connection_name)
-        super(NamedConnectionNotFound, self).__init__(
-            message
+        base_message = tr(
+            "%s: Connection '%s' does not exist."
+            + "Check connection parameter and connection definitions in FME options and try again"
         )
+        message = base_message % (client_name, connection_name)
+        super(NamedConnectionNotFound, self).__init__(message)

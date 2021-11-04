@@ -31,9 +31,7 @@ if __name__ == "__main__":
         raise ValueError("Couldn't find " + site_packages_dir)
 
     if not args.fme_home:
-        raise ValueError(
-            "FME_HOME environment variable not defined, so --fme-home must be given"
-        )
+        raise ValueError("FME_HOME environment variable not defined, so --fme-home must be given")
     print("Using FME install dir: " + args.fme_home)
     if not os.path.isdir(args.fme_home):
         raise ValueError("FME_HOME is not a directory")
