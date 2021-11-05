@@ -24,8 +24,8 @@ class FMESimplifiedReader(FMEReader):
     :ivar str _keyword: A unique identifier for this reader instance.
     :ivar MappingFile _mapping_file:
         Provides access into :class:`pluginbuilder.FMEMappingFile`.
-    :ivar bool _debug: Toggle for debug mode.
-    :ivar FMELoggerAdapter _log: Provides access to the FME log.
+    :ivar bool debug: Toggle for debug mode.
+    :ivar FMELoggerAdapter log: Provides access to the FME log.
     :ivar bool _using_constraints: True if :meth:`setConstraints` was called.
     :ivar bool _aborted: True if :meth:`abort` was called.
     :ivar list[str] _feature_types: Ordered list of feature type names.
@@ -49,14 +49,36 @@ class FMESimplifiedReader(FMEReader):
         # Check if the debug flag is set
         self._debug = self._mapping_file.mapping_file.fetch("FME_DEBUG") is not None
 
-        # Instantiate a logger with the appropriate debug mode.
-        self._log = get_configured_logger(self.__class__.__name__, self._debug)
+        self._log = None
 
         self._using_constraints = False
         self._aborted = False
         self._feature_types = []
 
         self._readSchema_generator, self._read_generator = None, None
+
+    @property
+    def log(self):
+        """
+        Provides access to the FME log
+        """
+        if not self._log:
+            # Instantiate a logger with the appropriate debug mode.
+            self._log = get_configured_logger(self.__class__.__name__, self._debug)
+        return self._log
+
+    @property
+    def debug(self):
+        return self._debug
+
+    @debug.setter
+    def debug(self, new_debug):
+        """
+        Set the debug flag for this reader. Also changes the setting of the logger.
+        """
+        if new_debug != self._debug:
+            self._debug = new_debug
+            self._log = get_configured_logger(self.__class__.__name__, self._debug)
 
     def open(self, dataset_name, parameters):
         """Open the dataset for reading.
@@ -82,7 +104,6 @@ class FMESimplifiedReader(FMEReader):
         open_parameters = OpenParameters(dataset_name, parameters)
         if open_parameters.get("FME_DEBUG"):
             self._debug = True
-            self._log = get_configured_logger(self.__class__.__name__, self._debug)
 
         return self.enhancedOpen(open_parameters)
 
@@ -172,8 +193,8 @@ class FMESimplifiedWriter(FMEWriter):
     :ivar str _keyword: A unique identifier for this writer instance.
     :ivar MappingFile _mapping_file:
         Provides access into :class:`pluginbuilder.FMEMappingFile`.
-    :ivar FMELoggerAdapter _log: Provides access to the FME log.
-    :ivar bool _debug: Toggle for debug mode.
+    :ivar FMELoggerAdapter log: Provides access to the FME log.
+    :ivar bool debug: Toggle for debug mode.
     :ivar bool _aborted: True if :meth:`abort` was called.
     :ivar list[str] _feature_types: Ordered list of feature types.
     """
@@ -187,11 +208,33 @@ class FMESimplifiedWriter(FMEWriter):
         # Check if the debug flag is set
         self._debug = self._mapping_file.mapping_file.fetch("FME_DEBUG") is not None
 
-        # Instantiate a logger with the appropriate debug mode.
-        self._log = get_configured_logger(self.__class__.__name__, self._debug)
+        self._log = None
 
         self._aborted = False
         self._feature_types = []
+
+    @property
+    def log(self):
+        """
+        Provides access to the FME log
+        """
+        if not self._log:
+            # Instantiate a logger with the appropriate debug mode.
+            self._log = get_configured_logger(self.__class__.__name__, self._debug)
+        return self._log
+
+    @property
+    def debug(self):
+        return self._debug
+
+    @debug.setter
+    def debug(self, new_debug):
+        """
+        Set the debug flag for this writer. Also changes the setting of the logger.
+        """
+        if new_debug != self._debug:
+            self._debug = new_debug
+            self._log = get_configured_logger(self.__class__.__name__, self._debug)
 
     def open(self, dataset, parameters):
         """Open the dataset for writing.
@@ -213,8 +256,7 @@ class FMESimplifiedWriter(FMEWriter):
         # Look for the debug flag in the open() parameters.
         open_parameters = OpenParameters(dataset, parameters)
         if open_parameters.get("FME_DEBUG"):
-            self._debug = True
-            self._log = get_configured_logger(self.__class__.__name__, self._debug)
+            self.debug = True
 
         return self.enhancedOpen(open_parameters)
 
@@ -321,7 +363,7 @@ class FMEEnhancedTransformer(FMETransformer):
 
     Note that unlike readers and writers, transformers do not receive abort signals.
 
-    :ivar FMELoggerAdapter _log: Provides access to the FME log.
+    :ivar FMELoggerAdapter log: Provides access to the FME log.
     """
 
     def __init__(self):
@@ -329,18 +371,36 @@ class FMEEnhancedTransformer(FMETransformer):
         self._initialized = False
         self._keyword = None
         try:
-            debug = fme.macroValues.get("FME_DEBUG", False)
+            self._debug = fme.macroValues.get("FME_DEBUG", False)
         except AttributeError:
-            debug = False
-        self._log = get_configured_logger(self.keyword, debug)
+            self._debug = False
+        self._log = None
 
     @property
     def keyword(self):
-        """Override this method to define the keyword identifying the
-        transformer."""
+        """Override this method to define a generic keyword identifying the
+        transformer. It is instead recommended to change this value to the
+        name of the transformer in :meth:`setup`."""
         if not self._keyword:
-            self._keyword = "Transformer"
+            self._keyword = self.__class__.__name__
         return self._keyword
+
+    @keyword.setter
+    def keyword(self, new_keyword):
+        if new_keyword != self._keyword:
+            self._keyword = new_keyword
+            self._log = get_configured_logger(self._keyword, self._debug)
+
+    @property
+    def log(self):
+        """
+        Provides access to the FME log.
+        The log will prefix all messages with the value of :ivar:`keyword`
+        """
+        if not self._log:
+            # Instantiate a logger with the appropriate debug mode.
+            self._log = get_configured_logger(self.keyword, self._debug)
+        return self._log
 
     def setup(self, first_feature):
         """
