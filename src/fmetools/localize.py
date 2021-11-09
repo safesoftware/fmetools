@@ -9,7 +9,7 @@ def _get_default_locale_dir():
     Return the directory where localization files are stored.
     Assumes that fmetools has been vendorized as a whl according to the fpkg spec.
     """
-    return os.path.abspath(__file__ + "/../../../i81n")
+    return os.path.abspath(__file__ + "/../../../i18n")
 
 
 def enable_module_localization(python_module_name, locale_dir=None, enable_fallback=True, **kwargs):

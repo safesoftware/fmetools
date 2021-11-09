@@ -1,1 +1,1 @@
-include src/*/i81n/*/LC_MESSAGES/*.mo
+include src/*/i18n/*/LC_MESSAGES/*.mo
