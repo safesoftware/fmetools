@@ -282,9 +282,9 @@ class FMERequestsSession(PACSession):
                 kwargs["proxies"] = _REQUESTS_NO_PROXY_CONFIG
             elif custom_proxy:
                 self._log.debug(
-                    tr("Custom Proxy Map: Using proxy '%s' for URL '%s'"),
-                    custom_proxy.sanitized_proxy_url,
-                    url,
+                    tr(
+                        "Custom Proxy Map: Using proxy '{proxy_url}' for URL '{original_url}'"
+                    ).format(proxy_url=custom_proxy.sanitized_proxy_url, original_url=url)
                 )
                 if not self._is_proxy_auth_method_supported(custom_proxy.auth_method):
                     raise UnsupportedProxyAuthenticationMethod(
@@ -606,9 +606,12 @@ class UnsupportedProxyAuthenticationMethod(FMEException):
             e.g. "[format name] [direction]".
         :param str auth_method: Proxy authentication method.
         """
-        base_message = tr("%s: Proxy authentication mode '%s' is not supported by this format")
-        message = base_message % (log_prefix, auth_method)
-        super(UnsupportedProxyAuthenticationMethod, self).__init__(message)
+        message = tr(
+            "{prefix}: Proxy authentication mode '{auth_method}' is not supported by this format"
+        )
+        super(UnsupportedProxyAuthenticationMethod, self).__init__(
+            message.format(prefix=log_prefix, auth_method=auth_method)
+        )
 
 
 def _configure_proxy_exceptions():
