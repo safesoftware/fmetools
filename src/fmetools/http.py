@@ -42,7 +42,7 @@ urllib3.disable_warnings()
 
 
 _GENERIC_LOGGER_NAME = "FMERequestsSession"
-_no_prefix = {"no_prefix": True}
+
 
 # A proxy config of empty string tells Requests to ignore environment proxies too.
 # Tested with Fiddler.
@@ -227,11 +227,7 @@ class FMERequestsSession(PACSession):
 
     def _log_proxy(self, proxy_url):
         """Log about a proxy being used."""
-        self._log.info(
-            tr("Using proxy %s"),
-            proxy_url_without_credentials(proxy_url),
-            extra=_no_prefix,
-        )
+        self._log.info(tr("Using proxy %s"), proxy_url_without_credentials(proxy_url))
 
     @staticmethod
     def _is_proxy_auth_method_supported(auth_method):
