@@ -31,7 +31,9 @@ def enable_module_localization(python_module_name, locale_dir=None, enable_fallb
     return tr
 
 
-def enable_module_localization_with_plurals(python_module_name, locale_dir=None, enable_fallback=True, **kwargs):
+def enable_module_localization_with_plurals(
+    python_module_name, locale_dir=None, enable_fallback=True, **kwargs
+):
     """
     Attempt to load localized messages. Supports localized strings which specify plurals.
     Uses the default `gettext` behaviour to determine the language.

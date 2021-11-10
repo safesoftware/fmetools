@@ -227,10 +227,9 @@ class FMERequestsSession(PACSession):
 
     def _log_proxy(self, proxy_url):
         """Log about a proxy being used."""
-        base_message = tr("%s: Using proxy %s")
-        message = base_message % (self._log_prefix, proxy_url_without_credentials(proxy_url))
         self._log.info(
-            message,
+            tr("Using proxy %s"),
+            proxy_url_without_credentials(proxy_url),
             extra=_no_prefix,
         )
 
