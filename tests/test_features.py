@@ -99,9 +99,7 @@ def test_set_and_get_attributes(attrs):
 
 
 def test_build_feature():
-    f = build_feature(
-        "feattype", attrs={"foo": "bar"}, geometry=FMEPoint(1, 1, 1), coordsys="LL84"
-    )
+    f = build_feature("feattype", attrs={"foo": "bar"}, geometry=FMEPoint(1, 1, 1), coordsys="LL84")
     assert not f.getSequencedAttributeNames()
     assert f.getFeatureType() == "feattype"
     assert isinstance(f.getGeometry(), FMEPoint)

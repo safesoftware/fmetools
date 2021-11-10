@@ -1,0 +1,1 @@
+include src/*/i18n/*/LC_MESSAGES/*.mo

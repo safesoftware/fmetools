@@ -34,6 +34,7 @@ from fmetools import logfile
 from fmetools.logfile import FMELoggerAdapter
 from fmetools.utils import choice_to_bool
 from fmetools.parsers import stringarray_to_dict
+from fmetools import tr
 
 # PR65941: Disable lower-level SSL warnings.
 # https://urllib3.readthedocs.io/en/latest/advanced-usage.html#ssl-warnings
@@ -41,7 +42,7 @@ urllib3.disable_warnings()
 
 
 _GENERIC_LOGGER_NAME = "FMERequestsSession"
-_no_prepend_args = {"no_prepend_args": True}
+
 
 # A proxy config of empty string tells Requests to ignore environment proxies too.
 # Tested with Fiddler.
@@ -57,9 +58,7 @@ def _get_env_var(var_name_lowercase):
 
     :param str var_name_lowercase: The environment variable name.
     """
-    return os.environ.get(var_name_lowercase) or os.environ.get(
-        var_name_lowercase.upper()
-    )
+    return os.environ.get(var_name_lowercase) or os.environ.get(var_name_lowercase.upper())
 
 
 def _toggle_http_debug_logging(enabled):
@@ -132,12 +131,8 @@ class FMERequestsSession(PACSession):
 
     def __init__(self, log=None, fme_session=None):
         """
-        :param FMELoggerAdapter log: Python standard library logger to use.
-            If provided, it *must* be able to gracefully handle FME message numbers
-            or at least not propagate integer messages to handlers that can't handle it,
-            like the root logger.
-            If None, a generic Logger instance is instantiated,
-            which won't output anything to the FME log.
+        :param None|FMELoggerAdapter log: Python standard library logger to use.
+            If None, a generic FMELoggerAdapter instance is instantiated
         :param FMESession fme_session: Load proxy configuration from this session.
             Intended for testing purposes only.
             Defaults to a new :class:`FMESession` instance.
@@ -147,10 +142,8 @@ class FMERequestsSession(PACSession):
         self.mount("http://", adapter)
         self.mount("https://", adapter)
 
-        self._log = log or logfile.get_configured_logger(_GENERIC_LOGGER_NAME)
         self._log_prefix = self.__class__.__name__
-        if isinstance(self._log, FMELoggerAdapter):
-            self._log_prefix = " ".join(self._log.prepended_params) or self._log_prefix
+        self._log = log or logfile.get_configured_logger(self._log_prefix)
 
         self._general_proxy_config, self._custom_proxy_map = self._load_proxy_settings(
             fme_session or FMESession()
@@ -167,9 +160,7 @@ class FMERequestsSession(PACSession):
 
         # FMEENGINE-68435: Set library debug logging based on workspace debug flags.
         try:
-            _toggle_http_debug_logging(
-                "HTTP_DEBUG" in fme.macroValues.get("FME_DEBUG", "")
-            )
+            _toggle_http_debug_logging("HTTP_DEBUG" in fme.macroValues.get("FME_DEBUG", ""))
         except AttributeError:
             pass
 
@@ -236,12 +227,7 @@ class FMERequestsSession(PACSession):
 
     def _log_proxy(self, proxy_url):
         """Log about a proxy being used."""
-        self._log.info(
-            926850,
-            self._log_prefix,
-            proxy_url_without_credentials(proxy_url),
-            extra=_no_prepend_args,
-        )
+        self._log.info(tr("Using proxy %s"), proxy_url_without_credentials(proxy_url))
 
     @staticmethod
     def _is_proxy_auth_method_supported(auth_method):
@@ -278,7 +264,7 @@ class FMERequestsSession(PACSession):
         if not kwargs.get("proxies"):
             try:
                 if self._general_proxy_config.is_non_proxy_host(urlparse(url).hostname):
-                    self._log.debug("Non-Proxy Hosts: Directly accessing '%s'", url)
+                    self._log.debug(tr("Non-Proxy Hosts: Directly accessing '%s'"), url)
                     kwargs["proxies"] = _REQUESTS_NO_PROXY_CONFIG
             except ValueError:
                 pass  # Ignore malformed URLs.
@@ -288,13 +274,13 @@ class FMERequestsSession(PACSession):
         if not kwargs.get("proxies"):
             custom_proxy = self._custom_proxy_map.custom_proxy_for_url(url)
             if custom_proxy and not custom_proxy.proxy_url:
-                self._log.debug("Custom Proxy Map: Directly accessing '%s'", url)
+                self._log.debug(tr("Custom Proxy Map: Directly accessing '%s'"), url)
                 kwargs["proxies"] = _REQUESTS_NO_PROXY_CONFIG
             elif custom_proxy:
                 self._log.debug(
-                    "Custom Proxy Map: Using proxy '%s' for URL '%s'",
-                    custom_proxy.sanitized_proxy_url,
-                    url,
+                    tr(
+                        "Custom Proxy Map: Using proxy '{proxy_url}' for URL '{original_url}'"
+                    ).format(proxy_url=custom_proxy.sanitized_proxy_url, original_url=url)
                 )
                 if not self._is_proxy_auth_method_supported(custom_proxy.auth_method):
                     raise UnsupportedProxyAuthenticationMethod(
@@ -319,7 +305,12 @@ class KerberosUnsupportedException(FMEException):
         """
         :param str log_prefix: Name of caller to use in the log message.
         """
-        super(KerberosUnsupportedException, self).__init__(926851, [log_prefix])
+        base_message = tr(
+            "%s: Kerberos authentication on this system requires the installation for a Kerberos library for Python. "
+            + "Otherwise, try NTLM authentication if it's enabled by the host, or please visit http://www.safe.com/support"
+        )
+        message = base_message % log_prefix
+        super(KerberosUnsupportedException, self).__init__(message)
 
 
 def get_kerberos_auth(caller_name):
@@ -374,7 +365,7 @@ def get_auth_object(auth_type, user="", password="", caller_name=""):
 
         return HttpNtlmAuth(user, password)
     else:
-        raise ValueError("Unknown authentication type '%s'" % auth_type)
+        raise ValueError(tr("Unknown authentication type '%s'") % auth_type)
 
 
 def proxy_url_without_credentials(proxy_url):
@@ -387,8 +378,7 @@ def proxy_url_without_credentials(proxy_url):
     if credentials_separator_index > -1:
         # Strip out credentials if they're present.
         proxy_url = (
-            proxy_url[: proxy_url.find("://") + 3]
-            + proxy_url[credentials_separator_index + 1 :]
+            proxy_url[: proxy_url.find("://") + 3] + proxy_url[credentials_separator_index + 1 :]
         )
     return proxy_url
 
@@ -396,9 +386,7 @@ def proxy_url_without_credentials(proxy_url):
 # For FMESession.getProperties(). For the result format, see fmesession.h getProxy().
 FMESESSION_PROP_NETWORK_PROXY = "fme_session_prop_network_proxy"
 FMESESSION_PROP_NETWORK_PROXY_SETTINGS = "fme_session_prop_network_proxy_settings"
-FMEProxyDefinition = namedtuple(
-    "FMEProxyDefinition", ["env_var", "proxy_url", "auth_method"]
-)
+FMEProxyDefinition = namedtuple("FMEProxyDefinition", ["env_var", "proxy_url", "auth_method"])
 FMECustomProxyMap = namedtuple(
     "FMECustomProxyMap",
     [
@@ -450,9 +438,7 @@ class FMEGeneralProxyHandler(object):
                 and proxy_config[i + 2] == "proxy_auth_method"
             ):
                 # Proxy values are not FME-encoded.
-                self.proxies.append(
-                    FMEProxyDefinition(key, value, proxy_config[i + 3].lower())
-                )
+                self.proxies.append(FMEProxyDefinition(key, value, proxy_config[i + 3].lower()))
                 i += 4
                 continue
             if key == "use-system-proxy":
@@ -462,7 +448,7 @@ class FMEGeneralProxyHandler(object):
                     for host_regex in json.loads(value):
                         self.non_proxy_hosts.append(re.compile(host_regex, re.I))
                 except (json.JSONDecodeError, re.error):
-                    warnings.warn("FME non-proxy-hosts: not JSON or bad regex")
+                    warnings.warn(tr("FME non-proxy-hosts: not JSON or bad regex"))
             i += 2
 
         # Use System Proxy plus presence of general proxies implies that PAC
@@ -565,9 +551,7 @@ class FMECustomProxyMapHandler(object):
         url = fme_session.decodeFromFMEParsableText(url).lower()
 
         proxy_map_info = stringarray_to_dict(proxy_info.split(","))
-        proxy_url = fme_session.decodeFromFMEParsableText(
-            proxy_map_info["proxy-url"]
-        ).strip()
+        proxy_url = fme_session.decodeFromFMEParsableText(proxy_map_info["proxy-url"]).strip()
         if not proxy_url:
             # A proxy mapping that means 'do not use proxy for this URL'.
             return FMECustomProxyMap(url, "", "", False, "", "", "")
@@ -584,9 +568,7 @@ class FMECustomProxyMapHandler(object):
         )  # No credentials and no path.
         user = fme_session.decodeFromFMEParsableText(proxy_map_info["user"])
         password = fme_session.decodeFromFMEParsableText(proxy_map_info["password"])
-        requires_authentication = choice_to_bool(
-            proxy_map_info["requires-authentication"]
-        )
+        requires_authentication = choice_to_bool(proxy_map_info["requires-authentication"])
 
         proxy_url_with_creds = sanitized_proxy_url
         if requires_authentication:
@@ -598,9 +580,7 @@ class FMECustomProxyMapHandler(object):
                 if password:
                     creds += ":" + quote(password)
                 creds += "@"
-            proxy_url_with_creds = "{}://{}{}".format(
-                parsed_proxy.scheme, creds, netloc
-            )
+            proxy_url_with_creds = "{}://{}{}".format(parsed_proxy.scheme, creds, netloc)
 
         return FMECustomProxyMap(
             url,
@@ -622,8 +602,11 @@ class UnsupportedProxyAuthenticationMethod(FMEException):
             e.g. "[format name] [direction]".
         :param str auth_method: Proxy authentication method.
         """
+        message = tr(
+            "{prefix}: Proxy authentication mode '{auth_method}' is not supported by this format"
+        )
         super(UnsupportedProxyAuthenticationMethod, self).__init__(
-            926852, [log_prefix, auth_method]
+            message.format(prefix=log_prefix, auth_method=auth_method)
         )
 
 

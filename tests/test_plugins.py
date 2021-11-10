@@ -56,7 +56,7 @@ def test_writer():
 
 def test_enhanced_transformer(monkeypatch):
     with FMEEnhancedTransformer() as xformer:
-        assert xformer.keyword == "Transformer"
+        assert xformer.keyword == "FMEEnhancedTransformer"
         xformer.input(FMEFeature())
 
         def reject_assert(feature):

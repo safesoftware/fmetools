@@ -15,6 +15,8 @@ from fmeobjects import (
 )
 import fme
 
+from fmetools import tr
+
 import logging
 from six import string_types
 
@@ -33,25 +35,12 @@ class FMELogFormatter(logging.Formatter):
         super(FMELogFormatter, self).__init__()
 
     def format(self, record):
-        if isinstance(record.msg, int):
-            msg_params = list(record.args)
-            try:
-                if record.prepended_params:
-                    msg_params = list(record.prepended_params)
-                    msg_params.extend(record.args)
-            except AttributeError:
-                # LogRecords don't necessarily have prepended_params, as it's something we add.
-                pass
-            # FMELogFile is local due to FMESession issues when used in Python's singleton logging system.
-            msg_string = FMELogFile().getMessage(
-                record.msg, FMELogFormatter.cast_msg_params(msg_params)
-            )
-        else:
-            # Only attempt substitutions in string messages if caller gave arguments.
-            # Otherwise, '%xx' in message could be misinterpreted as placeholders and cause errors.
-            msg_string = record.msg
-            if record.args:
-                msg_string = record.msg % record.args
+        msg_string = record.getMessage()
+
+        if not record.no_prefix:
+            # Prefix the message with the name of the logger unless requested
+            # We add this attribute to the LogRecord during :func:`FMELogHandler.process`
+            msg_string = record.name + ": " + msg_string
 
         if record.levelno == logging.DEBUG:
             msg_string = "DEBUG: " + msg_string
@@ -128,24 +117,26 @@ class FMELoggerAdapter(logging.LoggerAdapter):
     off any message parameter list. For use with :class:`FMELogFormatter`,
     which recognizes the keyword arguments involved.
 
-    Logging methods accept a keyword ``no_prepend_args``.
-    If True, nothing will be prepended to message parameters.
+    Logging methods accept a keyword ``no_prefix``.
+    If True, the name of the log will not be prepended to the logged message.
+    Otherwise, the message will appear '<name> : <message>'.
 
     :ivar prepended_params: Message parameters to prepend to all message parameters.
        Intended for frequent log message prefixes, like format name and direction.
     """
 
-    def __init__(self, logger, extras):
-        super(FMELoggerAdapter, self).__init__(logger, extras)
-        self.prepended_params = []
+    def __init__(self, logger, extra):
+        super(FMELoggerAdapter, self).__init__(logger, extra)
 
     def process(self, msg, kwargs):
         if "extra" not in kwargs:
             kwargs["extra"] = {}
         extra = kwargs["extra"]
         extra.update(self.extra)
-        if not extra.get("no_prepend_args", False):
-            extra["prepended_params"] = self.prepended_params
+
+        # the ``no_prefix`` value defaults to False
+        extra["no_prefix"] = extra.get("no_prefix", False)
+
         return msg, kwargs
 
     def warn(self, msg, *args, **kwargs):
@@ -171,10 +162,6 @@ def get_configured_logger(name="fmelog", debug=None):
         except (AttributeError, KeyError):
             debug = False
     logger.setLevel(logging.DEBUG if debug else logging.INFO)
-    # Don't duplicate messages to the parent (root) logger.
-    # The root logger isn't set up to handle FME msgnums,
-    # causing an exception in stderr every time a msgnum is logged in unit tests.
-    logger.propagate = False
 
     # Method checks for duplicates before adding.
     # This is designed to avoid duplicated handlers when, for instance,
@@ -184,5 +171,6 @@ def get_configured_logger(name="fmelog", debug=None):
     logger.addHandler(handler)
 
     log_adapter = FMELoggerAdapter(logger, {})
-    log_adapter.debug("Configured logging for %s" % name)
+
+    log_adapter.debug(tr("Configured logging for %s") % name)
     return log_adapter
