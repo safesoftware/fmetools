@@ -86,6 +86,42 @@ class FMETokenConnectionWrapper(object):
         """
         return self.wrapped_conn.setSuspectExpired()
 
+    def get_authorization_param_key(self):
+        """
+        Gets the query parameter for the token.
+
+        :returns: query parameter name, stripped of leading and trailing spaces.
+        """
+        param, _ = self.wrapped_conn.getAuthorizationQueryString()
+        return param.strip()
+
+    def get_authorization_header_name(self):
+        """
+        Gets the name of the authorization header for the token.
+
+        :returns: authorization header name, stripped of leading and trailing spaces.
+        """
+        header, _ = self.get_authorization_header()
+        return header
+
+    @property
+    def token_in_header(self):
+        """
+        True if the web connection definition specifies that the token should be placed in the header.
+
+        :rtype: bool
+        """
+        return self.wrapped_conn.getWebService().supportHeaderAuthorization()
+
+    @property
+    def token_in_url(self):
+        """
+        True if the web connection definition specifies that the token should be placed as a URL query parameter.
+
+        :rtype: bool
+        """
+        return self.wrapped_conn.getWebService().supportQueryStringAuthorization()
+
 
 def get_named_connection_auth(connection_name, client_name):
     """
@@ -119,26 +155,29 @@ class FMEWebConnectionTokenBasedAuth(AuthBase):
     These tokens are either arbitrary tokens, or OAuth 2.0 access tokens.
     """
 
-    def __init__(self, wrapped_conn, token_location=None, header_and_url=False):
+    def __init__(self, wrapped_conn):
         """
         :param FMETokenConnectionWrapper wrapped_conn:
             Wrapped OAuth 2.0 or token-based connection from which to obtain tokens.
-        :param str token_location: If None, the token is treated as an
-            OAuth 2.0 access token and put in the header.
-            Otherwise, this is the query string parameter name for the token.
-        :param bool header_and_url: If true, then assume token is an OAuth 2.0 token,
-            but include it in both the Authorization header and token_location.
-            This is intended for use by ArcGIS Online only.
         """
-        assert (header_and_url and token_location) or not header_and_url
         self.conn = wrapped_conn
-        self.token_location = token_location
-        self.header_and_url = header_and_url
+        self.token_location = None
+        self.header_location = None
+
+        # use the web connection definition and honour token placement settings
+        if self.conn.token_in_url:
+            # Query string parameter name for the token
+            self.token_location = self.conn.get_authorization_param_key()
+
+        if self.conn.token_in_header:
+            # Header name for the token
+            # For OAuth 2.0 connections, this should default to 'Authorization'
+            self.header_location = self.conn.get_authorization_header_name()
+
+        assert self.header_location or self.token_location
 
     def __call__(self, prepared_request):
-        header, value = self.conn.get_authorization_header()
-        # TODO: Remove token_location argument and get it from connection settings.
-        # TODO: Remove header_and_url argument and have AGOL implement it.
+        _, header_value = self.conn.get_authorization_header()
 
         if self.token_location:
             # Include token in GET parameters. `params` is not available in `preparedRequest`.
@@ -146,12 +185,12 @@ class FMEWebConnectionTokenBasedAuth(AuthBase):
                 prepared_request.url,
                 {self.token_location: self.conn.get_access_token()},
             )
-        if not self.token_location or self.header_and_url:
+
+        if self.header_location:
             # Key must be bytestring on PY27.
             # Unicode key on PY27 will cause UnicodeDecodeError in httplib when body is binary.
-            if six.PY2:
-                header = header.encode("ascii")
-            prepared_request.headers[header] = value
+            header = self.header_location.encode("ascii") if six.PY2 else self.header_location
+            prepared_request.headers[header] = header_value
 
         return prepared_request
 
