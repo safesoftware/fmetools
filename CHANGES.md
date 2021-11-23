@@ -1,5 +1,9 @@
 # fmetools changes
 
+## 0.1.0
+
+* Respect web connection token placement settings.
+
 ## 0.0.2
 
 * Added localization utilities.
