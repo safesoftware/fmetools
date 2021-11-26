@@ -1,5 +1,9 @@
 # fmetools changes
 
+## 0.1.1
+
+* Maintain Python 2.7 support.
+
 ## 0.1.0
 
 * Respect web connection token placement settings.
