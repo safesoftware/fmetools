@@ -1,3 +1,5 @@
+# coding: utf-8
+
 """
 FME PluginBuilder subclasses that provide improved functionality.
 """

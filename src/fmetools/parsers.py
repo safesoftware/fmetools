@@ -1,3 +1,5 @@
+# coding: utf-8
+
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 from collections import OrderedDict, namedtuple
@@ -171,7 +173,7 @@ def get_template_feature_type(feature):
     return _system_to_unicode(template_feature_type or feature.getFeatureType())
 
 
-SearchEnvelope = namedtuple("SearchEnvelope", "min_x min_y max_x max_y coordsys", defaults=(None,))
+SearchEnvelope = namedtuple("SearchEnvelope", "min_x min_y max_x max_y coordsys")
 
 
 class MappingFile(object):

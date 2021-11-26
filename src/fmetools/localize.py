@@ -1,3 +1,5 @@
+# coding: utf-8
+
 """
 Helpers for enabling localized strings in Python package code via gettext.
 """
