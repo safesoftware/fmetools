@@ -1,3 +1,5 @@
+# coding: utf-8
+
 from collections import Counter
 
 from hypothesis import given, assume, example, settings

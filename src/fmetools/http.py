@@ -1,3 +1,5 @@
+# coding: utf-8
+
 """
 Helpers for making HTTP requests within FME.
 
