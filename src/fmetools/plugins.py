@@ -345,6 +345,62 @@ class FMETransformer(object):
         # Stub. Implementation is injected at runtime.
         pass
 
+    def has_support_for(self, support_type):
+        """
+        Return whether this transformer supports a certain type. Currently,
+        the only supported type is fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM.
+
+        When a transformer supports fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM,
+        FME will pass features to the transformer's :meth:`input` method that
+        come from a feature table object. This will allow for significant performance
+        gains when processing a large number of features.
+
+        To support fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM, features passed
+        into :meth:`input` can't be copied or cached for later use, and can't
+        be read or modified after being passed to :meth:`pyoutput`. If any of
+        those violations are performed, the behavior is undefined.
+
+        A consequence of the fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM requirements
+        is group-by processing is not possible in this mode because group-by
+        processing requires caching of features for output in the :meth:`process_group`
+        method.
+
+        **Illegal Examples**
+
+        *Copy and access later:* ::
+
+            def input(self, feature):
+                self._cached_features.append(feature)
+
+            def close(self):
+                for feature in self._cached_features:   # not allowed
+                    self.pyoutput(feature)
+
+        *Access after output:* ::
+
+            def input(self, feature):
+                self.pyoutput(feature)
+                feature.setAttribute("attr name", "attr val")   # not allowed
+
+        *Group-by processing:* ::
+
+            def input(self, feature):
+                self._cached_features.append(feature)
+
+            def process_group(self):
+                for feature in self._cached_features:   # not allowed
+                    self.pyoutput(feature)
+
+        **Note:** Support for this method and the fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM
+        constant definition was added in FME 2022.0. For all earlier versions of
+        FME, this method will never be called.
+
+        :type support_type: int
+        :returns: True if the passed in support type is supported.
+        :rtype: bool
+        """
+        return False
+
 
 class FMEEnhancedTransformer(FMETransformer):
     """
