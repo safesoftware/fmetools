@@ -1,5 +1,8 @@
 # fmetools changes
 
+## 0.1.2
+* Add `has_support_for()` to `plugins.FMETransformer` to enable transformer bulk mode support.
+
 ## 0.1.1
 
 * Maintain Python 2.7 support.
