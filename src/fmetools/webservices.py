@@ -125,6 +125,27 @@ class FMETokenConnectionWrapper(object):
         return self.wrapped_conn.getWebService().supportQueryStringAuthorization()
 
 
+def set_session_auth_from_named_connection(session, connection_name, client_name):
+    """
+    Looks up a configured authentication object from a Named Connection and
+    set it on a session used for web requests.
+
+    This method handles implementation of the SSL verification setting on Web Connections.
+
+    :param requests.Session|FMERequestsSession session: web session to set the auth on
+    :param connection_name: Name of the Named Connection / Web Connection. It's an error if no such connection exists.
+    :param client_name: Name to use for the log message prefix in the failure case, e.g. format or transformer name.
+    """
+    auth = get_named_connection_auth(connection_name, client_name)
+
+    # get_named_connection_auth not raising an error implies that the web connection exists
+    conn = NamedConnectionManager().getNamedConnection(connection_name)
+    assert isinstance(conn, (FMEBasicConnection, FMEOAuthV2Connection, FMETokenConnection))
+
+    session.auth = auth
+    session.verify = conn.getVerifySslCertificate()
+
+
 def get_named_connection_auth(connection_name, client_name):
     """
     Look up a Named Connection and get a configured authentication object
