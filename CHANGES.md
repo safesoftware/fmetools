@@ -1,6 +1,11 @@
 # fmetools changes
 
+## 0.1.3
+
+* Add `webservices.set_session_auth_from_named_connection()` to honour SSL verification settings on Named Connections.
+
 ## 0.1.2
+
 * Add `has_support_for()` to `plugins.FMETransformer` to enable transformer bulk mode support.
 
 ## 0.1.1
