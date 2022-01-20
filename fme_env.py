@@ -40,7 +40,6 @@ if __name__ == "__main__":
     paths_to_add = [
         "#" + args.fme_home,
         os.path.join(args.fme_home, "python"),
-        os.path.join(args.fme_home, "python", "python%s" % sys.version_info.major),
         os.path.join(args.fme_home, "python", leaf_dir),
         os.path.join(args.fme_home, "fmeobjects", leaf_dir),
     ]
