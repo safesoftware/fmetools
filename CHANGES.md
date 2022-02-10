@@ -1,5 +1,9 @@
 # fmetools changes
 
+## 0.1.4
+
+* Add `hasSupportFor()` to `plugins.FMESimplifiedReader` to enable reader bulk mode support.
+
 ## 0.1.3
 
 * Add `webservices.set_session_auth_from_named_connection()` to honour SSL verification settings on Named Connections.
