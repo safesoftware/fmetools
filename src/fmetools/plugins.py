@@ -7,7 +7,7 @@ FME PluginBuilder subclasses that provide improved functionality.
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import fme
-from fmeobjects import FMEFeature, FME_SUPPORT_FEATURE_TABLE_SHIM
+from fmeobjects import FMEFeature
 from pluginbuilder import FMEReader, FMEWriter
 
 from fmetools.logfile import get_configured_logger
@@ -91,16 +91,13 @@ class FMESimplifiedReader(FMEReader):
         a feature table object will be created from features produced by this reader.
         This will allow for significant performance gains if the reader will output
         a large number of features which share the same schema.
-        To declare feature table shim support, the keyword 'CREATE_FEATURE_TABLES_FROM_DATA'
-        in the reader's metafile must be set to 'Yes'.
+        To declare feature table shim support, the reader's metafile SOURCE_SETTINGS
+        must also contain the line 'DEFAULT_VALUE CREATE_FEATURE_TABLES_FROM_DATA Yes'.
 
         :param int support_type: support type passed in by Workbench infrastructure
         :returns: True if the passed in support type is supported.
         :rtype: bool
         """
-        if support_type == FME_SUPPORT_FEATURE_TABLE_SHIM:
-            return True
-
         return False
 
     def open(self, dataset_name, parameters):

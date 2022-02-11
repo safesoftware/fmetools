@@ -2,7 +2,7 @@
 
 ## 0.1.4
 
-* Add `hasSupportFor()` to `plugins.FMESimplifiedReader` to enable reader bulk mode support.
+* Add `hasSupportFor()` to `plugins.FMESimplifiedReader` to allow for reader bulk mode support.
 
 ## 0.1.3
 
