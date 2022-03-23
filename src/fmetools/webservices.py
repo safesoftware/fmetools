@@ -17,11 +17,11 @@ from fmewebservices import (
     FMEOAuthV2Connection,
     FMETokenConnection,
 )
-from fmetools import tr
+from . import tr
 from fmeobjects import FMEException
 from requests.auth import AuthBase
 
-from fmetools.http import get_auth_object
+from .http import get_auth_object
 
 # 'Dynamic' in Workbench GUI means the auth method is set in
 # the Web Connection definition instead of the Web Service definition.
@@ -139,7 +139,9 @@ def _create_auth_from_named_connection(conn, client_name=""):
     if isinstance(conn, FMEBasicConnection):
         auth_type = conn.getAuthenticationMethod()
         user, pwd = conn.getUserName(), conn.getPassword()
-        return get_auth_object(CONN_AUTH_METHOD_TO_KEYWORD[auth_type], user, pwd, client_name)
+        return get_auth_object(
+            CONN_AUTH_METHOD_TO_KEYWORD[auth_type], user, pwd, client_name
+        )
     if isinstance(conn, (FMEOAuthV2Connection, FMETokenConnection)):
         return FMEWebConnectionTokenBasedAuth(FMETokenConnectionWrapper(conn))
     raise TypeError(tr("Unexpected connection type {}").format(repr(conn)))
@@ -229,7 +231,11 @@ class FMEWebConnectionTokenBasedAuth(AuthBase):
         if self.header_location:
             # Key must be bytestring on PY27.
             # Unicode key on PY27 will cause UnicodeDecodeError in httplib when body is binary.
-            header = self.header_location.encode("ascii") if six.PY2 else self.header_location
+            header = (
+                self.header_location.encode("ascii")
+                if six.PY2
+                else self.header_location
+            )
             prepared_request.headers[header] = header_value
 
         return prepared_request

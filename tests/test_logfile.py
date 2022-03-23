@@ -4,85 +4,95 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import logging
 
-import pytest
+try:
+    from unittest.mock import patch, MagicMock
+except ImportError:
+    from mock import patch, MagicMock  # PY2 backport library
+
+
+import fmeobjects
 from fmeobjects import FMEFeature
-from logging import LogRecord
 
-from fmetools.logfile import FMELogFormatter, FMELogHandler, FMELoggerAdapter
+from hypothesis import given, settings
+from hypothesis.strategies import sampled_from, booleans
 
-
-class DebugLogRecord(LogRecord):
-    def __init__(self, msg, args=None, level=logging.INFO, no_prefix=False):
-        if args is None:
-            args = ()
-        self.no_prefix = no_prefix
-        super(DebugLogRecord, self).__init__("logname", level, "", 1, msg, args, None)
+from fmetools.logfile import (
+    FMELogHandler,
+    get_configured_logger,
+    LEVEL_NUM_TO_FME,
+)
 
 
-@pytest.fixture
-def formatter():
-    return FMELogFormatter()
+def test_log_handler_instance_equality():
+    assert FMELogHandler() == FMELogHandler()
 
 
-@pytest.fixture
-def handler():
-    return FMELogHandler()
+def test_logger_debug_autoconfig(monkeypatch):
+    """
+    Verify logger's default log level based on FME_DEBUG key presence in fme.macroValues,
+    or macroValues being undefined (for older FME).
+    """
+    with patch("fmetools.logfile.fme.macroValues", new={}, create=True) as macrovalues:
+        assert get_configured_logger().getEffectiveLevel() == logging.INFO
+        macrovalues["FME_DEBUG"] = "foobar"
+        assert get_configured_logger().getEffectiveLevel() == logging.DEBUG
+    monkeypatch.delattr("fmetools.logfile.fme.macroValues", raising=False)
+    assert get_configured_logger().getEffectiveLevel() == logging.INFO
 
 
-@pytest.fixture
-def adapter():
-    return FMELoggerAdapter(logging.getLogger(), {"foo": "bar"})
+@given(py_severity=sampled_from(sorted(LEVEL_NUM_TO_FME.keys())), debug_mode=booleans())
+def test_log_output(py_severity, debug_mode):
+    """
+    - Filtering of debug messages based on whether the logger is in debug mode.
+    - Python log severity maps correctly to FME log severity.
+    - Prefixing of all messages.
+    - Prefixing of debug messages.
+    """
+    mock_logfile = MagicMock(fmeobjects.FMELogFile)
+    with patch("fmetools.logfile.FMELogFile", return_value=mock_logfile):
+        logger = get_configured_logger(name="test", debug=debug_mode)
+        logger.log(py_severity, "hello %s", "world")
+        expected_msg = "test: hello world"
+        if debug_mode:
+            if py_severity < logging.DEBUG:
+                # Msgs less than debug level are ignored,
+                # so the last logged msg is only the one about enabling debug logging.
+                mock_logfile.logMessageString.assert_called_with(
+                    "DEBUG: test: Debug logging enabled",
+                    LEVEL_NUM_TO_FME[logging.DEBUG],
+                )
+            else:
+                if py_severity == logging.DEBUG:
+                    expected_msg = "DEBUG: " + expected_msg
+                mock_logfile.logMessageString.assert_called_with(
+                    expected_msg, LEVEL_NUM_TO_FME[py_severity]
+                )
+        else:
+            if py_severity <= logging.DEBUG:
+                assert not mock_logfile.logMessageString.called
+            else:
+                mock_logfile.logMessageString.assert_called_with(
+                    expected_msg, LEVEL_NUM_TO_FME[py_severity]
+                )
 
 
-def test_log_formatter_msg_string(formatter):
-    output = formatter.format(DebugLogRecord("foo bar"))
-    assert "logname: foo bar" == output
+@given(py_severity=sampled_from(sorted(LEVEL_NUM_TO_FME.keys())), debug_mode=booleans())
+@settings(deadline=None)
+def test_log_feature(py_severity, debug_mode):
+    """
+    Logger passes FMEFeature to the right method, using the right severity.
+    """
+    mock_logfile = MagicMock(fmeobjects.FMELogFile)
+    with patch("fmetools.logfile.FMELogFile", return_value=mock_logfile):
+        logger = get_configured_logger(debug=debug_mode)
+        feature = FMEFeature()
+        logger.log(py_severity, feature)
 
-
-def test_log_formatter_msg_string_param_substitution(formatter):
-    output = formatter.format(DebugLogRecord("foo %s bar %d", ("baz", 0)))
-    assert "logname: foo baz bar 0" == output
-
-
-def test_log_formatter_msg_string_debug_prefix(formatter):
-    output = formatter.format(DebugLogRecord("foo", level=logging.DEBUG))
-    assert "DEBUG: logname: foo" == output
-
-
-def test_log_formatter_no_log_prefix(formatter):
-    record = DebugLogRecord(0, no_prefix=True)
-    assert "0" == formatter.format(record)
-
-    # Message strings never receive prepended params.
-    record = DebugLogRecord("foo %s", ("bar",), no_prefix=True)
-    assert "foo bar" == formatter.format(record)
-
-
-def test_log_formatter_cast_msg_params():
-    """Test that message parameters are cast correctly, and modify the input list."""
-    params = [0, 0.0, True, None, "foo", "车神", "é"]
-    assert params == FMELogFormatter.cast_msg_params(params)
-    assert params == ["0", "0.0", "True", "None", "foo", "车神", "é"]
-
-
-def test_log_handler_feature_logging(handler):
-    handler.emit(DebugLogRecord(FMEFeature()))
-
-
-def test_log_handler_instance_equality(handler):
-    a, b = handler, FMELogHandler()
-    assert a == b
-
-
-def test_log_adapter_default_prefix_behaviour(adapter):
-    msg, kwargs = adapter.process(0, {"biz": "baz"})
-    assert 0 == msg
-    assert "foo" in kwargs["extra"]
-    assert "biz" in kwargs
-    assert kwargs["extra"]["no_prefix"] is False
-
-
-@pytest.mark.parametrize("no_prefix_option", [True, False])
-def test_log_adapter_no_prefix_option(adapter, no_prefix_option):
-    _, kwargs = adapter.process(0, {"extra": {"no_prefix": no_prefix_option}})
-    assert kwargs["extra"]["no_prefix"] == no_prefix_option
+        if py_severity < logging.DEBUG:
+            assert not mock_logfile.logFeature.called
+        elif py_severity == logging.DEBUG and not debug_mode:
+            assert not mock_logfile.logFeature.called
+        else:
+            mock_logfile.logFeature.assert_called_with(
+                feature, LEVEL_NUM_TO_FME[py_severity]
+            )

@@ -8,7 +8,7 @@ from collections import OrderedDict
 import fmeobjects
 from fmeobjects import FMEFeature, kFMERead_Geometry, FME_ATTR_STRING
 from six import iteritems
-from fmetools import tr
+from . import tr
 
 
 def set_attribute(feature, name, value, attr_type=None):
@@ -83,7 +83,10 @@ def get_attributes(feature, attr_names, default=None, pop=False):
     :param bool pop: Whether the attributes are to be deleted from feature.
     :rtype: dict
     """
-    return {name: get_attribute(feature, name, default=default, pop=pop) for name in attr_names}
+    return {
+        name: get_attribute(feature, name, default=default, pop=pop)
+        for name in attr_names
+    }
 
 
 def get_attributes_with_prefix(feature, prefix, default=None, pop=False):
@@ -104,7 +107,9 @@ def get_attributes_with_prefix(feature, prefix, default=None, pop=False):
     )
 
 
-def build_feature(feature_type, attrs=None, attr_types=None, geometry=None, coordsys=None):
+def build_feature(
+    feature_type, attrs=None, attr_types=None, geometry=None, coordsys=None
+):
     """
     Build an :class:`FMEFeature` instance with the most frequently used parameters.
 

@@ -32,11 +32,10 @@ from requests.adapters import HTTPAdapter
 from requests.auth import HTTPProxyAuth, HTTPBasicAuth, HTTPDigestAuth
 from six.moves.urllib.parse import urlparse, quote
 
-from fmetools import logfile
-from fmetools.logfile import FMELoggerAdapter
-from fmetools.utils import choice_to_bool
-from fmetools.parsers import stringarray_to_dict
-from fmetools import tr
+from . import tr
+from .logfile import get_configured_logger
+from .utils import choice_to_bool
+from .parsers import stringarray_to_dict
 
 # PR65941: Disable lower-level SSL warnings.
 # https://urllib3.readthedocs.io/en/latest/advanced-usage.html#ssl-warnings
@@ -60,7 +59,9 @@ def _get_env_var(var_name_lowercase):
 
     :param str var_name_lowercase: The environment variable name.
     """
-    return os.environ.get(var_name_lowercase) or os.environ.get(var_name_lowercase.upper())
+    return os.environ.get(var_name_lowercase) or os.environ.get(
+        var_name_lowercase.upper()
+    )
 
 
 def _toggle_http_debug_logging(enabled):
@@ -133,8 +134,7 @@ class FMERequestsSession(PACSession):
 
     def __init__(self, log=None, fme_session=None):
         """
-        :param None|FMELoggerAdapter log: Python standard library logger to use.
-            If None, a generic FMELoggerAdapter instance is instantiated
+        :param log: Python standard library logger to use. If None, a default is used.
         :param FMESession fme_session: Load proxy configuration from this session.
             Intended for testing purposes only.
             Defaults to a new :class:`FMESession` instance.
@@ -145,7 +145,7 @@ class FMERequestsSession(PACSession):
         self.mount("https://", adapter)
 
         self._log_prefix = self.__class__.__name__
-        self._log = log or logfile.get_configured_logger(self._log_prefix)
+        self._log = log or get_configured_logger(self._log_prefix)
 
         self._general_proxy_config, self._custom_proxy_map = self._load_proxy_settings(
             fme_session or FMESession()
@@ -162,7 +162,9 @@ class FMERequestsSession(PACSession):
 
         # FMEENGINE-68435: Set library debug logging based on workspace debug flags.
         try:
-            _toggle_http_debug_logging("HTTP_DEBUG" in fme.macroValues.get("FME_DEBUG", ""))
+            _toggle_http_debug_logging(
+                "HTTP_DEBUG" in fme.macroValues.get("FME_DEBUG", "")
+            )
         except AttributeError:
             pass
 
@@ -282,7 +284,9 @@ class FMERequestsSession(PACSession):
                 self._log.debug(
                     tr(
                         "Custom Proxy Map: Using proxy '{proxy_url}' for URL '{original_url}'"
-                    ).format(proxy_url=custom_proxy.sanitized_proxy_url, original_url=url)
+                    ).format(
+                        proxy_url=custom_proxy.sanitized_proxy_url, original_url=url
+                    )
                 )
                 if not self._is_proxy_auth_method_supported(custom_proxy.auth_method):
                     raise UnsupportedProxyAuthenticationMethod(
@@ -380,7 +384,8 @@ def proxy_url_without_credentials(proxy_url):
     if credentials_separator_index > -1:
         # Strip out credentials if they're present.
         proxy_url = (
-            proxy_url[: proxy_url.find("://") + 3] + proxy_url[credentials_separator_index + 1 :]
+            proxy_url[: proxy_url.find("://") + 3]
+            + proxy_url[credentials_separator_index + 1 :]
         )
     return proxy_url
 
@@ -388,7 +393,9 @@ def proxy_url_without_credentials(proxy_url):
 # For FMESession.getProperties(). For the result format, see fmesession.h getProxy().
 FMESESSION_PROP_NETWORK_PROXY = "fme_session_prop_network_proxy"
 FMESESSION_PROP_NETWORK_PROXY_SETTINGS = "fme_session_prop_network_proxy_settings"
-FMEProxyDefinition = namedtuple("FMEProxyDefinition", ["env_var", "proxy_url", "auth_method"])
+FMEProxyDefinition = namedtuple(
+    "FMEProxyDefinition", ["env_var", "proxy_url", "auth_method"]
+)
 FMECustomProxyMap = namedtuple(
     "FMECustomProxyMap",
     [
@@ -440,7 +447,9 @@ class FMEGeneralProxyHandler(object):
                 and proxy_config[i + 2] == "proxy_auth_method"
             ):
                 # Proxy values are not FME-encoded.
-                self.proxies.append(FMEProxyDefinition(key, value, proxy_config[i + 3].lower()))
+                self.proxies.append(
+                    FMEProxyDefinition(key, value, proxy_config[i + 3].lower())
+                )
                 i += 4
                 continue
             if key == "use-system-proxy":
@@ -553,7 +562,9 @@ class FMECustomProxyMapHandler(object):
         url = fme_session.decodeFromFMEParsableText(url).lower()
 
         proxy_map_info = stringarray_to_dict(proxy_info.split(","))
-        proxy_url = fme_session.decodeFromFMEParsableText(proxy_map_info["proxy-url"]).strip()
+        proxy_url = fme_session.decodeFromFMEParsableText(
+            proxy_map_info["proxy-url"]
+        ).strip()
         if not proxy_url:
             # A proxy mapping that means 'do not use proxy for this URL'.
             return FMECustomProxyMap(url, "", "", False, "", "", "")
@@ -570,7 +581,9 @@ class FMECustomProxyMapHandler(object):
         )  # No credentials and no path.
         user = fme_session.decodeFromFMEParsableText(proxy_map_info["user"])
         password = fme_session.decodeFromFMEParsableText(proxy_map_info["password"])
-        requires_authentication = choice_to_bool(proxy_map_info["requires-authentication"])
+        requires_authentication = choice_to_bool(
+            proxy_map_info["requires-authentication"]
+        )
 
         proxy_url_with_creds = sanitized_proxy_url
         if requires_authentication:
@@ -582,7 +595,9 @@ class FMECustomProxyMapHandler(object):
                 if password:
                     creds += ":" + quote(password)
                 creds += "@"
-            proxy_url_with_creds = "{}://{}{}".format(parsed_proxy.scheme, creds, netloc)
+            proxy_url_with_creds = "{}://{}{}".format(
+                parsed_proxy.scheme, creds, netloc
+            )
 
         return FMECustomProxyMap(
             url,

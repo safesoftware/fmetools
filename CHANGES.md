@@ -1,5 +1,10 @@
 # fmetools changes
 
+## 0.2.0
+
+* Remove `FMEEnhancedTransformer.keyword` and replace its usages with `FMETransformer.factory_name`.
+* Use relative imports, to support copy-paste vendorization.
+
 ## 0.1.4
 
 * Add `hasSupportFor()` to `plugins.FMESimplifiedReader` to allow for reader bulk mode support.

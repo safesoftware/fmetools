@@ -8,7 +8,7 @@ import six
 from fmeobjects import FMESession, FMEFeature
 from pluginbuilder import FMEMappingFile
 
-from fmetools.utils import string_to_bool
+from .utils import string_to_bool
 from six import string_types
 import fme
 
@@ -228,7 +228,9 @@ class MappingFile(object):
             return the element. Otherwise, the list is returned as-is.
         :rtype: str
         """
-        value = self.mapping_file.fetchWithPrefix(plugin_keyword, plugin_type, directive)
+        value = self.mapping_file.fetchWithPrefix(
+            plugin_keyword, plugin_type, directive
+        )
         if isinstance(value, list) and len(value) == 2 and value[0] == value[1]:
             return value[0]
         return value
@@ -245,13 +247,17 @@ class MappingFile(object):
             and return a list.
         :rtype: str, int, float, list, None
         """
-        value = self.fetch_with_prefix(self._plugin_keyword, self._plugin_type, directive)
+        value = self.fetch_with_prefix(
+            self._plugin_keyword, self._plugin_type, directive
+        )
         if value is None:
             return default
         if as_list and isinstance(value, six.string_types):
             value = value.split()
             if decode:
-                value = [self.__session.decodeFromFMEParsableText(entry) for entry in value]
+                value = [
+                    self.__session.decodeFromFMEParsableText(entry) for entry in value
+                ]
         elif decode and isinstance(value, six.string_types):
             value = self.__session.decodeFromFMEParsableText(value)
         return value
@@ -275,7 +281,9 @@ class MappingFile(object):
         :returns: The search envelope, or None if not set.
         :rtype: SearchEnvelope
         """
-        env = self.mapping_file.fetchSearchEnvelope(self._plugin_keyword, self._plugin_type)
+        env = self.mapping_file.fetchSearchEnvelope(
+            self._plugin_keyword, self._plugin_type
+        )
         if not env:
             return None
         coordsys = self.get("_SEARCH_ENVELOPE_COORDINATE_SYSTEM")

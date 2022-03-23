@@ -6,12 +6,11 @@ FME PluginBuilder subclasses that provide improved functionality.
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import fme
 from fmeobjects import FMEFeature
 from pluginbuilder import FMEReader, FMEWriter
 
-from fmetools.logfile import get_configured_logger
-from fmetools.parsers import OpenParameters, MappingFile
+from .logfile import get_configured_logger
+from .parsers import OpenParameters, MappingFile
 
 
 class FMESimplifiedReader(FMEReader):
@@ -27,7 +26,7 @@ class FMESimplifiedReader(FMEReader):
     :ivar MappingFile _mapping_file:
         Provides access into :class:`pluginbuilder.FMEMappingFile`.
     :ivar bool debug: Toggle for debug mode.
-    :ivar FMELoggerAdapter log: Provides access to the FME log.
+    :ivar logging.LoggerAdapter log: Provides access to the FME log.
     :ivar bool _using_constraints: True if :meth:`setConstraints` was called.
     :ivar bool _aborted: True if :meth:`abort` was called.
     :ivar list[str] _feature_types: Ordered list of feature type names.
@@ -62,7 +61,9 @@ class FMESimplifiedReader(FMEReader):
     @property
     def log(self):
         """
-        Provides access to the FME log
+        Provides access to the FME log.
+
+        :rtype: logging.LoggerAdapter
         """
         if not self._log:
             # Instantiate a logger with the appropriate debug mode.
@@ -213,7 +214,7 @@ class FMESimplifiedWriter(FMEWriter):
     :ivar str _keyword: A unique identifier for this writer instance.
     :ivar MappingFile _mapping_file:
         Provides access into :class:`pluginbuilder.FMEMappingFile`.
-    :ivar FMELoggerAdapter log: Provides access to the FME log.
+    :ivar logging.LoggerAdapter log: Provides access to the FME log.
     :ivar bool debug: Toggle for debug mode.
     :ivar bool _aborted: True if :meth:`abort` was called.
     :ivar list[str] _feature_types: Ordered list of feature types.
@@ -316,7 +317,11 @@ class FMETransformer(object):
     """
 
     def __init__(self):
-        self.pyoutput_cb = None  # A pyoutput() implementation, for testing purposes.
+        self.factory_name = self.__class__.__name__
+        """
+        The instantiating PythonFactory's ``FACTORY_NAME``.
+        Defaults to the name of this class. Value is set by FME at runtime.
+        """
 
     def __enter__(self):
         return self
@@ -334,7 +339,7 @@ class FMETransformer(object):
 
     def process_group(self):
         """
-        Called after all of the current group's features have been sent to input().
+        Called after all the current group's features have been sent to :meth:`input`.
         Intended to perform group-by processing that requires knowledge of all features.
         Can be left unimplemented if group-by processing is not required.
         """
@@ -351,8 +356,6 @@ class FMETransformer(object):
         :type feature: FMEFeature
         """
         # Stub. Implementation is injected at runtime.
-        if self.pyoutput_cb:
-            self.pyoutput_cb(feature)
 
     def total_features_passed_along(self):
         """
@@ -438,44 +441,22 @@ class FMEEnhancedTransformer(FMETransformer):
        - :meth:`post_close`
 
     Note that unlike readers and writers, transformers do not receive abort signals.
-
-    :ivar FMELoggerAdapter log: Provides access to the FME log.
     """
 
     def __init__(self):
         super(FMEEnhancedTransformer, self).__init__()
         self._initialized = False
-        self._keyword = None
-        try:
-            self._debug = fme.macroValues.get("FME_DEBUG", False)
-        except AttributeError:
-            self._debug = False
         self._log = None
-
-    @property
-    def keyword(self):
-        """Override this method to define a generic keyword identifying the
-        transformer. It is instead recommended to change this value to the
-        name of the transformer in :meth:`setup`."""
-        if not self._keyword:
-            self._keyword = self.__class__.__name__
-        return self._keyword
-
-    @keyword.setter
-    def keyword(self, new_keyword):
-        if new_keyword != self._keyword:
-            self._keyword = new_keyword
-            self._log = get_configured_logger(self._keyword, self._debug)
 
     @property
     def log(self):
         """
         Provides access to the FME log.
-        The log will prefix all messages with the value of :ivar:`keyword`
+
+        :rtype: logging.LoggerAdapter
         """
         if not self._log:
-            # Instantiate a logger with the appropriate debug mode.
-            self._log = get_configured_logger(self.keyword, self._debug)
+            self._log = get_configured_logger(self.factory_name)
         return self._log
 
     def setup(self, first_feature):

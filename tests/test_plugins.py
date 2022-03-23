@@ -9,10 +9,7 @@ from fmetools.plugins import (
     FMESimplifiedWriter,
 )
 
-try:
-    from unittest.mock import patch
-except ImportError:
-    from mock import patch  # PY2 backport library
+from unittest.mock import patch
 
 
 class MockReader(FMESimplifiedReader):
@@ -56,18 +53,19 @@ def test_writer():
         wtr.close()
 
 
-def test_enhanced_transformer(monkeypatch):
+def test_enhanced_transformer():
     with FMEEnhancedTransformer() as xformer:
-        assert xformer.keyword == "FMEEnhancedTransformer"
+        assert xformer.factory_name == "FMEEnhancedTransformer"
+        assert xformer.log.name == xformer.factory_name
         xformer.input(FMEFeature())
 
-        def reject_assert(feature):
+        with patch.object(xformer, "pyoutput") as pyoutput:
+            xformer.reject_feature(FMEFeature(), "code", "message")
+            feature = pyoutput.call_args.args[0]
             assert feature.getAttribute("fme_rejection_code") == "code"
             assert feature.getAttribute("fme_rejection_message") == "message"
 
-        monkeypatch.setattr(xformer, "pyoutput", reject_assert)
-        xformer.reject_feature(FMEFeature(), "code", "message")
-
+        # Redundant closes should be safe.
         xformer.close()
         xformer.close()
 
