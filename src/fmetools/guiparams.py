@@ -124,7 +124,9 @@ def get_parser(gui_type: str):
             or_attr=parts.or_attr, encoded=parts.encoded, config=parts.config
         )
     except KeyError as e:
-        raise KeyError(f"unrecognized or unsupported GUI type '{parts.name}'") from e
+        raise KeyError(
+            "unrecognized or unsupported GUI type '{}'".format(parts.name)
+        ) from e
 
 
 class GuiParameterParser:
@@ -160,5 +162,5 @@ class GuiParameterParser:
             return parser(value)
         except KeyError as e:
             raise KeyError(
-                f"GUI parameter attribute '{attr_name}' not registered"
+                "GUI parameter attribute '{}' not registered".format(attr_name)
             ) from e
