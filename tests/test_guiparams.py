@@ -104,6 +104,6 @@ def test_parser():
     feature.setAttribute("ATTR1", "hello<space>world")
     assert parser.get(feature, "ATTR1") == "hello world"
     assert parser.get(feature, "ATTR2") is None
-    assert parser.get(feature, "ATTR2", default="10") == 10
+    assert parser.get(feature, "ATTR2", default="10") == "10"
     with pytest.raises(KeyError):
         parser.get(feature, "not a parameter")

@@ -129,6 +129,9 @@ def get_parser(gui_type: str):
         ) from e
 
 
+_default = object()
+
+
 class GuiParameterParser:
     def __init__(self, gui_params: Mapping[str, str]):
         """
@@ -147,17 +150,18 @@ class GuiParameterParser:
         """
         :param feature: Get the GUI parameter value from this feature.
         :param attr_name: Attribute name of the GUI parameter.
-        :param default: Use this value if the attribute is missing.
-            This value is still processed as if it came from the feature.
+        :param default: Return this value if the attribute is missing.
         :raises KeyError: if ``attr_name`` wasn't an attribute specified in the constructor.
         :raises ValueError: if there was a problem parsing the value.
-        :returns: The parsed GUI parameter value.
+        :returns: The parsed GUI parameter value, or default if missing.
             Always returns ``None`` if the parameter value was ``None``.
         """
         parser = self.parsers[attr_name]
-        value = get_attribute(feature, attr_name, default=default)
+        value = get_attribute(feature, attr_name, default=_default)
         if value is None:
             return None
+        if value is _default:
+            return default
         try:
             return parser(value)
         except KeyError as e:
