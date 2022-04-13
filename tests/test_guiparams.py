@@ -47,7 +47,7 @@ def test_boolparser(value):
 @example("10.1")
 def test_intparser(value):
     parser = IntParser()
-    if not value.isdigit():
+    if not re.match(r"^\d+\s*$", value):
         with pytest.raises(ValueError):
             parser(value)
         return
@@ -61,7 +61,10 @@ def test_intparser(value):
 @example("10.1")
 def test_floatparser(value):
     parser = FloatParser()
-    if not re.match(r"^\d+(\.\d+)?$", value):
+    # float() can also parse "1E5", "1e0", etc.
+    if not re.match(r"^\d+(\.\d+)?\s*$", value) and not re.match(
+        r"^\d+E\d+\s*$", value, re.I
+    ):
         with pytest.raises(ValueError):
             parser(value)
         return
@@ -73,11 +76,12 @@ def test_floatparser(value):
 @given(value=st.text(), encoded=st.booleans())
 @example("<space>", True)
 @example("<space>", False)
+@settings(deadline=None)
 def test_stringparser(value, encoded):
     parser = StringParser(encoded=encoded)
     parsed = parser(value)
     if value == "<space>":
-        assert value == " " if encoded else "<space>"
+        assert parsed == " " if encoded else "<space>"
     assert isinstance(parsed, str)
 
 
