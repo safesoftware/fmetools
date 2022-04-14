@@ -1,5 +1,10 @@
 # fmetools changes
 
+## 0.3.0
+
+* Add `guiparams` module, for parsing GUI parameter values.
+  This initial implementation supports just a small subset of GUI types.
+
 ## 0.2.0
 
 * Remove `FMEEnhancedTransformer.keyword` and replace its usages with `FMETransformer.factory_name`.
