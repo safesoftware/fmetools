@@ -149,13 +149,13 @@ def parse_def_line(def_line, option_names):
 
     session = FMESession()
 
-    def decode(v):
+    def decode(v, sess):
         if isinstance(v, list):
-            return [decode(x) for x in v]
-        return v if v is None else session.decodeFromFMEParsableText(v)
+            return [decode(x, sess) for x in v]
+        return v if v is None else sess.decodeFromFMEParsableText(v)
 
     attributes = stringarray_to_dict(def_line, start=2)
-    options = {option: decode(attributes.pop(option, None)) for option in option_names}
+    options = {option: decode(attributes.pop(option, None), session) for option in option_names}
     return DefLine(_system_to_unicode(def_line[1]), attributes, options)
 
 
