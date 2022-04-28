@@ -1,5 +1,9 @@
 # fmetools changes
 
+## 0.3.1
+
+* Fix FMESession leak in `parsers.parse_def_line()`.
+
 ## 0.3.0
 
 * Add `guiparams` module, for parsing GUI parameter values.
