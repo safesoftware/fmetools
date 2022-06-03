@@ -28,11 +28,15 @@ class ParameterParser:
 
 class IntParser(ParameterParser):
     def __call__(self, value):
+        if value == "":
+            return None
         return int(super().__call__(value))
 
 
 class FloatParser(ParameterParser):
     def __call__(self, value):
+        if value == "":
+            return None
         return float(super().__call__(value))
 
 
@@ -84,11 +88,13 @@ class ListParser(ParameterParser):
 
 
 SUPPORTED_TYPES = {
+    "ACTIVECHOICE_LOOKUP": FMEParsableStringParser,
     "FLOAT": FloatParser,
     "INTEGER": IntParser,
     "LISTBOX": ListParser,
     "LOOKUP_LISTBOX": ListParser,
     "LOOKUP_CHOICE": FMEParsableStringParser,
+    "NAMED_CONNECTION": StringParser,
     "PASSWORD": StringParser,
     "PASSWORD_CONFIRM": StringParser,
     "RANGE_SLIDER": FloatParser,

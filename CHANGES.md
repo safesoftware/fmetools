@@ -1,5 +1,10 @@
 # fmetools changes
 
+## 0.4.0
+
+* Support new GUI types `ACTIVECHOICE_LOOKUP` and `NAMED_CONNECTION`.
+* Int and float GUI types: parse empty string to None instead of raising ValueError.
+
 ## 0.3.1
 
 * Fix FMESession leak in `parsers.parse_def_line()`.
