@@ -47,6 +47,9 @@ def test_boolparser(value):
 @example("10.1")
 def test_intparser(value):
     parser = IntParser()
+    if value == "":
+        assert parser(value) is None
+        return
     if not re.match(r"^\d+\s*$", value):
         with pytest.raises(ValueError):
             parser(value)
@@ -61,6 +64,9 @@ def test_intparser(value):
 @example("10.1")
 def test_floatparser(value):
     parser = FloatParser()
+    if value == "":
+        assert parser(value) is None
+        return
     # float() can also parse "1E5", "1e0", etc.
     if not re.match(r"^\d+(\.\d+)?\s*$", value) and not re.match(
         r"^\d+E\d+\s*$", value, re.I

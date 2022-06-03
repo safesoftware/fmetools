@@ -28,11 +28,15 @@ class ParameterParser:
 
 class IntParser(ParameterParser):
     def __call__(self, value):
+        if value == "":
+            return None
         return int(super().__call__(value))
 
 
 class FloatParser(ParameterParser):
     def __call__(self, value):
+        if value == "":
+            return None
         return float(super().__call__(value))
 
 
