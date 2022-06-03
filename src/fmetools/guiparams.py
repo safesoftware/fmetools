@@ -84,11 +84,13 @@ class ListParser(ParameterParser):
 
 
 SUPPORTED_TYPES = {
+    "ACTIVECHOICE_LOOKUP": FMEParsableStringParser,
     "FLOAT": FloatParser,
     "INTEGER": IntParser,
     "LISTBOX": ListParser,
     "LOOKUP_LISTBOX": ListParser,
     "LOOKUP_CHOICE": FMEParsableStringParser,
+    "NAMED_CONNECTION": StringParser,
     "PASSWORD": StringParser,
     "PASSWORD_CONFIRM": StringParser,
     "RANGE_SLIDER": FloatParser,

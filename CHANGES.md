@@ -1,5 +1,9 @@
 # fmetools changes
 
+## 0.4.0
+
+* Support new GUI types `ACTIVECHOICE_LOOKUP` and `NAMED_CONNECTION`.
+
 ## 0.3.1
 
 * Fix FMESession leak in `parsers.parse_def_line()`.
