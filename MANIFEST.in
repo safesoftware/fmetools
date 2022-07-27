@@ -1,1 +1,8 @@
+include LICENSE
+include README.md
+include CHANGES.md
+
 include src/*/i18n/*/LC_MESSAGES/*.mo
+
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
