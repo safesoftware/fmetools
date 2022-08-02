@@ -1,5 +1,9 @@
 # fmetools changes
 
+## 0.4.1
+
+* Prepare for PyPI release.
+
 ## 0.4.0
 
 * Support new GUI types `ACTIVECHOICE_LOOKUP` and `NAMED_CONNECTION`.
