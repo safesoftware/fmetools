@@ -89,6 +89,8 @@ class ListParser(ParameterParser):
 
 SUPPORTED_TYPES = {
     "ACTIVECHOICE_LOOKUP": FMEParsableStringParser,
+    "CHECKBOX": BoolParser,
+    "CHOICE": FMEParsableStringParser,
     "FLOAT": FloatParser,
     "INTEGER": IntParser,
     "LISTBOX": ListParser,

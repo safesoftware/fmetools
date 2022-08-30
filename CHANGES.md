@@ -1,5 +1,9 @@
 # fmetools changes
 
+## 0.4.3
+
+* Support new GUI types `CHECKBOX` and `CHOICE`.
+
 ## 0.4.2
 
 * Prepare for PyPI release.
