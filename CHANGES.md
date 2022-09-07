@@ -1,5 +1,9 @@
 # fmetools changes
 
+## 0.4.4
+
+* Fixed error when parsing custom proxy URLs starting with 'http'
+
 ## 0.4.3
 
 * Support new GUI types `CHECKBOX` and `CHOICE`.

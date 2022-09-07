@@ -568,7 +568,7 @@ class FMECustomProxyMapHandler(object):
         if not proxy_url:
             # A proxy mapping that means 'do not use proxy for this URL'.
             return FMECustomProxyMap(url, "", "", False, "", "", "")
-        elif not proxy_url.lower().startswith("http"):
+        elif not proxy_url.lower().startswith("http://"):
             # FME Server gives proxy hostname only. Assume a scheme.
             proxy_url = "http://{}".format(proxy_url)
         parsed_proxy = urlparse(proxy_url)
