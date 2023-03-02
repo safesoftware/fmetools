@@ -1,5 +1,11 @@
 # fmetools changes
 
+## 0.5.0
+
+* Add `fmetools.paramparsing.TransformerParameters`: a class for parsing
+  internal attribute values from transformer parameters. Requires FME 2023.
+* Require Python 3.7+.
+
 ## 0.4.4
 
 * Fixed error when parsing custom proxy URLs starting with 'http'
