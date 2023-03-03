@@ -1,8 +1,8 @@
 # fmetools changes
 
-## 0.5.0
+## 0.5.1
 
-* Add `fmetools.paramparsing.TransformerParameters`: a class for parsing
+* Add `fmetools.paramparsing.TransformerParameterParser`: a class for parsing
   internal attribute values from transformer parameters. Requires FME 2023.
 * Require Python 3.7+.
 
