@@ -7,7 +7,7 @@ from fmetools.features import build_feature
 
 # Allow this test to skip gracefully with pytestmark, if import fails.
 try:
-    from fmetools.paramparsing import TransformerParameters
+    from fmetools.paramparsing import TransformerParameterParser
 except ModuleNotFoundError:
     pass
 
@@ -19,7 +19,7 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture
 def creator():
-    return TransformerParameters("Creator")
+    return TransformerParameterParser("Creator")
 
 
 def test_system_transformer(creator):
@@ -100,7 +100,7 @@ def test_invalid_param_name(name, creator):
 @settings(deadline=3000)
 def test_transformer_not_found(name, pkg):
     with pytest.raises(ValueError):
-        TransformerParameters(name, pkg)
+        TransformerParameterParser(name, pkg)
 
 
 @given(version=st.integers())
@@ -111,7 +111,7 @@ def test_transformer_not_found(name, pkg):
 @settings(deadline=3000)
 def test_versions(version):
     # All versions are silently accepted, even invalid ones.
-    t = TransformerParameters("Creator", version=version)
+    t = TransformerParameterParser("Creator", version=version)
 
     # Creator has no v1
     assert t.get("NUM") == 1  # Added in v2

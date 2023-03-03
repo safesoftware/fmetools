@@ -12,7 +12,7 @@ except ModuleNotFoundError as e:
     raise ModuleNotFoundError(str(e) + " (introduced in FME 2023 b23224)")
 
 
-class TransformerParameters:
+class TransformerParameterParser:
     """
     Helper for getting parsed transformer parameter values.
 
