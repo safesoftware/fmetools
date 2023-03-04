@@ -12,7 +12,7 @@ except ModuleNotFoundError as e:
     raise ModuleNotFoundError(str(e) + " (introduced in FME 2023 b23224)")
 
 
-class TransformerParameters:
+class TransformerParameterParser:
     """
     Helper for getting parsed transformer parameter values.
 
@@ -154,21 +154,29 @@ class TransformerParameters:
             src = attrs
         return self.xformer.setParameterValues(src)
 
-    def get(self, name) -> Any:
+    def get(self, name, prefix: Optional[str] = "___XF_") -> Any:
         """
         Get a parsed (deserialized) parameter value.
+        For convenience, this assumes a prefix for the given parameter name.
         If the parameter value was not set on the transformer,
         then the default value is returned, if any.
 
+        :param name: Name of the parameter.
+        :param prefix: Prefix of the parameter.
+            Specify None for unprefixed attributes or if the given name
+            already includes the prefix.
+            The default is the prefix used by the FME SDK Guide examples.
         :raises ValueError: When the value of the parameter cannot be deserialized
             according to the type expected by the transformer definition.
         :raises TypeError: When the parameter value type is not supported.
         :raises KeyError: When the parameter name is not recognized.
         """
+        if prefix:
+            name = prefix + name
         return self.xformer.getParsedParamValue(name)
 
     def __getitem__(self, key):
-        return self.get(key)
+        return self.get(key, prefix=None)
 
     def __setitem__(self, key, value):
         if not self.set(key, value):
