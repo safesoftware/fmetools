@@ -67,16 +67,20 @@ def test_floatparser(value):
     if value == "":
         assert parser(value) is None
         return
-    # float() can also parse "1E5", "1e0", etc.
-    if not re.match(r"^\d+(\.\d+)?\s*$", value) and not re.match(
-        r"^\d+E\d+\s*$", value, re.I
-    ):
+    valid_float = True
+    try:
+        # float() can also parse "1E5", "1e0", etc.
+        float(value)
+    except ValueError:
+        valid_float = False
+
+    if valid_float:
+        parsed = parser(value)
+        assert parsed == parser(parsed)
+        assert isinstance(parsed, float)
+    else:
         with pytest.raises(ValueError):
             parser(value)
-        return
-    parsed = parser(value)
-    assert parsed == parser(parsed)
-    assert isinstance(parsed, float)
 
 
 @given(value=st.text(), encoded=st.booleans())
