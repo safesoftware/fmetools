@@ -2,17 +2,18 @@ import re
 
 import pytest
 from fmeobjects import FMEFeature
-from hypothesis import given, strategies as st, example, settings
+from hypothesis import example, given, settings
+from hypothesis import strategies as st
 
 from fmetools.guiparams import (
-    GuiType,
-    parse_gui_type,
     BoolParser,
-    IntParser,
     FloatParser,
-    StringParser,
-    ListParser,
     GuiParameterParser,
+    GuiType,
+    IntParser,
+    ListParser,
+    StringParser,
+    parse_gui_type,
 )
 
 
