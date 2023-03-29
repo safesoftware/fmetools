@@ -72,9 +72,7 @@ class TransformerParameterParser:
         for i, value in enumerate(resolve):
             name, pkg = value
             try:
-                self.xformer = FMETransformer(
-                    name, fmePackageName=pkg, transformerVersion=version
-                )
+                self.xformer = FMETransformer(name, pkg, version)
                 self.transformer_name = name
                 self.transformer_fpkg = pkg
                 break
