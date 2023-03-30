@@ -62,26 +62,27 @@ class TransformerParameterParser:
         # Fully-qualified package name is still required.
         # FMETransformer will also take the fully-qualified name without
         # the fmePackageName argument, but it's slower.
-        resolve = [(transformer_name, None)]
+        resolve = [(transformer_name, "")]
         name_parts = transformer_name.split(".", maxsplit=2)
         if len(name_parts) == 3:
             resolve.insert(0, (transformer_name, ".".join(name_parts[:2])))
+        if version is None:
+            version = -1
 
-        for name, pkg in resolve:
+        for i, value in enumerate(resolve):
+            name, pkg = value
             try:
-                self.xformer = FMETransformer(
-                    name, fmePackageName=pkg, transformerVersion=version
-                )
-                self.transformer_name = name
-                self.transformer_fpkg = pkg
-            except FMEException:
+                # FMETransformer was added in b23224.
+                # Before b23264, it accepted but ignored kwargs. (FMEENGINE-77074)
+                # For max compatibility, don't use kwargs here.
+                self.xformer = FMETransformer(name, pkg, version)
+            except FMEException as ex:
+                if i == len(resolve) - 1:
+                    raise ValueError(f"Could not resolve {transformer_name}") from ex
                 continue
-            if self.xformer:
-                break
-        try:
-            self.xformer
-        except AttributeError as e:
-            raise ValueError(f"Could not resolve {transformer_name}") from e
+            self.transformer_name = name
+            self.transformer_fpkg = pkg
+            break
 
     def change_version(self, version: Optional[int] = None):
         """
@@ -92,10 +93,10 @@ class TransformerParameterParser:
         :param version: Transformer version to load.
             If not provided, then the latest version is loaded.
         """
+        if version is None:
+            version = -1
         self.xformer = FMETransformer(
-            self.transformer_name,
-            fmePackageName=self.transformer_fpkg,
-            transformerVersion=version,
+            self.transformer_name, self.transformer_fpkg, version
         )
 
     def is_required(self, name) -> bool:

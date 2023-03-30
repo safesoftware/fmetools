@@ -1,5 +1,13 @@
 # fmetools changes
 
+## 0.6.0
+
+* Rename `fmetools.plugins.FMETransformer` to `FMEBaseTransformer`
+  to avoid potential confusion with `fmeobjects.FMETransformer`.
+  Instantiating `fmetools.plugins.FMETransformer` now emits a warning,
+  and will be removed in a future release.
+* `fmetools.paramparsing.TransformerParameterParser`: Support FME >= b23264.
+
 ## 0.5.1
 
 * Add `fmetools.paramparsing.TransformerParameterParser`: a class for parsing

@@ -6,11 +6,13 @@ FME PluginBuilder subclasses that provide improved functionality.
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import warnings
+
 from fmeobjects import FMEFeature
 from pluginbuilder import FMEReader, FMEWriter
 
 from .logfile import get_configured_logger
-from .parsers import OpenParameters, MappingFile
+from .parsers import MappingFile, OpenParameters
 
 
 class FMESimplifiedReader(FMEReader):
@@ -308,7 +310,7 @@ class FMESimplifiedWriter(FMEWriter):
         self.close()
 
 
-class FMETransformer(object):
+class FMEBaseTransformer(object):
     """
     Base class that represents the interface expected by the FME
     infrastructure for Python-based FME transformer implementations.
@@ -423,7 +425,15 @@ class FMETransformer(object):
         return False
 
 
-class FMEEnhancedTransformer(FMETransformer):
+class FMETransformer(FMEBaseTransformer):
+    def __init__(self):
+        super(FMEBaseTransformer, self).__init__()
+        warnings.warn(
+            "Avoid confusion with fmeobjects.FMETransformer", DeprecationWarning
+        )
+
+
+class FMEEnhancedTransformer(FMEBaseTransformer):
     """
     Recommended base class for transformer implementations.
 

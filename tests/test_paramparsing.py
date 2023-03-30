@@ -1,7 +1,7 @@
 import fmeobjects
 import hypothesis.strategies as st
 import pytest
-from hypothesis import HealthCheck, example, given, settings
+from hypothesis import HealthCheck, given, settings
 
 from fmetools.features import build_feature
 
@@ -99,33 +99,47 @@ def test_invalid_param_name(name, creator):
         creator.get("foo", prefix=None)
 
 
-@given(name=st.text(), pkg=st.one_of(st.text(), st.none()))
-@settings(deadline=3000)
-def test_transformer_not_found(name, pkg):
+@pytest.mark.parametrize(
+    "name,version",
+    [
+        ("Foo", 1),
+        ("Creator", 0),
+        ("Creator", 1),  # Not defined for Creator
+    ],
+)
+def test_transformer_not_found(name, version):
     with pytest.raises(ValueError):
-        TransformerParameterParser(name, pkg)
+        TransformerParameterParser(name, version)
 
 
-@given(version=st.integers())
-@example(0)
-@example(1)  # Not defined for Creator
-@example(2)  # Oldest definition in Creator.fmx
-@example(3)  # Before COORDSYS was added
-@settings(deadline=3000)
-def test_versions(version):
-    # All versions are silently accepted, even invalid ones.
-    t = TransformerParameterParser("Creator", version=version)
+def test_versions():
+    with pytest.raises(TypeError):
+        TransformerParameterParser("Creator", "non int version")  # noqa
+
+    t = TransformerParameterParser("Creator")
+    # Version 2 added NUM. It's also the oldest defined version.
+    assert t.get("NUM", prefix=None) == 1
 
     # Creator has no v1
-    assert t.get("NUM", None) == 1  # Added in v2
-    # COORDSYS added in v4, but it's accepted for any version
+    assert t.get("NUM", prefix=None) == 1
+    # TransformerParameterParser init w/o version returns the latest version,
+    # and latest version still has COORDSYS.
     assert t.set("COORDSYS", "LL84")
     assert t["COORDSYS"] == "LL84"
+
+    # Version 4 added COORDSYS
+    # When on an older version, setting a value for it is ignored.
+    # Recall that change_version() recreates FMETransformer, so state isn't saved.
+    t.change_version(3)
+    assert t.set("COORDSYS", "LL84")
+    with pytest.raises(KeyError):
+        t.get("COORDSYS", prefix=None)
+    t.change_version(4)
+    assert t.get("COORDSYS", prefix=None) == ""
+    assert t.set("COORDSYS", "LL84")
+    assert t.get("COORDSYS", prefix=None) == "LL84"
 
     # Set a param that doesn't exist, and get it
     t.set("foo", "bar")
     with pytest.raises(KeyError):
         t.get("foo", prefix=None)
-
-    t.change_version(version + 1)  # coverage
-    assert t["NUM"] == 1
