@@ -72,14 +72,17 @@ class TransformerParameterParser:
         for i, value in enumerate(resolve):
             name, pkg = value
             try:
+                # FMETransformer was added in b23224.
+                # Before b23264, it accepted but ignored kwargs. (FMEENGINE-77074)
+                # For max compatibility, don't use kwargs here.
                 self.xformer = FMETransformer(name, pkg, version)
-                self.transformer_name = name
-                self.transformer_fpkg = pkg
-                break
             except FMEException as ex:
                 if i == len(resolve) - 1:
                     raise ValueError(f"Could not resolve {transformer_name}") from ex
                 continue
+            self.transformer_name = name
+            self.transformer_fpkg = pkg
+            break
 
     def change_version(self, version: Optional[int] = None):
         """
@@ -90,10 +93,10 @@ class TransformerParameterParser:
         :param version: Transformer version to load.
             If not provided, then the latest version is loaded.
         """
+        if version is None:
+            version = -1
         self.xformer = FMETransformer(
-            self.transformer_name,
-            fmePackageName=self.transformer_fpkg,
-            transformerVersion=version,
+            self.transformer_name, self.transformer_fpkg, version
         )
 
     def is_required(self, name) -> bool:
