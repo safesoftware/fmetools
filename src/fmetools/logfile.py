@@ -1,27 +1,29 @@
 # coding: utf-8
-
 """
 This module bridges FME's :class:`fmeobjects.FMELogFile`
 with the :mod:`logging` module in the Python standard library.
 
 Developers should not need to directly use anything in this module,
-as the base classes in :mod:`plugins` include preconfigured loggers.
+as the base classes in :mod:`.plugins` include preconfigured loggers.
 """
+import logging
+from typing import Optional
 
-from __future__ import absolute_import, division, print_function, unicode_literals
-
+import fme
 from fmeobjects import (
-    FMELogFile,
-    FMEFeature,
-    FME_WARN,
-    FME_INFORM,
     FME_ERROR,
     FME_FATAL,
+    FME_INFORM,
+    FME_WARN,
+    FMEFeature,
+    FMELogFile,
 )
-import fme
 
 from . import tr
-import logging
+
+__all__ = [
+    "get_configured_logger",
+]
 
 
 class FMELogFormatter(logging.Formatter):
@@ -78,13 +80,13 @@ class FMELogHandler(logging.Handler):
         return not self.__eq__(other)
 
 
-def get_configured_logger(name="fmelog", debug=None):
+def get_configured_logger(name: str = "fmelog", debug: Optional[bool] = None):
     """
     Get a logger that outputs messages to the FME log.
 
-    :param str name: Logger name to obtain.
-    :param bool debug: Whether debug-level messages should be logged.
-        If None, then the setting is inherited from FME.
+    :param name: Logger name to obtain.
+    :param debug: Whether debug-level messages should be logged.
+        If not specified, then the setting is inherited from FME.
     :rtype: logging.LoggerAdapter
     """
     logger = logging.getLogger(name)

@@ -1,17 +1,25 @@
 """
-This module provides tools for working with FME GUI parameter values.
-GUI parameter values are set as string attributes on features.
-Depending on the GUI type that supplied the value,
-these values may need to be parsed or deserialized.
+This module provides a parser for deserializing parameter values that originate from `FME GUI Types`_.
 
-Developers should only need to use :class:`GuiParameterParser`.
+.. _FME GUI Types: https://docs.safe.com/fme/html/FME_GuiType/index.html
+
+FME GUI Types are used in ``*.fmf`` format metafiles and ``*.fmx`` transformer definition files.
+For parameters defined in ``*.fmxj`` transformer definition files, see :mod:`fmetools.paramparsing`.
+
+.. note::
+
+    This module is made available to provide a migration path for existing transformers and advanced use cases.
+    Most developers should instead use FMXJ transformer definitions and :mod:`fmetools.paramparsing`.
 """
 from collections import namedtuple
-from typing import Mapping, Union
+from typing import Any, Mapping, Union
 
 from fmeobjects import FMEFeature, FMESession
 
 from .features import get_attribute
+
+# This is the only class relevant externally.
+__all__ = ["GuiParameterParser"]
 
 
 class ParameterParser:
@@ -124,7 +132,7 @@ def get_parser(gui_type: str):
     Get a configured GUI parameter deserializer instance for the given GUI type.
 
     :param gui_type: GUI type name, including any suffixes and config.
-        e.g. ``TEXT_EDIT_OR_ATTR ``.
+        e.g. ``TEXT_EDIT_OR_ATTR``.
     """
     parts = parse_gui_type(gui_type)
     try:
@@ -141,26 +149,37 @@ _default = object()
 
 
 class GuiParameterParser:
+    """
+    Parser for deserializing parameter values originating from `FME GUI Types`_.
+
+    This is a basic implementation that supports a small subset of GUI types.
+    """
+
     def __init__(self, gui_params: Mapping[str, str]):
         """
-        Helper for deserializing FME GUI parameter values.
+        :param gui_params: Mapping of GUI parameter attribute name to its GUI type. For instance:
 
-        This initial implementation supports just a small subset of GUI types.
+            .. code-block:: json
 
-        :param gui_params: Mapping of GUI parameter attribute name to its GUI type.
+               {
+                   "___XF_ITEM_DESCRIPTION": "TEXT_EDIT",
+                   "___XF_ITEM_RANK": "INTEGER_OR_ATTR",
+               }
         :raises KeyError: if an unrecognized/unsupported GUI type is specified.
         """
         self.parsers = {}
         for attr_name, gui_type in gui_params.items():
             self.parsers[attr_name] = get_parser(gui_type)
 
-    def get(self, feature: FMEFeature, attr_name: str, default=None):
+    def get(self, feature: FMEFeature, attr_name: str, default=None) -> Any:
         """
+        Get the parsed value of a GUI parameter.
+
         :param feature: Get the GUI parameter value from this feature.
         :param attr_name: Attribute name of the GUI parameter.
         :param default: Return this value if the attribute is missing.
-        :raises KeyError: if ``attr_name`` wasn't an attribute specified in the constructor.
-        :raises ValueError: if there was a problem parsing the value.
+        :raises KeyError: If ``attr_name`` wasn't an attribute specified in the constructor.
+        :raises ValueError: If there was a problem parsing the value.
         :returns: The parsed GUI parameter value, or default if missing.
             Always returns ``None`` if the parameter value was ``None``.
         """

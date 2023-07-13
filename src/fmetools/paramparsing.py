@@ -1,6 +1,9 @@
 """
-This module provides tools for working with transformer parameters.
-This module can only be imported in FME 2023 or newer.
+This module provides :class:`TransformerParameterParser`,
+the recommended way to access transformer parameter values in FME 2023+.
+
+.. note::
+    This module can only be imported in FME 2023 or newer.
 """
 from typing import Any, Iterable, Optional, Union
 
@@ -19,32 +22,31 @@ class TransformerParameterParser:
     All parameters of Python transformers are set as attributes on input features.
     By convention, these attributes are given a prefix to give it a namespace and
     signify that they are internal attributes.
-    The values of these attributes are string serializations.
+    The values of these attributes are string serializations that need to be deserialized before use.
 
     This class works by loading a transformer definition from FME,
-    and using its parameter definitions to parse serialized parameter values.
+    passing it serialized parameter values from an input feature or other source,
+    and then requesting deserialized values back.
+    FME uses the transformer definition to determine how to deserialize the values.
 
     A typical workflow with this class involves:
 
-    1. Instantiate this class as an instance member on the class that implements
+    1. Instantiate this class as an instance member of the class that implements
        the transformer.
     2. When the transformer receives its first input feature:
-       - If the caller is aware that it needs a particular transformer version,
-         it may call TransformerParameters.change_version().
-       - TransformerParameters.set_all() is called to provide all initial
+
+       - If the caller needs a particular transformer version,
+         it may call :meth:`change_version`.
+       - :meth:`set_all` is called to provide all initial
          serialized parameter values from the input feature.
-       - TransformerParameters.get() is called to get the deserialized values
+       - :meth:`get` is called to get the deserialized values
          for the parameters of interest.
          If these parameter values don't change between features,
-         the caller caches them to avoid unnecessary re-parsing of values.
-    3. For subsequent input features, TransformerParameters.set_all()
-       and TransformerParameters.get() are called as necessary to handle the
+         the caller caches them to avoid unnecessary work.
+    3. For subsequent input features, :meth:`set`
+       and :meth:`get` are called as necessary to handle the
        values of parameters that change between features, if any.
     """
-
-    xformer: FMETransformer
-    transformer_name: str
-    transformer_fpkg: Optional[str]
 
     def __init__(
         self,
@@ -53,10 +55,19 @@ class TransformerParameterParser:
     ):
         """
         :param transformer_name: Fully-qualified name of the transformer.
+            For example, ``my_publisher.my_package.MyTransformer``.
+            Note that this is the name of the transformer in FME,
+            not the name of the Python class that implements it.
+
+            The transformer may be defined in the FMX and FMXJ formats.
         :param version: Transformer version to load.
             If not provided, then the latest version is loaded.
         :raises ValueError: If FME cannot find the specified transformer.
         """
+        self.xformer: FMETransformer
+        self.transformer_name: str
+        self.transformer_fpkg: Optional[str]
+
         # If the given name is foo.bar.baz, then first try using foo.bar as
         # the fmePackageName argument, for better performance.
         # Fully-qualified package name is still required.
@@ -91,7 +102,7 @@ class TransformerParameterParser:
         before their parsed values can be retrieved.
 
         :param version: Transformer version to load.
-            If not provided, then the latest version is loaded.
+            If not specified, then the latest version is loaded.
         """
         if version is None:
             version = -1
@@ -99,20 +110,19 @@ class TransformerParameterParser:
             self.transformer_name, self.transformer_fpkg, version
         )
 
-    def is_required(self, name) -> bool:
+    def is_required(self, name: str) -> bool:
         """
         :param name: Parameter name.
-        :returns: True if the parameter is required according to the
+        :returns: Whether the parameter is required according to the
             transformer definition.
-            False if the parameter is disabled, which may occur
-            based on the values of other parameters.
+            If the parameter is disabled, this returns ``False``.
         """
         return self.xformer.isRequired(name)
 
-    def set(self, name, value) -> bool:
+    def set(self, name: str, value: Any) -> bool:
         """
         Supply the serialized value of a parameter.
-        Its deserialized version can then be retrieved using get().
+        Its deserialized version can then be retrieved using :meth:`get`.
 
         :param name: Parameter name to set.
         :param value: Parameter value to set.
@@ -128,25 +138,25 @@ class TransformerParameterParser:
     ) -> bool:
         """
         Supply all serialized parameter values.
-        This is the typical way to input parameter values before calling get()
+        This is the typical way to input parameter values before calling :meth:`get`
         to obtain their deserialized values.
 
-        It is important to set all parameter values before calling get(), because
+        It is important to set all parameter values before calling :meth:`get`, because
         of dependent parameters that may change or disable the requested parameter.
 
         :param src: Source of the serialized transformer parameter values.
-            If FMEFeature, then these are all the attributes on the feature
-            that start with the param_attr_prefix provided in the constructor.
-            If dict, then this is a mapping of parameter names to serialized values.
+
+            - :class:`fmeobjects.FMEFeature`: Use the attributes on this feature.
+            - :class:`dict`: A mapping of parameter names to serialized values.
         :param param_attr_prefix:
             Prefix for the internal attributes of transformer parameters.
             The default is the prefix used by the FME SDK Guide examples.
-            Only used when src is a feature.
+            Only used when ``src`` is a feature.
         :param param_attr_names:
             Internal attribute names of transformer parameters.
-            Only used when src is a feature. If provided, then these attributes
-            are obtained from the feature and added to the set of attributes
-            obtained by prefix.
+            Only used when ``src`` is a feature.
+            If provided, then these attributes are obtained from the feature and
+            added to the set of attributes obtained by prefix.
         """
         if isinstance(src, FMEFeature):
             attrs = get_attributes_with_prefix(src, param_attr_prefix)
@@ -155,7 +165,7 @@ class TransformerParameterParser:
             src = attrs
         return self.xformer.setParameterValues(src)
 
-    def get(self, name, prefix: Optional[str] = "___XF_") -> Any:
+    def get(self, name: str, prefix: Optional[str] = "___XF_") -> Any:
         """
         Get a parsed (deserialized) parameter value.
         For convenience, this assumes a prefix for the given parameter name.
@@ -164,7 +174,7 @@ class TransformerParameterParser:
 
         :param name: Name of the parameter.
         :param prefix: Prefix of the parameter.
-            Specify None for unprefixed attributes or if the given name
+            Specify ``None`` for unprefixed attributes or if the given name
             already includes the prefix.
             The default is the prefix used by the FME SDK Guide examples.
         :raises ValueError: When the value of the parameter cannot be deserialized

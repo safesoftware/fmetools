@@ -1,18 +1,26 @@
 # coding: utf-8
 
 """
-FME PluginBuilder subclasses that provide improved functionality.
+This module provides base classes for FME plugins such as transformers.
+
+:class:`FMEEnhancedTransformer` is the recommended base class for transformers.
+Transformer developers should subclass it to implement their own transformers.
 """
-
-from __future__ import absolute_import, division, print_function, unicode_literals
-
+import logging
 import warnings
 
-from fmeobjects import FMEFeature
+from fmeobjects import FME_SUPPORT_FEATURE_TABLE_SHIM, FMEFeature
 from pluginbuilder import FMEReader, FMEWriter
 
 from .logfile import get_configured_logger
 from .parsers import MappingFile, OpenParameters
+
+# These are relevant externally.
+# Reader and writer base classes are omitted because they're not intended for general use.
+__all__ = [
+    "FMEBaseTransformer",
+    "FMEEnhancedTransformer",
+]
 
 
 class FMESimplifiedReader(FMEReader):
@@ -34,10 +42,10 @@ class FMESimplifiedReader(FMEReader):
     :ivar list[str] _feature_types: Ordered list of feature type names.
     :ivar _readSchema_generator:
         Use this member to store any generator used for :meth:`readSchema`.
-       Doing so means it'll be be explicitly closed for you in :meth:`close`.
+       Doing so means it'll be explicitly closed for you in :meth:`close`.
     :ivar _read_generator:
         Use this member to store any generator used for :meth:`read`.
-        Doing so means it'll be be explicitly closed for you in :meth:`close`.
+        Doing so means it'll be explicitly closed for you in :meth:`close`.
         :meth:`setConstraints` will both close it and set it to `None`.
         This means :meth:`read` can just check this member for `None` to determine
         whether it needs to re-instantiate its generator to honour new settings.
@@ -310,19 +318,50 @@ class FMESimplifiedWriter(FMEWriter):
         self.close()
 
 
-class FMEBaseTransformer(object):
+class FMEBaseTransformer:
     """
     Base class that represents the interface expected by the FME
-    infrastructure for Python-based FME transformer implementations.
+    infrastructure for Python-based transformer implementations.
+    In particular, this is the class-based API required by the PythonFactory_::
 
-    For testing purposes, this class can be used as a context manager.
+        FACTORY_DEF {*} PythonFactory
+            FACTORY_NAME { $(XFORMER_NAME) }
+            INPUT { FEATURE_TYPE $(XFORMER_NAME)_READY }
+            SYMBOL_NAME my_library.my_module.TransformerImpl
+            OUTPUT { PYOUTPUT FEATURE_TYPE $(XFORMER_NAME)_PROCESSED }
+
+    When executed by FME, this is approximately equivalent to::
+
+        from my_library.my_module import TransformerImpl
+        transformer = TransformerImpl()
+
+    PythonFactory does not require Python classes to inherit from this base class,
+    but it expects them to have the same interface as this class.
+
+    This class can be used as a context manager to guarantee that :meth:`close` is called.
+    This is useful for writing tests.
+
+    .. seealso::
+
+        PythonFactory_ in the `FME Factory and Function Documentation`_.
+
+    .. _PythonFactory: https://docs.safe.com/fme/html/FME_FactFunc/doc_pages/pythonfactory.txt
+    .. _FME Factory and Function Documentation: https://docs.safe.com/fme/html/FME_FactFunc/index.html
     """
 
     def __init__(self):
-        self.factory_name = self.__class__.__name__
         """
-        The instantiating PythonFactory's ``FACTORY_NAME``.
-        Defaults to the name of this class. Value is set by FME at runtime.
+        FME instantiates this class, so it must not require any constructor arguments.
+        """
+        self.factory_name: str = self.__class__.__name__
+        """
+        This is the ``FACTORY_NAME`` parameter of the PythonFactory_ that instantiated this class.
+        Defaults to the name of this class.
+
+        .. note::
+            Do not modify this property. FME sets the value at runtime.
+
+        .. _PythonFactory: https://docs.safe.com/fme/html/FME_FactFunc/doc_pages/pythonfactory.txt
         """
 
     def __enter__(self):
@@ -331,62 +370,96 @@ class FMEBaseTransformer(object):
     def __exit__(self, *args):
         self.close()
 
-    def input(self, feature):
+    def input(self, feature: FMEFeature) -> None:
         """
         Receive a feature from the transformer's input port.
 
-        :type feature: FMEFeature
+        Transformers typically receive a feature through this method, process it,
+        modify the feature by adding output attributes, and then output the feature using :meth:`pyoutput`.
+        However, transformers may output any number of features for each input feature, or none at all.
+        Transformers may also create new :class:`FMEFeature` instances and output them.
+
+        :param feature: The feature to process.
         """
         pass
 
-    def process_group(self):
+    def process_group(self) -> None:
         """
-        Called after all the current group's features have been sent to :meth:`input`.
-        Intended to perform group-by processing that requires knowledge of all features.
-        Can be left unimplemented if group-by processing is not required.
+        If group processing is enabled, then this is called after all the
+        current group's features have been sent to :meth:`input`.
+        Can be left unimplemented if group processing is not supported.
+
+        :meth:`pyoutput` may be called from this method.
         """
         pass
 
-    def close(self):
-        """Called at the end of translation."""
+    def close(self) -> None:
+        """
+        Called at the end of translation.
+        Override this method to perform any necessary cleanup or finalization operations.
+
+        :meth:`pyoutput` may be called from this method.
+        """
         pass
 
-    def pyoutput(self, feature):
+    def pyoutput(self, feature: FMEFeature) -> None:
         """
-        Emit a feature to one of the transformer's output ports.
+        Output a feature from the transformer.
 
-        :type feature: FMEFeature
+        This method does not specify an output port. Instead, it is the responsibility of
+        subsequent factories to forward the output feature to the appropriate output port.
+        A typical transformer definition would have an Execution Instructions with a TestFactory_
+        that inspects the attributes on the feature to determine whether it is a rejection feature,
+        and if so, forward it to the rejection port.
+
+        .. _TestFactory: https://docs.safe.com/fme/html/FME_FactFunc/doc_pages/testfactory.txt
+
+        .. note::
+            Do not implement this method. FME injects the implementation at runtime.
+
+        :param feature: The feature to output.
         """
         # Stub. Implementation is injected at runtime.
 
-    def total_features_passed_along(self):
+    def total_features_passed_along(self) -> int:
         """
-        Returns a count of features that have been processed to date, in all groups.
+        .. note::
+            Do not implement this method. FME injects the implementation at runtime.
 
-        :rtype: int
+        :returns: A count of features that have been processed to date, in all groups.
         """
         # Stub. Implementation is injected at runtime.
         pass
 
-    def has_support_for(self, support_type):
+    # noinspection PyMethodMayBeStatic
+    def has_support_for(self, support_type: int) -> bool:
         """
-        Return whether this transformer supports a certain type. Currently,
-        the only supported type is fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM.
+        .. versionadded:: 2022.0
+            This method and its corresponding constants in :mod:`fmeobjects`.
 
-        When a transformer supports fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM,
-        FME will pass features to the transformer's :meth:`input` method that
-        come from a feature table object. This will allow for significant performance
-        gains when processing a large number of features.
+        This method is used by FME to check whether the transformer claims support for certain capabilities.
+        Currently, the only supported type is :data:`fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM`,
+        which determines support for Bulk Mode.
 
-        To support fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM, features passed
-        into :meth:`input` can't be copied or cached for later use, and can't
-        be read or modified after being passed to :meth:`pyoutput`. If any of
-        those violations are performed, the behavior is undefined.
+        **Why support Bulk Mode**
 
-        A consequence of the fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM requirements
-        is group-by processing is not possible in this mode because group-by
-        processing requires caching of features for output in the :meth:`process_group`
-        method.
+        When a transformer supports Bulk Mode,
+        FME may pass features to :meth:`input` that come from a feature table object.
+        This allows significant performance gains when processing many features,
+        but requires the transformer to follow certain rules around how it handles features.
+
+        .. seealso:: `How FME Improves Performance with Bulk Mode <https://docs.safe.com/fme/html/FME-Form-Documentation/FME-Form/Workbench/Improving-Performance-Bulk-Mode.htm>`_.
+
+        **How to support Bulk Mode**
+
+        * Features received by :meth:`input` must not be copied or cached for later use.
+        * Features received by :meth:`input` must not be read or modified after being passed to :meth:`pyoutput`.
+        * :meth:`pyoutput` should not be given new :class:`FMEFeature` instances.
+          Doing so will automatically downgrade feature processing to individual mode.
+        * Override this method. When ``support_type`` is :data:`fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM`,
+          return ``True``.
+
+        Violating these requirements may result in undefined behavior.
 
         **Illegal Examples**
 
@@ -396,14 +469,14 @@ class FMEBaseTransformer(object):
                 self._cached_features.append(feature)
 
             def close(self):
-                for feature in self._cached_features:   # not allowed
+                for feature in self._cached_features:  # not allowed
                     self.pyoutput(feature)
 
         *Access after output:* ::
 
             def input(self, feature):
                 self.pyoutput(feature)
-                feature.setAttribute("attr name", "attr val")   # not allowed
+                feature.setAttribute("attr name", "attr val")  # not allowed
 
         *Group-by processing:* ::
 
@@ -411,16 +484,13 @@ class FMEBaseTransformer(object):
                 self._cached_features.append(feature)
 
             def process_group(self):
-                for feature in self._cached_features:   # not allowed
+                for feature in self._cached_features:  # not allowed
                     self.pyoutput(feature)
 
-        **Note:** Support for this method and the fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM
-        constant definition was added in FME 2022.0. For all earlier versions of
-        FME, this method will never be called.
-
-        :type support_type: int
+        :param support_type: The type of support to check for.
+            Currently, the only supported type is :data:`fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM`.
         :returns: True if the passed in support type is supported.
-        :rtype: bool
+            The default implementation returns ``False``.
         """
         return False
 
@@ -435,22 +505,35 @@ class FMETransformer(FMEBaseTransformer):
 
 class FMEEnhancedTransformer(FMEBaseTransformer):
     """
-    Recommended base class for transformer implementations.
-
-    This class adds methods to introduce more granularity to the transformer lifecycle.
+    This is the recommended base class for transformer implementations.
+    It exposes the FME log file through the :attr:`log` property,
+    and adds methods to introduce more granularity to the transformer lifecycle
+    to help developers organize their code.
 
     :meth:`input` is broken down to these methods for implementations to overwrite:
        - :meth:`pre_input`
-          - :meth:`setup` - only called for the first input feature
-       - :meth:`receive_feature` - should contain the bulk of the main logic
+          - :meth:`setup` which is only called for the first input feature
+       - :meth:`receive_feature` which should contain the bulk of the main logic
        - :meth:`post_input`
 
     :meth:`close` is broken down to these methods for implementations to overwrite:
        - :meth:`pre_close`
-       - :meth:`finish` - should contain any cleanup tasks, such as deleting temp files
+       - :meth:`finish` which should contain any cleanup tasks
        - :meth:`post_close`
 
-    Note that unlike readers and writers, transformers do not receive abort signals.
+    **A typical transformer would implement:**
+
+        - :meth:`setup` to collect constant transformer parameters off the first input feature
+          and use them to do any initialization steps.
+        - :meth:`receive_feature` to process each input feature.
+        - :meth:`finish` to delete any temporary files or close any connections.
+
+    .. note::
+
+        This class overrides :meth:`has_support_for` to return ``True`` for Bulk Mode support.
+        This means that the transformer cannot cache or copy features for later use,
+        and cannot output new :class:`fmeobjects.FMEFeature` instances.
+        See :meth:`FMEBaseTransformer.has_support_for` for details about these restrictions.
     """
 
     def __init__(self):
@@ -459,97 +542,109 @@ class FMEEnhancedTransformer(FMEBaseTransformer):
         self._log = None
 
     @property
-    def log(self):
+    def log(self) -> logging.LoggerAdapter:
         """
         Provides access to the FME log.
-
-        :rtype: logging.LoggerAdapter
         """
         if not self._log:
             self._log = get_configured_logger(self.factory_name)
         return self._log
 
-    def setup(self, first_feature):
+    def setup(self, first_feature: FMEFeature) -> None:
         """
-        Override this method to perform operations upon the first call to
-        :meth:`input`.
+        This method is only called for the first input feature.
+        Implement this method to perform any necessary setup operations,
+        such as getting constant parameters.
 
-        :type first_feature: FMEFeature
+        Constant parameters are ones that cannot change across input features.
+        For parameters defined using GUI Types, these are ones that do not include ``OR_ATTR``.
+        For parameters defined with Transformer Designer,
+        these are ones with Value Type Level not set to "Full Expression Support".
+
+        :param first_feature: First input feature.
         """
         pass
 
-    def pre_input(self, feature):
+    def pre_input(self, feature: FMEFeature) -> None:
         """
         Called before each :meth:`input`.
-
-        :type feature: FMEFeature
         """
         if not self._initialized:
             self.setup(feature)
             self._initialized = True
 
-    def receive_feature(self, feature):
+    def receive_feature(self, feature: FMEFeature) -> None:
         """
         Override this method instead of :meth:`input`.
-
-        :type feature: FMEFeature
+        This method receives all input features, including the first one that's also passed to :meth:`setup`.
         """
         pass
 
-    def post_input(self, feature):
+    def post_input(self, feature: FMEFeature) -> None:
         """
         Called after each :meth:`input`.
-
-        :type feature: FMEFeature
         """
         pass
 
-    def input(self, feature):
+    def input(self, feature: FMEFeature) -> None:
         """Do not override this method."""
         self.pre_input(feature)
         self.receive_feature(feature)
         self.post_input(feature)
 
-    def pre_close(self):
+    def pre_close(self) -> None:
         """Called before :meth:`close`."""
         pass
 
-    def finish(self):
+    def finish(self) -> None:
         """Override this instead of :meth:`close`."""
         pass
 
-    def post_close(self):
+    def post_close(self) -> None:
         """Called after :meth:`close`."""
         pass
 
-    def close(self):
+    def close(self) -> None:
         """Do not override this method."""
         self.pre_close()
         self.finish()
         self.post_close()
 
-    def reject_feature(self, feature, code, message):
+    def reject_feature(self, feature: FMEFeature, code: str, message: str) -> None:
         """
-        Emit a feature, with conventional attributes that represent rejection.
+        Output a feature with conventional attributes that represent rejection.
 
-        To work as intended, the transformer's FMX needs some corresponding lines:
+        To work as intended, the transformer definition file needs to specify a ``<REJECTED>`` output port,
+        and its Execution Instructions needs some corresponding lines:
 
-        * `OUTPUT_TAGS` includes `<REJECTED>`. This defines the rejection port.
-        * A `TestFactory` definition that sends features with
-          the `fme_rejection_code` attribute to the rejection port.
+        * A ``TestFactory`` definition that sends features with
+          the ``fme_rejection_code`` attribute to the rejection port.
         * Handling for the possibility of the transformer's initiator/input feature
-          coming in with `fme_rejection_code` already defined.
+          coming in with ``fme_rejection_code`` already defined.
           The transformer should not send features to the rejection port unless
           the feature was actually rejected by the transformer.
           If the input feature included rejection attributes,
           the transformer should pass them through in its output features.
-          Of course, if the transformer happens to reject such a feature,
+          If the transformer happens to reject such a feature,
           it's free to overwrite those existing attributes.
 
-        :param FMEFeature feature: Feature to emit, with rejection attributes added.
-        :param str code: Value for `fme_rejection_code` attribute.
-        :param str message: Value for `fme_rejection_message` attribute.
+        :param feature: Feature to reject.
+            Rejection attributes are added to this feature.
+            Then it is passed to :meth:`pyoutput`.
+        :param code: Value for the ``fme_rejection_code`` attribute.
+        :param message: Value for the ``fme_rejection_message`` attribute.
         """
         feature.setAttribute("fme_rejection_code", code)
         feature.setAttribute("fme_rejection_message", message)
         self.pyoutput(feature)
+
+    def has_support_for(self, support_type: int) -> bool:
+        """
+        Overrides the default implementation to report support for Bulk Mode.
+
+        :returns: True if ``support_type`` is :data:`fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM`.
+        See :meth:`FMEBaseTransformer.has_support_for` for more details.
+        """
+        if support_type == FME_SUPPORT_FEATURE_TABLE_SHIM:
+            return True
+        return super().has_support_for(support_type)

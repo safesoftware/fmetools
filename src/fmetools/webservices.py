@@ -1,27 +1,29 @@
 # coding: utf-8
-
 """
 Helpers for working with FME Named Connections and FME Web Services.
 """
+from typing import Union
 
-from __future__ import absolute_import, division, print_function, unicode_literals
-
-import six
+import requests
+from fmeobjects import FMEException
 from fmewebservices import (
-    FMENamedConnectionManager,
-    FMEBasicConnection,
     FME_HTTP_AUTH_METHOD_BASIC,
     FME_HTTP_AUTH_METHOD_DIGEST,
-    FME_HTTP_AUTH_METHOD_NTLM,
     FME_HTTP_AUTH_METHOD_NONE,
+    FME_HTTP_AUTH_METHOD_NTLM,
+    FMEBasicConnection,
+    FMENamedConnection,
+    FMENamedConnectionManager,
     FMEOAuthV2Connection,
     FMETokenConnection,
 )
-from . import tr
-from fmeobjects import FMEException
 from requests.auth import AuthBase
 
+from . import tr
 from .http import get_auth_object
+
+# Nothing here is intended for general use.
+__all__ = []
 
 # 'Dynamic' in Workbench GUI means the auth method is set in
 # the Web Connection definition instead of the Web Service definition.
@@ -43,37 +45,37 @@ class NamedConnectionManager(FMENamedConnectionManager):
         super(NamedConnectionManager, self).__init__()
 
 
-class FMETokenConnectionWrapper(object):
+class FMETokenConnectionWrapper:
     """
     Wrapper around token-based FME Web Connections, to interoperate better
-    with Requests.
+    with `Requests <https://pypi.org/project/requests/>`_.
     """
 
-    def __init__(self, token_connection):
+    def __init__(
+        self, token_connection: Union[FMETokenConnection, FMEOAuthV2Connection]
+    ):
         """
-        :type token_connection: FMETokenConnection or FMEOAuthV2Connection
         :param token_connection: The token-based connection to wrap.
         """
         self.wrapped_conn = token_connection
 
-    def get_authorization_header(self):
+    def get_authorization_header(self) -> tuple[str, str]:
         """
         Gets the authorization header name and its value.
 
         :return: Authorization header name, and its value.
-            Unlike the original `getAuthorizationHeader()`,
-            these values are cleaned up for use with Requests.
-            The trailing colon is removed from the header.
-            Then both the header and value have leading and trailing spaces stripped,
-            as required by `Requests 2.11 <https://github.com/requests/requests/issues/3488>`_.
-        :rtype: str, str
         """
+        # Unlike the original `getAuthorizationHeader()`,
+        # these values are cleaned up for use with Requests.
+        # The trailing colon is removed from the header.
+        # Then both the header and value have leading and trailing spaces stripped,
+        # as required by Requests 2.11: https://github.com/requests/requests/issues/3488>
         header, value = self.wrapped_conn.getAuthorizationHeader()
         header = header.replace(":", "").strip()
         value = value.strip()
         return header, value
 
-    def get_access_token(self):
+    def get_access_token(self) -> str:
         """
         Gets the token value.
 
@@ -81,60 +83,55 @@ class FMETokenConnectionWrapper(object):
         """
         return self.wrapped_conn.getAccessToken().strip()
 
-    def set_suspect_expired(self):
+    def set_suspect_expired(self) -> None:
         """
-        Set by clients when they received an HTTP 401 response.
-        The infrastructure will then always consider the token expired.
+        This informs the FME Web Services infrastructure that its stored token may be expired.
+        FME may use this information to refresh the token.
         """
-        return self.wrapped_conn.setSuspectExpired()
+        self.wrapped_conn.setSuspectExpired()
 
-    def get_authorization_param_key(self):
+    def get_authorization_param_key(self) -> str:
         """
-        Gets the query parameter for the token.
-
-        :returns: query parameter name, stripped of leading and trailing spaces.
+        :returns: The query string parameter name for the token, if any.
         """
         param, _ = self.wrapped_conn.getAuthorizationQueryString()
         return param.strip()
 
     def get_authorization_header_name(self):
         """
-        Gets the name of the authorization header for the token.
-
-        :returns: authorization header name, stripped of leading and trailing spaces.
+        :returns: The name of the authorization header for the token, if any.
         """
         header, _ = self.get_authorization_header()
         return header
 
     @property
-    def token_in_header(self):
+    def token_in_header(self) -> bool:
         """
-        True if the web connection definition specifies that the token should be placed in the header.
-
-        :rtype: bool
+        :returns: Whether the Web Service definition specifies that the token
+            is supplied using a header.
         """
         return self.wrapped_conn.getWebService().supportHeaderAuthorization()
 
     @property
-    def token_in_url(self):
+    def token_in_url(self) -> bool:
         """
-        True if the web connection definition specifies that the token should be placed as a URL query parameter.
-
-        :rtype: bool
+        :returns: Whether the Web Service definition specifies that the token
+            is supplied using a URL query string parameter.
         """
         return self.wrapped_conn.getWebService().supportQueryStringAuthorization()
 
 
-def _create_auth_from_named_connection(conn, client_name=""):
+def _create_auth_from_named_connection(
+    conn: FMENamedConnection, client_name: str = ""
+) -> AuthBase:
     """
     Get a configured authentication object from a Named Connection
-    for use with Requests.
+    for use with `Requests`_.
 
-    :param FMENamedConnection conn: The Named Connection / Web Connection object.
-    :param str client_name: Name to use for the log message prefix in the failure case,
+    :param conn: The connection object from FME Web Services.
+    :param client_name: Name to use for the log message prefix in the failure case,
         e.g. format or transformer name.
     :raises TypeError: If the connection is not a valid Web Connection.
-    :rtype: AuthBase
     """
     if isinstance(conn, FMEBasicConnection):
         auth_type = conn.getAuthenticationMethod()
@@ -147,14 +144,16 @@ def _create_auth_from_named_connection(conn, client_name=""):
     raise TypeError(tr("Unexpected connection type {}").format(repr(conn)))
 
 
-def set_session_auth_from_named_connection(session, connection_name, client_name):
+def set_session_auth_from_named_connection(
+    session: requests.Session, connection_name: str, client_name: str
+):
     """
     Looks up a configured authentication object from a Named Connection and
     set it on a session used for web requests.
 
     This method handles implementation of the SSL verification setting on Web Connections.
 
-    :param requests.Session|FMERequestsSession session: web session to set the auth on
+    :param requests.Session session: web session to set the auth on
     :param connection_name: Name of the Named Connection / Web Connection.
         It's an error if no such connection exists.
     :param client_name: Name to use for the log message prefix in the failure case,
@@ -229,14 +228,7 @@ class FMEWebConnectionTokenBasedAuth(AuthBase):
             )
 
         if self.header_location:
-            # Key must be bytestring on PY27.
-            # Unicode key on PY27 will cause UnicodeDecodeError in httplib when body is binary.
-            header = (
-                self.header_location.encode("ascii")
-                if six.PY2
-                else self.header_location
-            )
-            prepared_request.headers[header] = header_value
+            prepared_request.headers[self.header_location] = header_value
 
         return prepared_request
 
@@ -254,7 +246,7 @@ class NamedConnectionNotFound(FMEException):
     Exception raised when a named connection doesn't exist with the given name.
     """
 
-    def __init__(self, client_name, connection_name):
+    def __init__(self, client_name: str, connection_name: str):
         base_message = tr(
             "%s: Connection '%s' does not exist."
             + "Check connection parameter and connection definitions in FME options and try again"

@@ -1,0 +1,31 @@
+name: Build docs and publish to web
+on:
+  push:
+    branches:
+      - main
+permissions:
+  contents: write
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.x
+      - name: Install dependencies
+        run: |
+            pip install sphinx sphinx_rtd_theme
+      - name: Sphinx build
+        run: |
+            sphinx-build docs _build
+      - name: Publish to web
+        uses: jakejarvis/s3-sync-action@master
+        with:
+            args: --acl public-read --follow-symlinks --delete --exclude '.git/*'
+        env:
+            AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+            AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+            AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            SOURCE_DIR: _build
+            DEST_DIR: ${{ vars.DEST_DIR }}

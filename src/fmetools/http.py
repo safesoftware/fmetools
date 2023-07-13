@@ -1,20 +1,10 @@
 # coding: utf-8
 
 """
-Helpers for making HTTP requests within FME.
-
-The main class of interest is :class:`FMERequestsSession`.
+This module provides :class:`FMERequestsSession`,
+a drop-in replacement for :class:`requests.Session`.
+Use this class to make HTTP requests that automatically follow FME settings.
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
-
-# PR72320/PR72321: Import this now, to guarantee that worker threads can access it.
-# Needed when running with standard-library-in-zip (i.e. embedded Python) and using
-# Requests in threads.
-# See http://stackoverflow.com/a/13057751 and
-# https://github.com/kennethreitz/requests/issues/3578.
-# noinspection PyUnresolvedReferences
-import encodings.idna
-
 import json
 import logging
 import os
@@ -22,20 +12,27 @@ import re
 import sys
 import warnings
 from collections import namedtuple
+from typing import Optional, Union
+from urllib.parse import quote, urlparse
 
 import fme
 import requests
 import urllib3
-from fmeobjects import FMEException, FMESession, FME_ASSEMBLY_VERSION
+from fmeobjects import FME_ASSEMBLY_VERSION, FMEException, FMESession
 from pypac import PACSession
 from requests.adapters import HTTPAdapter
-from requests.auth import HTTPProxyAuth, HTTPBasicAuth, HTTPDigestAuth
-from six.moves.urllib.parse import urlparse, quote
+from requests.auth import HTTPBasicAuth, HTTPDigestAuth, HTTPProxyAuth
 
 from . import tr
 from .logfile import get_configured_logger
-from .utils import choice_to_bool
 from .parsers import stringarray_to_dict
+from .utils import choice_to_bool
+
+# These are relevant externally.
+__all__ = [
+    "FMERequestsSession",
+    "UnsupportedProxyAuthenticationMethod",
+]
 
 # PR65941: Disable lower-level SSL warnings.
 # https://urllib3.readthedocs.io/en/latest/advanced-usage.html#ssl-warnings
@@ -50,14 +47,14 @@ _GENERIC_LOGGER_NAME = "FMERequestsSession"
 _REQUESTS_NO_PROXY_CONFIG = {"http": "", "https": ""}
 
 
-def _get_env_var(var_name_lowercase):
+def _get_env_var(var_name_lowercase: str) -> Optional[str]:
     """
     Look for an environment variable, first looking for the lowercase
     version, then the uppercase version if lowercase was missing/empty.
 
     This is how Requests handles proxy environment variable resolution.
 
-    :param str var_name_lowercase: The environment variable name.
+    :param var_name_lowercase: The environment variable name.
     """
     return os.environ.get(var_name_lowercase) or os.environ.get(
         var_name_lowercase.upper()
@@ -113,16 +110,17 @@ class SystemCertStoreAdapter(HTTPAdapter):
 
 class FMERequestsSession(PACSession):
     """
-    A wrapper around Requests that adds FME-specific functionality around HTTP requests,
-    such as proxy configuration based on Workbench settings.
+    This class adds FME-specific functionality around HTTP requests,
+    such as proxy configuration based on FME Workbench settings.
 
-    HTTP access in FME should use this class instead of :class:`requests.Session`.
+    HTTP access in FME should use this class whenever possible.
+    It has the same interface as :class:`requests.Session`.
 
     The superclass transparently provides Proxy Auto-Config (PAC) file services.
     This can be disabled by one of these methods:
 
-    * Setting :attr:`pypac.PACSession.pac_enabled` to False after instantiation.
-    * Setting Proxy Options to No Proxy in Workbench Options.
+    * Setting :attr:`pypac.PACSession.pac_enabled` to ``False``.
+    * Setting Proxy Options to No Proxy in FME Workbench Options.
     * Setting Proxy Options to Use System Proxy, and setting up general proxies in
       Internet Options such that :class:`FMESession` returns these proxies.
       This skips PAC discovery, which saves some time,
@@ -132,12 +130,16 @@ class FMERequestsSession(PACSession):
     :ivar int request_count: Increments every time a request is made.
     """
 
-    def __init__(self, log=None, fme_session=None):
+    def __init__(
+        self,
+        log: Union[logging.Logger, logging.LoggerAdapter, None] = None,
+        fme_session: Optional[FMESession] = None,
+    ):
         """
         :param log: Python standard library logger to use. If None, a default is used.
-        :param FMESession fme_session: Load proxy configuration from this session.
+        :param fme_session: Load proxy configuration from this session.
             Intended for testing purposes only.
-            Defaults to a new :class:`FMESession` instance.
+            Defaults to a new :class:`~fmeobjects.FMESession` instance.
         """
         super(FMERequestsSession, self).__init__()
         adapter = SystemCertStoreAdapter()
@@ -168,7 +170,7 @@ class FMERequestsSession(PACSession):
         except AttributeError:
             pass
 
-    def _load_proxy_settings(self, fme_session):
+    def _load_proxy_settings(self, fme_session: FMESession):
         """
         Load all proxy configuration from the given FMESession, as well as
         from environment variables.
@@ -178,13 +180,13 @@ class FMERequestsSession(PACSession):
         but this method does not set them.
         Instead, this class expects them to be set in FME's fmesite.py startup script.
 
-        :param FMESession fme_session: Load proxy configuration from this session.
+        :param fme_session: Load proxy configuration from this session.
         :returns: FMEGeneralProxyHandler, FMECustomProxyMapHandler
         :raises UnsupportedProxyAuthenticationMethod:
             If the proxy authentication method for the environment proxy is unsupported.
         """
         # Get the configured HTTP/HTTPS proxies, if any, and log about their use.
-        # If both HTTP and HTTPS are configured and they're identical, log once.
+        # If both HTTP and HTTPS are configured and are identical, log once.
         # Otherwise, log whatever is configured.
         http_proxy = _get_env_var("http_proxy")
         https_proxy = _get_env_var("https_proxy")
@@ -229,34 +231,34 @@ class FMERequestsSession(PACSession):
 
         return general_proxy_config, custom_proxy_map
 
-    def _log_proxy(self, proxy_url):
+    def _log_proxy(self, proxy_url) -> None:
         """Log about a proxy being used."""
         self._log.info(tr("Using proxy %s"), proxy_url_without_credentials(proxy_url))
 
     @staticmethod
-    def _is_proxy_auth_method_supported(auth_method):
+    def _is_proxy_auth_method_supported(auth_method) -> bool:
         """
         :returns: True if there's no proxy authentication or if it's Basic.
             Other methods, like NTLM and Digest, aren't supported.
         """
         return not auth_method or auth_method.lower() == "basic"
 
-    def request(self, method, url, **kwargs):
+    def request(self, method: str, url: str, **kwargs):
         """
         Make a request.
 
         Proxy resolution order:
 
-        * `proxies` keyword argument
+        * ``proxies`` keyword argument
         * FME Custom Proxy Map
         * Proxy Auto-Config file
         * Proxy environment variables
 
-        The `NO_PROXY` environment variable may override any proxy selected above.
+        The ``NO_PROXY`` environment variable may override any proxy selected above.
 
-        :param str method: GET|POST|HEAD|PUT|DELETE
-        :param str url: URL to request
-        :param kwargs: keyword arguments passed straight to Requests
+        :param method: GET|POST|HEAD|PUT|DELETE
+        :param url: URL to request
+        :param kwargs: keyword arguments passed to Requests
         :rtype: requests.Response
         """
         self.request_count += 1
@@ -305,26 +307,26 @@ class FMERequestsSession(PACSession):
 
 
 class KerberosUnsupportedException(FMEException):
-    """For use in :func:`getRequestsKerberosAuthObject`."""
+    """Exception for when Kerberos libraries are not available."""
 
-    def __init__(self, log_prefix):
+    def __init__(self, log_prefix: str):
         """
-        :param str log_prefix: Name of caller to use in the log message.
+        :param log_prefix: The prefix for the exception's message.
         """
         base_message = tr(
             "%s: Kerberos authentication on this system requires the installation for a Kerberos library for Python. "
-            + "Otherwise, try NTLM authentication if it's enabled by the host, or please visit http://www.safe.com/support"
+            + "Or try NTLM authentication if it's enabled by the host"
         )
         message = base_message % log_prefix
         super(KerberosUnsupportedException, self).__init__(message)
 
 
-def get_kerberos_auth(caller_name):
+def get_kerberos_auth(caller_name: str):
     """
     Try to get a Kerberos authentication object to use with :mod:`requests`. Raises
     a user-friendly exception if dependencies couldn't be loaded.
 
-    :param str caller_name: Prefix to use in error message if Kerberos not available.
+    :param caller_name: Prefix to use in error message if Kerberos not available.
     :rtype: requests_kerberos.HTTPKerberosAuth
     :raises KerberosUnsupportedException:
         If an ImportError occurred when trying to import :mod:`requests_kerberos`.
@@ -341,18 +343,19 @@ def get_kerberos_auth(caller_name):
         raise KerberosUnsupportedException(caller_name)
 
 
-def get_auth_object(auth_type, user="", password="", caller_name=""):
+def get_auth_object(
+    auth_type: str, user: str = "", password: str = "", caller_name: str = ""
+) -> Optional[requests.auth.AuthBase]:
     """
     Get a :class:`requests.auth.AuthBase` object configured for use with Requests.
 
-    :param str auth_type: The type of authentication object to obtain.
-        Must be one of: `None`, `Kerberos`, `Basic`, `Digest`, `NTLM`. Case insensitive.
-    :param str user: Ignored if not applicable to the specified auth type.
-    :param str password: Ignored if not applicable to the specified auth type.
-    :param str caller_name: Caller's name for log messages.
+    :param auth_type: The type of authentication object to obtain.
+        Must be one of: `None`, `Kerberos`, `Basic`, `Digest`, `NTLM`. Case-insensitive.
+    :param user: Ignored if not applicable to the specified auth type.
+    :param password: Ignored if not applicable to the specified auth type.
+    :param caller_name: Caller's name for log messages.
     :return: The configured authentication object.
-    :rtype: requests.auth.AuthBase or None
-    :raises ValueError: if authentication type is unrecognized.
+    :raises ValueError: If the authentication type is unrecognized.
     """
     auth_type = auth_type.upper()
     # These types don't need a username and password.
@@ -374,11 +377,11 @@ def get_auth_object(auth_type, user="", password="", caller_name=""):
         raise ValueError(tr("Unknown authentication type '%s'") % auth_type)
 
 
-def proxy_url_without_credentials(proxy_url):
+def proxy_url_without_credentials(proxy_url: str) -> str:
     """
     Given a proxy URL, return it with any proxy credentials removed.
 
-    :param str proxy_url: The proxy url.
+    :param proxy_url: The proxy url.
     """
     credentials_separator_index = proxy_url.rfind("@")
     if credentials_separator_index > -1:
@@ -410,7 +413,7 @@ FMECustomProxyMap = namedtuple(
 )
 
 
-class FMEGeneralProxyHandler(object):
+class FMEGeneralProxyHandler:
     """
     Handles parsing of the proxy settings that apply to all requests by default.
 
@@ -432,10 +435,10 @@ class FMEGeneralProxyHandler(object):
         self.password = ""
         self._auth_method = None
 
-    def configure(self, fme_session):
+    def configure(self, fme_session: FMESession) -> None:
         """Load general proxy configuration from FME.
 
-        :param FMESession fme_session: Configuration is loaded from this.
+        :param fme_session: Configuration is loaded from this.
         """
         proxy_config = fme_session.getProperties(FMESESSION_PROP_NETWORK_PROXY, {})
         use_system_proxy = False
@@ -492,7 +495,7 @@ class FMEGeneralProxyHandler(object):
             return self.proxies[0].auth_method
         return None
 
-    def is_non_proxy_host(self, host):
+    def is_non_proxy_host(self, host: str) -> bool:
         """
         :param host: Hostname to evaluate. Case-insensitive.
         :return: True if the given hostname matches one configured to use no proxy.
@@ -502,7 +505,7 @@ class FMEGeneralProxyHandler(object):
         return any(map(lambda host_re: host_re.match(host), self.non_proxy_hosts))
 
 
-class FMECustomProxyMapHandler(object):
+class FMECustomProxyMapHandler:
     """
     Handles parsing of the FME Custom Proxy Map, which assigns proxies for
     specific URLs.
@@ -513,13 +516,13 @@ class FMECustomProxyMapHandler(object):
     def __init__(self):
         self._custom_proxy_map = []
 
-    def custom_proxy_for_url(self, url):
+    def custom_proxy_for_url(self, url: str) -> Optional[FMECustomProxyMap]:
         """
         Consult the FME custom proxy map for a proxy configuration to use
         for the given URL. It's up to the caller to handle the proxy
         authentication method.
 
-        :param str url: URL for which to find a custom proxy mapping. Case-insensitive.
+        :param url: URL for which to find a custom proxy mapping. Case-insensitive.
         :returns: Custom proxy map entry matching the given URL,
             or `None` if there's no match.
         :rtype: FMECustomProxyMap
@@ -528,13 +531,12 @@ class FMECustomProxyMapHandler(object):
         for proxyMap in self._custom_proxy_map:
             if url.startswith(proxyMap.url):
                 return proxyMap
-        return None
 
-    def configure(self, fme_session):
+    def configure(self, fme_session: FMESession) -> None:
         """
         Load Custom Proxy Map configuration from FME.
 
-        :param FMESession fme_session: Configuration is loaded from this.
+        :param fme_session: Configuration is loaded from this.
         """
         proxy_config = fme_session.getProperties(FMESESSION_PROP_NETWORK_PROXY, {})
         i = 0
@@ -549,15 +551,16 @@ class FMECustomProxyMapHandler(object):
             i += 2
 
     @staticmethod
-    def parse_custom_proxy_map(fme_session, url, proxy_info):
+    def parse_custom_proxy_map(
+        fme_session: FMESession, url: str, proxy_info: str
+    ) -> FMECustomProxyMap:
         """
         Parse a serialized custom proxy map configuration entry from FME.
 
-        :param FMESession fme_session: For decoding FME-encoded strings.
-        :param str url: FME-encoded URL for the custom proxy map.
-        :param str proxy_info: FME-encoded and comma-delimited proxy configuration for
+        :param fme_session: For decoding FME-encoded strings.
+        :param url: FME-encoded URL for the custom proxy map.
+        :param proxy_info: FME-encoded and comma-delimited proxy configuration for
             the custom proxy map.
-        :rtype: FMECustomProxyMap
         """
         url = fme_session.decodeFromFMEParsableText(url).lower()
 
@@ -611,23 +614,23 @@ class FMECustomProxyMapHandler(object):
 
 
 class UnsupportedProxyAuthenticationMethod(FMEException):
-    """For use in :class:`FMERequestsSession`."""
+    """The proxy authentication method is not supported."""
 
-    def __init__(self, log_prefix, auth_method):
+    def __init__(self, log_prefix: str, auth_method: str):
         """
-        :param str log_prefix: The prefix to use for all log messages from this class,
-            e.g. "[format name] [direction]".
-        :param str auth_method: Proxy authentication method.
+        :param log_prefix: The prefix for the exception's message.
+            e.g. ``[format name] [direction]``.
+        :param auth_method: Proxy authentication method.
         """
         message = tr(
-            "{prefix}: Proxy authentication mode '{auth_method}' is not supported by this format"
+            "{prefix}: Proxy authentication mode '{auth_method}' is not supported"
         )
         super(UnsupportedProxyAuthenticationMethod, self).__init__(
             message.format(prefix=log_prefix, auth_method=auth_method)
         )
 
 
-def _configure_proxy_exceptions():
+def _configure_proxy_exceptions() -> bool:
     """
     Set the `NO_PROXY` environment variable based on Windows Internet Options.
     Requests and other Python HTTP libraries should automatically
@@ -636,7 +639,6 @@ def _configure_proxy_exceptions():
 
     :returns: True if proxy settings were picked up from the Windows Registry
        and the `NO_PROXY` environment variable was set using it.
-    :rtype: bool
     """
     if _get_env_var("no_proxy") or os.name != "nt":
         return False

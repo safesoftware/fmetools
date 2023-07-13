@@ -1,8 +1,10 @@
 # coding: utf-8
-
 """
 Miscellaneous utilities.
 """
+
+# Nothing here is intended for general use.
+__all__ = []
 
 
 def choice_to_bool(boolean):

@@ -1,16 +1,20 @@
 # coding: utf-8
-
-from __future__ import absolute_import, division, print_function, unicode_literals
-
+"""
+This module contains parsers to support FME reader/writer development.
+It is not intended for general use.
+"""
 from collections import OrderedDict, namedtuple
 
+import fme
 import six
-from fmeobjects import FMESession, FMEFeature
+from fmeobjects import FMEFeature, FMESession
 from pluginbuilder import FMEMappingFile
+from six import string_types
 
 from .utils import string_to_bool
-from six import string_types
-import fme
+
+# Nothing here is intended for general use.
+__all__ = []
 
 
 def _system_to_unicode(original):
@@ -174,7 +178,7 @@ def get_template_feature_type(feature):
 SearchEnvelope = namedtuple("SearchEnvelope", "min_x min_y max_x max_y coordsys")
 
 
-class MappingFile(object):
+class MappingFile:
     """
     A wrapper for accessing information from the mapping file in a simplified way.
 

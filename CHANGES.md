@@ -1,5 +1,12 @@
 # fmetools changes
 
+## 0.7.0
+
+* Add HTML docs and expanded existing docstrings.
+* Clarify which components are considered part of the public API.
+* Add type annotations.
+* `fmetools.plugins.FMEEnhancedTransformer`: Support Bulk Mode by default.
+
 ## 0.6.0
 
 * Rename `fmetools.plugins.FMETransformer` to `FMEBaseTransformer`
