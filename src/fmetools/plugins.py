@@ -643,7 +643,7 @@ class FMEEnhancedTransformer(FMEBaseTransformer):
         Overrides the default implementation to report support for Bulk Mode.
 
         :returns: True if ``support_type`` is :data:`fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM`.
-        See :meth:`FMEBaseTransformer.has_support_for` for more details.
+            See :meth:`FMEBaseTransformer.has_support_for` for more details.
         """
         if support_type == FME_SUPPORT_FEATURE_TABLE_SHIM:
             return True

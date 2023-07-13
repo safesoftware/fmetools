@@ -7,7 +7,6 @@ fmetools API reference
     These components are not documented here and may change without notice.
 
 .. module:: fmetools
-   :members:
 
 .. toctree::
    :maxdepth: 2

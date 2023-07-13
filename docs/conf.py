@@ -28,9 +28,11 @@ html_static_path = ["_static"]
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "fmeobjects": ("https://docs.safe.com/fme/html/fmepython/", None),
+    "requests": ("https://requests.readthedocs.io/en/latest/", None),
 }
 
 autodoc_default_options = {
     "special-members": "__init__",
     "show-inheritance": True,
 }
+autodoc_mock_imports = ["fme", "fmeobjects", "fmewebservices", "pluginbuilder"]
