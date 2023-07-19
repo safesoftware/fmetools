@@ -2,6 +2,8 @@
 """
 Helpers for working with FME Named Connections and FME Web Services.
 """
+from __future__ import annotations
+
 from typing import Union
 
 import requests

@@ -2,6 +2,8 @@
 """
 Helpers for enabling localized strings using the :mod:`gettext` module.
 """
+from __future__ import annotations
+
 import os
 from typing import Callable, Optional
 
@@ -21,7 +23,7 @@ def enable_module_localization(
     python_module_name: str,
     locale_dir: Optional[str] = None,
     enable_fallback: bool = True,
-    **kwargs
+    **kwargs,
 ) -> Callable:
     """
     Attempt to load localized messages.
@@ -51,7 +53,7 @@ def enable_module_localization_with_plurals(
     python_module_name: str,
     locale_dir: Optional[str] = None,
     enable_fallback: bool = True,
-    **kwargs
+    **kwargs,
 ) -> tuple[Callable, Callable]:
     """
     Attempt to load localized messages. Supports localized strings which specify plurals.

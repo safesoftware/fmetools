@@ -5,6 +5,8 @@ the recommended way to access transformer parameter values in FME 2023+.
 .. note::
     This module can only be imported in FME 2023 or newer.
 """
+from __future__ import annotations
+
 from typing import Any, Iterable, Optional, Union
 
 from fmetools.features import get_attributes, get_attributes_with_prefix

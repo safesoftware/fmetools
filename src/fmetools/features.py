@@ -5,6 +5,8 @@ and building complete features.
 These utilities make it more convenient to work with FMEFeature objects,
 and help avoid common errors.
 """
+from __future__ import annotations
+
 from typing import Any, Iterable, Optional
 
 from fmeobjects import FME_ATTR_STRING, FMEFeature, FMEGeometry, kFMERead_Geometry
