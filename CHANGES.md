@@ -1,5 +1,9 @@
 # fmetools changes
 
+## 0.7.1
+
+* Fix type annotations when using Python 3.8 and earlier.
+
 ## 0.7.0
 
 * Add HTML docs and expanded existing docstrings.
