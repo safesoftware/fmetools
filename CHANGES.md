@@ -1,5 +1,9 @@
 # fmetools changes
 
+## 0.7.2
+
+* Relax FME version requirements from 0.7.0 release.
+
 ## 0.7.1
 
 * Fix type annotations when using Python 3.8 and earlier.
