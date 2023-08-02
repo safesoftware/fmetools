@@ -12,6 +12,8 @@ and requires an FME installation with Python 3.7 or newer.
 The best way to get started with fmetools is through the tutorials in the [FME Packages SDK Guide][fpkg-sdk].
 The [Hello World package tutorial][hello world] guides you through creating a simple FME Package that uses fmetools.
 
+The fmetools API reference is available at https://docs.safe.com/fme/html/fmetools/.
+
 [fme]: https://safe.com
 [hub]: https://hub.safe.com
 [fpkg-sdk]: https://docs.safe.com/fme/html/fpkg-sdk/
