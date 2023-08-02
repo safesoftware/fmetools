@@ -1,5 +1,9 @@
 # fmetools changes
 
+## 0.7.3
+
+* Add links to HTML docs.
+
 ## 0.7.2
 
 * Relax FME version requirements from 0.7.0 release.
