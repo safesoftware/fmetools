@@ -9,7 +9,13 @@ Transformer developers should subclass it to implement their own transformers.
 import logging
 import warnings
 
-from fmeobjects import FME_SUPPORT_FEATURE_TABLE_SHIM, FMEFeature
+from fmeobjects import FMEFeature
+
+try:
+    from fmeobjects import FME_SUPPORT_FEATURE_TABLE_SHIM
+except ImportError:  # Support < FME 2022.0 b22235
+    FME_SUPPORT_FEATURE_TABLE_SHIM = 0
+
 from pluginbuilder import FMEReader, FMEWriter
 
 from .logfile import get_configured_logger
