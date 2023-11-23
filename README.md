@@ -39,3 +39,4 @@ FME does not include fmetools, so packages that use it must include it themselve
 3. Do a dev install using `pip install --editable .`
 4. Run tests using `pytest`
 5. Build wheel using `python -m build --wheel`
+6. To build docs: `sphinx-build -M html docs docs/_build`
