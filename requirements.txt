@@ -1,6 +1,5 @@
-black
 build
-isort
 pytest
 pytest-vcr
 hypothesis
+ruff

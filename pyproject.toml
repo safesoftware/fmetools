@@ -1,10 +1,6 @@
-# pyproject.toml
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "-s"
 testpaths = [
     "tests",
 ]
-
-[tool.isort]
-profile = "black"

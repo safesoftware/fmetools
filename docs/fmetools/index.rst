@@ -17,3 +17,4 @@ fmetools API reference
    logfile
    paramparsing
    plugins
+   scripted_selection
