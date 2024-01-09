@@ -1,5 +1,10 @@
 # fmetools changes
 
+## 0.7.4
+
+* Update doc for `fmetools.paramparsing` to note FME 2024 requirement
+  when running under FME Flow.
+
 ## 0.7.3
 
 * Add links to HTML docs.

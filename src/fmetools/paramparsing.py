@@ -1,9 +1,15 @@
 """
 This module provides :class:`TransformerParameterParser`,
-the recommended way to access transformer parameter values in FME 2023+.
+the recommended way to access transformer parameter values.
 
-.. note::
-    This module can only be imported in FME 2023 or newer.
+.. warning::
+    This module requires:
+
+    - FME Form 2023 b23224 or newer
+    - FME Flow 2024 b24145 or newer
+
+    Packages using this module and targeting both FME Form and FME Flow
+    should set ``minimum_fme_build`` in its package.yml accordingly.
 """
 from __future__ import annotations
 
@@ -20,6 +26,10 @@ except ModuleNotFoundError as e:
 class TransformerParameterParser:
     """
     Helper for getting parsed transformer parameter values.
+
+    .. warning::
+        Instantiating this class on FME Flow requires FME Flow b24145 or newer.
+        Instantiating the class on older versions of FME Flow will raise an exception.
 
     All parameters of Python transformers are set as attributes on input features.
     By convention, these attributes are given a prefix to give it a namespace and
