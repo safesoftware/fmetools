@@ -615,19 +615,14 @@ class FMEEnhancedTransformer(FMEBaseTransformer):
         """
         Output a feature with conventional attributes that represent rejection.
 
-        To work as intended, the transformer definition file needs to specify a ``<REJECTED>`` output port,
-        and its Execution Instructions needs some corresponding lines:
+        Method will first attempt to output to `<Rejected>`. If the transformer doesn't support multiple output ports
+        yet or the <Rejected> tag doesn't exist on the PythonFactory definition, then feature will be directed to
+        `PYOUTPUT`.
 
-        * A ``TestFactory`` definition that sends features with
-          the ``fme_rejection_code`` attribute to the rejection port.
-        * Handling for the possibility of the transformer's initiator/input feature
-          coming in with ``fme_rejection_code`` already defined.
-          The transformer should not send features to the rejection port unless
-          the feature was actually rejected by the transformer.
-          If the input feature included rejection attributes,
-          the transformer should pass them through in its output features.
-          If the transformer happens to reject such a feature,
-          it's free to overwrite those existing attributes.
+        To work as intended for FME 2024.0+, the transformer definition file should:
+        * Specify a `PY_OUTPUT_TAGS` clause in the PythonFactory definition
+        * Add `<Rejected>` to `OUTPUT_TAGS` and `PY_OUTPUT_TAGS`
+        * Specify `<Rejected>` output tag in the PythonFactory definition
 
         :param feature: Feature to reject.
             Rejection attributes are added to this feature.
@@ -637,7 +632,13 @@ class FMEEnhancedTransformer(FMEBaseTransformer):
         """
         feature.setAttribute("fme_rejection_code", code)
         feature.setAttribute("fme_rejection_message", message)
-        self.pyoutput(feature)
+
+        try:
+            self.pyoutput(feature, output_tag="<Rejected>")
+        except TypeError:
+            # For backwards compatibility. Transformer is using a PythonFactory that doesn't support
+            # multiple output ports yet
+            self.pyoutput(feature)
 
     def has_support_for(self, support_type: int) -> bool:
         """
