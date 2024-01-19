@@ -408,22 +408,17 @@ class FMEBaseTransformer:
         """
         pass
 
-    def pyoutput(self, feature: FMEFeature) -> None:
+    def pyoutput(self, feature: FMEFeature, output_tag: str = None) -> None:
         """
-        Output a feature from the transformer.
-
-        This method does not specify an output port. Instead, it is the responsibility of
-        subsequent factories to forward the output feature to the appropriate output port.
-        A typical transformer definition would have an Execution Instructions with a TestFactory_
-        that inspects the attributes on the feature to determine whether it is a rejection feature,
-        and if so, forward it to the rejection port.
-
-        .. _TestFactory: https://docs.safe.com/fme/html/FME_FactFunc/doc_pages/testfactory.txt
+        Output a feature from the transformer to an output port.
 
         .. note::
             Do not implement this method. FME injects the implementation at runtime.
 
         :param feature: The feature to output.
+        :param output_tag: The output tag to direct feature to. This argument is required if multiple output tags
+            exist in the PythonFactory definition. Otherwise, it will default to `PYOUTPUT` or the single output tag
+            if specified.
         """
         # Stub. Implementation is injected at runtime.
 
