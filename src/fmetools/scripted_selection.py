@@ -149,7 +149,7 @@ class ScriptedSelectionCallback(ABC):
         container_id: Optional[str] = None,
         limit: Optional[int] = None,
         query: Optional[str] = None,
-        **kwargs: dict[str, Any],
+        **kwargs,
     ) -> ContainerContentResponse:
         """
         Get the Items in a given container.
