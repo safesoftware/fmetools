@@ -616,16 +616,64 @@ class FMEEnhancedTransformer(FMEBaseTransformer):
         """
         Output a feature with conventional attributes that represent rejection.
 
-        Method will first attempt to output to `<Rejected>`. If the <Rejected> tag doesn't exist on the PythonFactory
-        definition, then feature will be directed to `PYOUTPUT`.
+        Method will first attempt to output to ``<Rejected>``. If the ``<Rejected>`` tag doesn't exist on the
+        ``PythonFactory`` definition, then feature will be directed to ``PYOUTPUT``.
 
         For transformers that only support FME 2024.0+, the transformer definition file should:
-        * Specify a `PY_OUTPUT_TAGS` clause in the PythonFactory definition
-        * Add `<Rejected>` to `OUTPUT_TAGS` and `PY_OUTPUT_TAGS`
-        * Specify `<Rejected>` output tag in the PythonFactory definition
+        * Specify a ``PY_OUTPUT_TAGS`` clause in the ``PythonFactory`` definition
+        * Add ``<Rejected>`` to ``OUTPUT_TAGS`` and ``PY_OUTPUT_TAGS``
+        * Specify ``<Rejected>`` output tag in the ``PythonFactory`` definition
 
-        To also support versions earlier than FME 2024.0, the transformer definition file should:
-        * Define a TestFactory for redirecting features to the <Rejected> output tag
+        Here is an example ``PythonFactory`` definition for a transformer with two output ports::
+
+            FACTORY_DEF {*} PythonFactory
+                FACTORY_NAME { $(XFORMER_NAME) }
+                GROUP_BY { $(GROUP_BY) }
+                FLUSH_WHEN_GROUPS_CHANGE { $(GROUP_BY_MODE) }
+                $(INPUT_LINES)
+                SYMBOL_NAME { $(PYTHONSYMBOL) }
+                SOURCE_CODE { $(PYTHONSOURCE) }
+                PY_OUTPUT_TAGS Output <Rejected>
+                OUTPUT { Output FEATURE_TYPE $(OUTPUT_Output_FTYPE)
+                    $(OUTPUT_Output_FUNCS) }
+                OUTPUT { <Rejected> FEATURE_TYPE $(OUTPUT_<Rejected>_FTYPE)
+                    $(OUTPUT_<Rejected>_FUNCS) }
+
+        To also support versions earlier than FME 2024.0, the transformer definition file needs to specify a
+        ``<Rejected>`` output port, and its Execution Instructions need some corresponding lines:
+        * A ``TestFactory`` definition that sends features with
+          the ``fme_rejection_code`` attribute to the rejection port.
+        * Handling for the possibility of the transformer's initiator/input feature
+          coming in with ``fme_rejection_code`` already defined.
+          The transformer should not send features to the rejection port unless
+          the feature was actually rejected by the transformer.
+          If the input feature included rejection attributes,
+          the transformer should pass them through in its output features.
+          If the transformer happens to reject such a feature,
+          it's free to overwrite those existing attributes.
+
+        Here is an example ``PythonFactory`` and ``TestFactory`` definition for a transformer with two output ports::
+
+            FACTORY_DEF {*} PythonFactory
+                FACTORY_NAME { $(XFORMER_NAME) }
+                INPUT { FEATURE_TYPE $(XFORMER_NAME)_READY }
+                SYMBOL_NAME { $(PYTHONSYMBOL) }
+                OUTPUT { PYOUTPUT FEATURE_TYPE $(XFORMER_NAME)_PROCESSED }
+
+            # Removed all internal-prefixed attributes from output feature
+            # and emit to the correct output port based on value of fme_rejection_code.
+            FACTORY_DEF {*} TestFactory
+                FACTORY_NAME { $(XFORMER_NAME)_ROUTER }
+                INPUT { FEATURE_TYPE $(XFORMER_NAME)_PROCESSED }
+                TEST &fme_rejection_code == ""
+                OUTPUT { PASSED FEATURE_TYPE $(OUTPUT_Output_FTYPE)
+                    @RenameAttributes(FME_STRICT,fme_rejection_code,___fme_rejection_code___)
+                    @RemoveAttributes(fme_regexp_match,^<internal prefix>.*$)
+                    $(OUTPUT_Output_FUNCS) }
+                OUTPUT { FAILED FEATURE_TYPE $(OUTPUT_<REJECTED>_FTYPE)
+                    @RemoveAttributes(___fme_rejection_code___)
+                    @RemoveAttributes(fme_regexp_match,^<internal prefix>.*$)
+                    $(OUTPUT_<REJECTED>_FUNCS) }
 
         :param feature: Feature to reject.
             Rejection attributes are added to this feature.
