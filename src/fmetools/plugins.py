@@ -620,6 +620,7 @@ class FMEEnhancedTransformer(FMEBaseTransformer):
         ``PythonFactory`` definition, then feature will be directed to ``PYOUTPUT``.
 
         For transformers that only support FME 2024.0+, the transformer definition file should:
+
         * Specify a ``PY_OUTPUT_TAGS`` clause in the ``PythonFactory`` definition
         * Add ``<Rejected>`` to ``OUTPUT_TAGS`` and ``PY_OUTPUT_TAGS``
         * Specify ``<Rejected>`` output tag in the ``PythonFactory`` definition
@@ -641,6 +642,7 @@ class FMEEnhancedTransformer(FMEBaseTransformer):
 
         To also support versions earlier than FME 2024.0, the transformer definition file needs to specify a
         ``<Rejected>`` output port, and its Execution Instructions need some corresponding lines:
+
         * A ``TestFactory`` definition that sends features with
           the ``fme_rejection_code`` attribute to the rejection port.
         * Handling for the possibility of the transformer's initiator/input feature
