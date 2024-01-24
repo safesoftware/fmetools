@@ -411,15 +411,15 @@ class FMEBaseTransformer:
 
     def pyoutput(self, feature: FMEFeature, output_tag: Optional[str] = None) -> None:
         """
-        Output a feature from the transformer to an output port.
+        Output a feature from the transformer to an output tag.
 
         .. note::
             Do not implement this method. FME injects the implementation at runtime.
 
         :param feature: The feature to output.
         :param output_tag: The output tag to direct feature to. This argument is required if multiple output tags
-            exist in the PythonFactory definition. Otherwise, it will default to `PYOUTPUT` or the single output tag
-            if specified in the PythonFactory definition.
+            exist in the PythonFactory definition. Otherwise, it will default to ``PYOUTPUT`` or the single output tag
+            if specified in the PythonFactory definition. Introduced in FME 2024.0.
         """
         # Stub. Implementation is injected at runtime.
 
@@ -625,7 +625,7 @@ class FMEEnhancedTransformer(FMEBaseTransformer):
         * Add ``<Rejected>`` to ``OUTPUT_TAGS`` and ``PY_OUTPUT_TAGS``
         * Specify ``<Rejected>`` output tag in the ``PythonFactory`` definition
 
-        Here is an example ``PythonFactory`` definition for a transformer with two output ports::
+        Example of a ``PythonFactory`` definition for a transformer with two output ports::
 
             FACTORY_DEF {*} PythonFactory
                 FACTORY_NAME { $(XFORMER_NAME) }
@@ -640,7 +640,7 @@ class FMEEnhancedTransformer(FMEBaseTransformer):
                 OUTPUT { <Rejected> FEATURE_TYPE $(OUTPUT_<Rejected>_FTYPE)
                     $(OUTPUT_<Rejected>_FUNCS) }
 
-        To also support versions earlier than FME 2024.0, the transformer definition file needs to specify a
+        To support versions earlier than FME 2024.0, the transformer definition file needs to specify a
         ``<Rejected>`` output port, and its Execution Instructions need some corresponding lines:
 
         * A ``TestFactory`` definition that sends features with
@@ -654,7 +654,7 @@ class FMEEnhancedTransformer(FMEBaseTransformer):
           If the transformer happens to reject such a feature,
           it's free to overwrite those existing attributes.
 
-        Here is an example ``PythonFactory`` and ``TestFactory`` definition for a transformer with two output ports::
+        Example of a ``PythonFactory`` and ``TestFactory`` definition for a transformer with two output ports::
 
             FACTORY_DEF {*} PythonFactory
                 FACTORY_NAME { $(XFORMER_NAME) }
