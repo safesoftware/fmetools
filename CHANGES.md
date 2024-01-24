@@ -1,5 +1,9 @@
 # fmetools changes
 
+## 0.8.0
+
+* Add support for multiple output tags. Requires FME 2024.0+.
+
 ## 0.7.4
 
 * Update doc for `fmetools.paramparsing` to note FME 2024 requirement
