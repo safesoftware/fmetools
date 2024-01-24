@@ -8,6 +8,7 @@ Transformer developers should subclass it to implement their own transformers.
 """
 import logging
 import warnings
+from typing import Optional
 
 from fmeobjects import FMEFeature
 
@@ -408,22 +409,17 @@ class FMEBaseTransformer:
         """
         pass
 
-    def pyoutput(self, feature: FMEFeature) -> None:
+    def pyoutput(self, feature: FMEFeature, output_tag: Optional[str] = None) -> None:
         """
-        Output a feature from the transformer.
-
-        This method does not specify an output port. Instead, it is the responsibility of
-        subsequent factories to forward the output feature to the appropriate output port.
-        A typical transformer definition would have an Execution Instructions with a TestFactory_
-        that inspects the attributes on the feature to determine whether it is a rejection feature,
-        and if so, forward it to the rejection port.
-
-        .. _TestFactory: https://docs.safe.com/fme/html/FME_FactFunc/doc_pages/testfactory.txt
+        Output a feature from the transformer to an output tag.
 
         .. note::
             Do not implement this method. FME injects the implementation at runtime.
 
         :param feature: The feature to output.
+        :param output_tag: The output tag to direct feature to. This argument is required if multiple output tags
+            exist in the PythonFactory definition. Otherwise, it will default to ``PYOUTPUT`` or the single output tag
+            if specified in the PythonFactory definition. Introduced in FME 2024.0.
         """
         # Stub. Implementation is injected at runtime.
 
@@ -620,8 +616,32 @@ class FMEEnhancedTransformer(FMEBaseTransformer):
         """
         Output a feature with conventional attributes that represent rejection.
 
-        To work as intended, the transformer definition file needs to specify a ``<REJECTED>`` output port,
-        and its Execution Instructions needs some corresponding lines:
+        Method will first attempt to output to ``<Rejected>``. If the ``<Rejected>`` tag doesn't exist on the
+        ``PythonFactory`` definition, then feature will be directed to ``PYOUTPUT``.
+
+        For transformers that only support FME 2024.0+, the transformer definition file should:
+
+        * Specify a ``PY_OUTPUT_TAGS`` clause in the ``PythonFactory`` definition
+        * Add ``<Rejected>`` to ``OUTPUT_TAGS`` and ``PY_OUTPUT_TAGS``
+        * Specify ``<Rejected>`` output tag in the ``PythonFactory`` definition
+
+        Example of a ``PythonFactory`` definition for a transformer with two output ports::
+
+            FACTORY_DEF {*} PythonFactory
+                FACTORY_NAME { $(XFORMER_NAME) }
+                GROUP_BY { $(GROUP_BY) }
+                FLUSH_WHEN_GROUPS_CHANGE { $(GROUP_BY_MODE) }
+                $(INPUT_LINES)
+                SYMBOL_NAME { $(PYTHONSYMBOL) }
+                SOURCE_CODE { $(PYTHONSOURCE) }
+                PY_OUTPUT_TAGS Output <Rejected>
+                OUTPUT { Output FEATURE_TYPE $(OUTPUT_Output_FTYPE)
+                    $(OUTPUT_Output_FUNCS) }
+                OUTPUT { <Rejected> FEATURE_TYPE $(OUTPUT_<Rejected>_FTYPE)
+                    $(OUTPUT_<Rejected>_FUNCS) }
+
+        To support versions earlier than FME 2024.0, the transformer definition file needs to specify a
+        ``<Rejected>`` output port, and its Execution Instructions need some corresponding lines:
 
         * A ``TestFactory`` definition that sends features with
           the ``fme_rejection_code`` attribute to the rejection port.
@@ -634,6 +654,29 @@ class FMEEnhancedTransformer(FMEBaseTransformer):
           If the transformer happens to reject such a feature,
           it's free to overwrite those existing attributes.
 
+        Example of a ``PythonFactory`` and ``TestFactory`` definition for a transformer with two output ports::
+
+            FACTORY_DEF {*} PythonFactory
+                FACTORY_NAME { $(XFORMER_NAME) }
+                INPUT { FEATURE_TYPE $(XFORMER_NAME)_READY }
+                SYMBOL_NAME { $(PYTHONSYMBOL) }
+                OUTPUT { PYOUTPUT FEATURE_TYPE $(XFORMER_NAME)_PROCESSED }
+
+            # Removed all internal-prefixed attributes from output feature
+            # and emit to the correct output port based on value of fme_rejection_code.
+            FACTORY_DEF {*} TestFactory
+                FACTORY_NAME { $(XFORMER_NAME)_ROUTER }
+                INPUT { FEATURE_TYPE $(XFORMER_NAME)_PROCESSED }
+                TEST &fme_rejection_code == ""
+                OUTPUT { PASSED FEATURE_TYPE $(OUTPUT_Output_FTYPE)
+                    @RenameAttributes(FME_STRICT,fme_rejection_code,___fme_rejection_code___)
+                    @RemoveAttributes(fme_regexp_match,^<internal prefix>.*$)
+                    $(OUTPUT_Output_FUNCS) }
+                OUTPUT { FAILED FEATURE_TYPE $(OUTPUT_<REJECTED>_FTYPE)
+                    @RemoveAttributes(___fme_rejection_code___)
+                    @RemoveAttributes(fme_regexp_match,^<internal prefix>.*$)
+                    $(OUTPUT_<REJECTED>_FUNCS) }
+
         :param feature: Feature to reject.
             Rejection attributes are added to this feature.
             Then it is passed to :meth:`pyoutput`.
@@ -642,7 +685,13 @@ class FMEEnhancedTransformer(FMEBaseTransformer):
         """
         feature.setAttribute("fme_rejection_code", code)
         feature.setAttribute("fme_rejection_message", message)
-        self.pyoutput(feature)
+
+        try:
+            self.pyoutput(feature, output_tag="<Rejected>")
+        except TypeError:
+            # For backwards compatibility. Output to the default output tag for the transformer definition to redirect
+            # the feature to the `<Rejected>` tag.
+            self.pyoutput(feature)
 
     def has_support_for(self, support_type: int) -> bool:
         """
