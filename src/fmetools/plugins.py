@@ -399,7 +399,23 @@ class FMEBaseTransformer:
 
         This method is used instead of :meth:`input` if the transformer has defined input tags
         listed in the transformer's INPUT_TAGS parameter and the PythonFactory's
-        PY_INPUT_TAGS clause.
+        PY_INPUT_TAGS clause. Introduced in FME 2024.0.
+
+        Example of a ``PythonFactory`` definition with two input tags::
+
+            FACTORY_DEF {*} PythonFactory
+                FACTORY_NAME { $(XFORMER_NAME) }
+                GROUP_BY { $(GROUP_BY) }
+                FLUSH_WHEN_GROUPS_CHANGE { $(GROUP_BY_MODE) }
+                PY_INPUT_TAGS INPUT0 INPUT1
+                $(INPUT_LINES)
+                SYMBOL_NAME { $(PYTHONSYMBOL) }
+                SOURCE_CODE { $(PYTHONSOURCE) }
+                PY_OUTPUT_TAGS Output <Rejected>
+                OUTPUT { Output FEATURE_TYPE $(OUTPUT_Output_FTYPE)
+                    $(OUTPUT_Output_FUNCS) }
+                OUTPUT { <Rejected> FEATURE_TYPE $(OUTPUT_<Rejected>_FTYPE)
+                    $(OUTPUT_<Rejected>_FUNCS) }
 
         Transformers typically receive a feature through this method, process it,
         modify the feature by adding output attributes, and then output the feature using :meth:`pyoutput`.
