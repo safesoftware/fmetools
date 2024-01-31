@@ -8,6 +8,7 @@
 
 * Update doc for `fmetools.paramparsing` to note FME 2024 requirement
   when running under FME Flow.
+* Add Scripted Selection API
 
 ## 0.7.3
 
