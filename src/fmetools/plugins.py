@@ -405,12 +405,9 @@ class FMEBaseTransformer:
 
             FACTORY_DEF {*} PythonFactory
                 FACTORY_NAME { $(XFORMER_NAME) }
-                GROUP_BY { $(GROUP_BY) }
-                FLUSH_WHEN_GROUPS_CHANGE { $(GROUP_BY_MODE) }
                 PY_INPUT_TAGS INPUT0 INPUT1
                 $(INPUT_LINES)
-                SYMBOL_NAME { $(PYTHONSYMBOL) }
-                SOURCE_CODE { $(PYTHONSOURCE) }
+                SYMBOL_NAME { symbol_name }
                 PY_OUTPUT_TAGS Output <Rejected>
                 OUTPUT { Output FEATURE_TYPE $(OUTPUT_Output_FTYPE)
                     $(OUTPUT_Output_FUNCS) }
@@ -717,11 +714,8 @@ class FMEEnhancedTransformer(FMEBaseTransformer):
 
             FACTORY_DEF {*} PythonFactory
                 FACTORY_NAME { $(XFORMER_NAME) }
-                GROUP_BY { $(GROUP_BY) }
-                FLUSH_WHEN_GROUPS_CHANGE { $(GROUP_BY_MODE) }
                 $(INPUT_LINES)
-                SYMBOL_NAME { $(PYTHONSYMBOL) }
-                SOURCE_CODE { $(PYTHONSOURCE) }
+                SYMBOL_NAME { symbol_name }
                 PY_OUTPUT_TAGS Output <Rejected>
                 OUTPUT { Output FEATURE_TYPE $(OUTPUT_Output_FTYPE)
                     $(OUTPUT_Output_FUNCS) }
@@ -747,7 +741,7 @@ class FMEEnhancedTransformer(FMEBaseTransformer):
             FACTORY_DEF {*} PythonFactory
                 FACTORY_NAME { $(XFORMER_NAME) }
                 INPUT { FEATURE_TYPE $(XFORMER_NAME)_READY }
-                SYMBOL_NAME { $(PYTHONSYMBOL) }
+                SYMBOL_NAME { symbol_name }
                 OUTPUT { PYOUTPUT FEATURE_TYPE $(XFORMER_NAME)_PROCESSED }
 
             # Removed all internal-prefixed attributes from output feature
