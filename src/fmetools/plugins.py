@@ -379,7 +379,10 @@ class FMEBaseTransformer:
 
     def input(self, feature: FMEFeature) -> None:
         """
-        Receive a feature from the transformer's input port.
+        Receive a feature from the transformer's single input port.
+
+        This method is used instead of :meth:`input_from` if the transformer has no input tags,
+        meaning that the transformer's INPUT_TAGS parameter is listed as <BLANK>.
 
         Transformers typically receive a feature through this method, process it,
         modify the feature by adding output attributes, and then output the feature using :meth:`pyoutput`.
@@ -387,6 +390,37 @@ class FMEBaseTransformer:
         Transformers may also create new :class:`FMEFeature` instances and output them.
 
         :param feature: The feature to process.
+        """
+        pass
+
+    def input_from(self, feature: FMEFeature, input_tag: str) -> None:
+        """
+        Receive a feature from input_tag.
+
+        This method is used instead of :meth:`input` if the transformer has defined input tags
+        listed in the transformer's INPUT_TAGS parameter and the PythonFactory's
+        PY_INPUT_TAGS clause. Introduced in FME 2024.0.
+
+        Example of a ``PythonFactory`` definition with two input tags::
+
+            FACTORY_DEF {*} PythonFactory
+                FACTORY_NAME { $(XFORMER_NAME) }
+                PY_INPUT_TAGS INPUT0 INPUT1
+                $(INPUT_LINES)
+                SYMBOL_NAME { symbol_name }
+                PY_OUTPUT_TAGS Output <Rejected>
+                OUTPUT { Output FEATURE_TYPE $(OUTPUT_Output_FTYPE)
+                    $(OUTPUT_Output_FUNCS) }
+                OUTPUT { <Rejected> FEATURE_TYPE $(OUTPUT_<Rejected>_FTYPE)
+                    $(OUTPUT_<Rejected>_FUNCS) }
+
+        Transformers typically receive a feature through this method, process it,
+        modify the feature by adding output attributes, and then output the feature using :meth:`pyoutput`.
+        However, transformers may output any number of features for each input feature, or none at all.
+        Transformers may also create new :class:`FMEFeature` instances and output them.
+
+        :param feature: The feature to process.
+        :param input_tag: The input tag that feature came from.
         """
         pass
 
@@ -518,6 +552,12 @@ class FMEEnhancedTransformer(FMEBaseTransformer):
        - :meth:`receive_feature` which should contain the bulk of the main logic
        - :meth:`post_input`
 
+    :meth:`input_from` is broken down to these methods for implementations to overwrite:
+       - :meth:`pre_input_from`
+          - :meth:`setup_from` which is only called for the first input feature from each input tag
+       - :meth:`receive_feature_from` which should contain the bulk of the main logic
+       - :meth:`post_input_from`
+
     :meth:`close` is broken down to these methods for implementations to overwrite:
        - :meth:`pre_close`
        - :meth:`finish` which should contain any cleanup tasks
@@ -525,9 +565,9 @@ class FMEEnhancedTransformer(FMEBaseTransformer):
 
     **A typical transformer would implement:**
 
-        - :meth:`setup` to collect constant transformer parameters off the first input feature
+        - :meth:`setup` or :meth:`setup_from` to collect constant transformer parameters off the first input feature
           and use them to do any initialization steps.
-        - :meth:`receive_feature` to process each input feature.
+        - :meth:`receive_feature` or :meth:`receive_feature_from` to process each input feature.
         - :meth:`finish` to delete any temporary files or close any connections.
 
     .. note::
@@ -541,6 +581,7 @@ class FMEEnhancedTransformer(FMEBaseTransformer):
     def __init__(self):
         super(FMEEnhancedTransformer, self).__init__()
         self._initialized = False
+        self._initialized_tags = set()
         self._log = None
 
     @property
@@ -594,6 +635,50 @@ class FMEEnhancedTransformer(FMEBaseTransformer):
         self.receive_feature(feature)
         self.post_input(feature)
 
+    def setup_from(self, first_feature: FMEFeature, input_tag: str) -> None:
+        """
+        This method is only called for the first input feature from each unique input tag.
+        Implement this method to perform any necessary setup operations,
+        such as getting constant parameters.
+
+        Constant parameters are ones that cannot change across input features.
+        For parameters defined using GUI Types, these are ones that do not include ``OR_ATTR``.
+        For parameters defined with Transformer Designer,
+        these are ones with Value Type Level not set to "Full Expression Support".
+
+        :param first_feature: First input feature.
+        :param input_tag: Input tag that first_feature came from.
+        """
+        pass
+
+    def pre_input_from(self, feature: FMEFeature, input_tag: str) -> None:
+        """
+        Called before each :meth:`input_from`.
+        """
+        if input_tag not in self._initialized_tags:
+            self.setup_from(feature, input_tag)
+            self._initialized_tags.add(input_tag)
+
+    def receive_feature_from(self, feature: FMEFeature, input_tag: str) -> None:
+        """
+        Override this method instead of :meth:`input_from`.
+        This method receives all input features from input_tag, including the first one that's also
+        passed to :meth:`setup_from`.
+        """
+        pass
+
+    def post_input_from(self, feature: FMEFeature, input_tag: str) -> None:
+        """
+        Called after each :meth:`input_from`.
+        """
+        pass
+
+    def input_from(self, feature: FMEFeature, input_tag: str) -> None:
+        """Do not override this method."""
+        self.pre_input_from(feature, input_tag)
+        self.receive_feature_from(feature, input_tag)
+        self.post_input_from(feature, input_tag)
+
     def pre_close(self) -> None:
         """Called before :meth:`close`."""
         pass
@@ -629,11 +714,8 @@ class FMEEnhancedTransformer(FMEBaseTransformer):
 
             FACTORY_DEF {*} PythonFactory
                 FACTORY_NAME { $(XFORMER_NAME) }
-                GROUP_BY { $(GROUP_BY) }
-                FLUSH_WHEN_GROUPS_CHANGE { $(GROUP_BY_MODE) }
                 $(INPUT_LINES)
-                SYMBOL_NAME { $(PYTHONSYMBOL) }
-                SOURCE_CODE { $(PYTHONSOURCE) }
+                SYMBOL_NAME { symbol_name }
                 PY_OUTPUT_TAGS Output <Rejected>
                 OUTPUT { Output FEATURE_TYPE $(OUTPUT_Output_FTYPE)
                     $(OUTPUT_Output_FUNCS) }
@@ -659,7 +741,7 @@ class FMEEnhancedTransformer(FMEBaseTransformer):
             FACTORY_DEF {*} PythonFactory
                 FACTORY_NAME { $(XFORMER_NAME) }
                 INPUT { FEATURE_TYPE $(XFORMER_NAME)_READY }
-                SYMBOL_NAME { $(PYTHONSYMBOL) }
+                SYMBOL_NAME { symbol_name }
                 OUTPUT { PYOUTPUT FEATURE_TYPE $(XFORMER_NAME)_PROCESSED }
 
             # Removed all internal-prefixed attributes from output feature

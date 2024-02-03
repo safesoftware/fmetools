@@ -1,5 +1,9 @@
 # fmetools changes
 
+## 0.9.0
+
+* Add support for multiple input tags. Requires FME 2024.0+.
+
 ## 0.8.0
 
 * Add support for multiple output tags. Requires FME 2024.0+.
@@ -8,6 +12,7 @@
 
 * Update doc for `fmetools.paramparsing` to note FME 2024 requirement
   when running under FME Flow.
+* Add Scripted Selection API
 
 ## 0.7.3
 
