@@ -140,7 +140,7 @@ class ScriptedSelectionCallback(ABC):
         :param args: The names and values of the Input Parameters and Input Dictionary
             configured on the Scripted Selection GUI element.
         """
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def get_container_contents(
