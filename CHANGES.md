@@ -1,5 +1,9 @@
 # fmetools changes
 
+## 0.9.1
+
+* Allow ScriptedSelectionCallback subclasses to omit constructor.
+
 ## 0.9.0
 
 * Add support for multiple input tags. Requires FME 2024.0+.
