@@ -1,5 +1,10 @@
 # fmetools changes
 
+## 0.9.2
+
+* In `fmetools.scripted_selection.ContainerContentResponse`,
+  omit `CONTINUE` key if there's no pagination info.
+
 ## 0.9.1
 
 * Allow ScriptedSelectionCallback subclasses to omit constructor.
