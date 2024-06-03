@@ -109,10 +109,14 @@ class ContainerContentResponse(dict):
         needed to request the next page of results.
         The arguments are added to the next call to :meth:`ScriptedSelectionCallback.get_container_contents`.
         """
-        return self["CONTINUE"]
+        return self.get("CONTINUE")
 
     @pagination.setter
     def pagination(self, value: Optional[PaginationInfo]) -> None:
+        if not value:
+            # In FME <2024, key presence means there's a next page.
+            self.pop("CONTINUE", None)
+            return
         self["CONTINUE"] = value
 
     @property
