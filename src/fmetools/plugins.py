@@ -451,9 +451,10 @@ class FMEBaseTransformer:
             Do not implement this method. FME injects the implementation at runtime.
 
         :param feature: The feature to output.
-        :param output_tag: The output tag to direct feature to. This argument is required if multiple output tags
-            exist in the PythonFactory definition. Otherwise, it will default to ``PYOUTPUT`` or the single output tag
-            if specified in the PythonFactory definition. Introduced in FME 2024.0.
+        :param output_tag: The output tag to direct feature to. If multiple output tags exist but this argument is not
+            specified, it will default to ``PYOUTPUT`` or an error is raised if a ``PYOUTPUT`` output tag does not
+            exist. If the PythonFactory definition has a single output tag, this argument will default to it. Introduced
+            in FME 2024.0.
         """
         # Stub. Implementation is injected at runtime.
 
