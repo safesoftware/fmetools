@@ -1,5 +1,9 @@
 # fmetools changes
 
+## 0.9.3
+
+* Update docstrings for FMEEnhancedTransformer and FMEBaseTransformer.
+
 ## 0.9.2
 
 * In `fmetools.scripted_selection.ContainerContentResponse`,
