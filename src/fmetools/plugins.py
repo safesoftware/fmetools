@@ -445,16 +445,16 @@ class FMEBaseTransformer:
 
     def pyoutput(self, feature: FMEFeature, output_tag: Optional[str] = None) -> None:
         """
-        Output a feature from the transformer to an output tag.
+        Output a feature from the transformer to an output tag. If an output tag is specified and does not exist on
+        the PythonFactory, an error will be raised.
 
         .. note::
             Do not implement this method. FME injects the implementation at runtime.
 
         :param feature: The feature to output.
         :param output_tag: The output tag to direct feature to. If multiple output tags exist but this argument is not
-            specified, it will default to ``PYOUTPUT`` or an error is raised if a ``PYOUTPUT`` output tag does not
-            exist. If the PythonFactory definition has a single output tag, this argument will default to it. Introduced
-            in FME 2024.0.
+            specified, ``PYOUTPUT`` will be used as a fallback value. If the PythonFactory definition has a single
+            output tag, this tag will be the default. Introduced in FME 2024.0.
         """
         # Stub. Implementation is injected at runtime.
 
