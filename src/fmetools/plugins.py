@@ -405,10 +405,10 @@ class FMEBaseTransformer:
 
             FACTORY_DEF {*} PythonFactory
                 FACTORY_NAME { $(XFORMER_NAME) }
-                PY_INPUT_TAGS INPUT0 INPUT1
+                PY_INPUT_TAGS { INPUT0 INPUT1 }
                 $(INPUT_LINES)
                 SYMBOL_NAME { symbol_name }
-                PY_OUTPUT_TAGS Output <Rejected>
+                PY_OUTPUT_TAGS { Output <Rejected> }
                 OUTPUT { Output FEATURE_TYPE $(OUTPUT_Output_FTYPE)
                     $(OUTPUT_Output_FUNCS) }
                 OUTPUT { <Rejected> FEATURE_TYPE $(OUTPUT_<Rejected>_FTYPE)
