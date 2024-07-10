@@ -19,7 +19,7 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture
 def creator():
-    return TransformerParameterParser("Creator")
+    return TransformerParameterParser("Creator", version=6)
 
 
 def test_system_transformer(creator):
