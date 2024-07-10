@@ -6,6 +6,7 @@ This module provides base classes for FME plugins such as transformers.
 :class:`FMEEnhancedTransformer` is the recommended base class for transformers.
 Transformer developers should subclass it to implement their own transformers.
 """
+
 import logging
 import warnings
 from typing import Optional

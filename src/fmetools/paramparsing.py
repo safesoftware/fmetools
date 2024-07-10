@@ -11,6 +11,7 @@ the recommended way to access transformer parameter values.
     Packages using this module and targeting both FME Form and FME Flow
     should set ``minimum_fme_build`` in its package.yml accordingly.
 """
+
 from __future__ import annotations
 
 from typing import Any, Iterable, Optional, Union

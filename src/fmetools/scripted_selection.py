@@ -17,6 +17,7 @@ A Scripted Selection is composed of two parts:
   which includes a reference to the :class:`ScriptedSelectionCallback` implementation above,
   and other configuration, such as Input Parameters, search support, and more.
 """
+
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 

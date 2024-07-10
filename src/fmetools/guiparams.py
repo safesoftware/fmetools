@@ -11,6 +11,7 @@ For parameters defined in ``*.fmxj`` transformer definition files, see :mod:`fme
     This module is made available to provide a migration path for existing transformers and advanced use cases.
     Most developers should instead use FMXJ transformer definitions and :mod:`fmetools.paramparsing`.
 """
+
 from collections import namedtuple
 from typing import Any, Mapping, Union
 

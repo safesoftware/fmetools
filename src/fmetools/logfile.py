@@ -6,6 +6,7 @@ with the :mod:`logging` module in the Python standard library.
 Developers should not need to directly use anything in this module,
 as the base classes in :mod:`.plugins` include preconfigured loggers.
 """
+
 import logging
 from typing import Optional
 
