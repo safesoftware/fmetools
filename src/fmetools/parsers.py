@@ -3,12 +3,13 @@
 This module contains parsers to support FME reader/writer development.
 It is not intended for general use.
 """
+
 from collections import OrderedDict, namedtuple
 
 import fme
 import six
-from fmeobjects import FMEFeature, FMESession
-from pluginbuilder import FMEMappingFile
+from fmeobjects import FMEFeature, FMESession  # noqa F401
+from pluginbuilder import FMEMappingFile  # noqa F401
 from six import string_types
 
 from .utils import string_to_bool

@@ -146,7 +146,7 @@ def test_generalproxyhandler_use_system_proxy_flag(value):
     mockSession = MockFMESession(["use-system-proxy", value])
     handler = FMEGeneralProxyHandler()
     handler.configure(mockSession)
-    assert handler.use_pac == (value is "yes")
+    assert handler.use_pac == (value == "yes")
 
 
 @pytest.mark.parametrize(
