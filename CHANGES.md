@@ -1,5 +1,9 @@
 # fmetools changes
 
+## 0.9.4
+
+* Fix support for Python 3.8 and require Python 3.8+.
+
 ## 0.9.3
 
 * Update docstrings for FMEEnhancedTransformer and FMEBaseTransformer.
