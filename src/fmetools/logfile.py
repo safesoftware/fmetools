@@ -7,6 +7,8 @@ Developers should not need to directly use anything in this module,
 as the base classes in :mod:`.plugins` include preconfigured loggers.
 """
 
+from __future__ import annotations
+
 import logging
 from typing import Optional
 
