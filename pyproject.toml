@@ -4,3 +4,9 @@ addopts = "-s"
 testpaths = [
     "tests",
 ]
+
+[tool.ruff]
+required-version = '>=0.5.1'
+target-version = 'py38'
+[tool.ruff.lint]
+extend-select = ["FA"]

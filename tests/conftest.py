@@ -1,4 +1,6 @@
-# coding: utf-8
+# Import these modules just for parsing coverage.
+# Remove when these modules get imported elsewhere for tests.
+from fmetools import localize, scripted_selection, webservices  # noqa F401
 
 import json
 

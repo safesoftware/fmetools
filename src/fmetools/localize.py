@@ -2,6 +2,7 @@
 """
 Helpers for enabling localized strings using the :mod:`gettext` module.
 """
+
 from __future__ import annotations
 
 import os

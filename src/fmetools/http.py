@@ -5,6 +5,8 @@ This module provides :class:`FMERequestsSession`,
 a drop-in replacement for :class:`requests.Session`.
 Use this class to make HTTP requests that automatically follow FME settings.
 """
+
+from __future__ import annotations
 import json
 import logging
 import os
