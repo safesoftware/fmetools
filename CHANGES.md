@@ -1,5 +1,10 @@
 # fmetools changes
 
+## 0.10.1
+
+* Use `fme.BaseTransformer` if it exists.
+* Deprecate `fmetools.plugins.FMEBaseTransformer`.
+
 ## 0.10.0
 
 * Fix support for Python 3.8 and require Python 3.8+.
