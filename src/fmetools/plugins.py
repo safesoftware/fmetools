@@ -16,7 +16,7 @@ from typing import Optional
 try:
     from fme import BaseTransformer as FMEBaseTransformer
 except ImportError: # Support < FME 2024.2
-    from .deprecated import FMEBaseTransformer
+    from ._deprecated import FMEBaseTransformer
 
 from fmeobjects import FMEFeature
 
