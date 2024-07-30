@@ -333,6 +333,10 @@ class FMESimplifiedWriter(FMEWriter):
 
 
 class FMETransformer(FMEBaseTransformer):
+    """
+    In FME versions prior to 2024.2, this will subclass :class:`fmetools._deprecated.FMEBaseTransformer`
+    instead.
+    """
     def __init__(self):
         super().__init__()
         warnings.warn(
@@ -346,6 +350,9 @@ class FMEEnhancedTransformer(FMEBaseTransformer):
     It exposes the FME log file through the :attr:`log` property,
     and adds methods to introduce more granularity to the transformer lifecycle
     to help developers organize their code.
+
+    In FME versions prior to 2024.2, this will subclass :class:`fmetools._deprecated.FMEBaseTransformer`
+    instead.
 
     :meth:`input` is broken down to these methods for implementations to overwrite:
        - :meth:`pre_input`
@@ -376,7 +383,7 @@ class FMEEnhancedTransformer(FMEBaseTransformer):
         This class overrides :meth:`has_support_for` to return ``True`` for Bulk Mode support.
         This means that the transformer cannot cache or copy features for later use,
         and cannot output new :class:`fmeobjects.FMEFeature` instances.
-        See :meth:`FMEBaseTransformer.has_support_for` for details about these restrictions.
+        See :meth:`fme.BaseTransformer.has_support_for` for details about these restrictions.
     """
 
     def __init__(self):
@@ -581,7 +588,7 @@ class FMEEnhancedTransformer(FMEBaseTransformer):
         Overrides the default implementation to report support for Bulk Mode.
 
         :returns: ``True`` if ``support_type`` is :data:`fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM`.
-            See :meth:`FMEBaseTransformer.has_support_for` for more details.
+            See :meth:`fme.BaseTransformer.has_support_for` for more details.
         """
         if support_type == FME_SUPPORT_FEATURE_TABLE_SHIM:
             return True
