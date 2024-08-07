@@ -15,7 +15,7 @@ from typing import Optional
 
 try:
     from fme import BaseTransformer as FMEBaseTransformer
-except ImportError: # Support < FME 2024.2
+except ImportError:  # Support < FME 2024.2
     from ._deprecated import FMEBaseTransformer
 
 from fmeobjects import FMEFeature
@@ -79,7 +79,6 @@ class FMESimplifiedReader(FMEReader):
         self._using_constraints = False
         self._aborted = False
         self._feature_types = []
-
 
         self._list_feature_types = None
 
@@ -177,7 +176,6 @@ class FMESimplifiedReader(FMEReader):
             self._read_generator.close()
             self._read_generator = None
 
-
     def _feature_types_generator(self):
         """
         Lists the names of feature types
@@ -223,6 +221,26 @@ class FMESimplifiedReader(FMEReader):
                 yield feature
             else:
                 break
+
+    def _read_features_generator(self):
+        """
+        Creates features for a feature type
+        """
+        pass
+
+    def read(self):
+        """
+        Creates features for a feature type
+        """
+        # pylint: disable=invalid-name
+        if not self._read_generator:
+            self._read_generator = self._read_features_generator()
+
+        try:
+            return next(self._read_generator)
+        except StopIteration:
+            return None
+
 
     def readGenerator(self):
         """
