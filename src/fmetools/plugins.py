@@ -54,6 +54,8 @@ class FMESimplifiedReader(FMEReader):
     :ivar bool _using_constraints: True if :meth:`setConstraints` was called.
     :ivar bool _aborted: True if :meth:`abort` was called.
     :ivar list[str] _feature_types: Ordered list of feature type names.
+    :ivar bool _list_feature_types: True if the reader was launched to produce
+        a list of feature types.
     :ivar _readSchema_generator:
         Use this member to store any generator used for :meth:`readSchema`.
        Doing so means it'll be explicitly closed for you in :meth:`close`.
@@ -80,7 +82,7 @@ class FMESimplifiedReader(FMEReader):
         self._aborted = False
         self._feature_types = []
 
-        self._list_feature_types = None
+        self._list_feature_types = False
 
         self._readSchema_generator, self._read_generator = None, None
 
@@ -178,24 +180,38 @@ class FMESimplifiedReader(FMEReader):
 
     def _feature_types_generator(self):
         """
-        Lists the names of feature types
+        A generator which produces features for each potential feature type from
+        the reader's dataset.
+
+        The feature types will populate the list displayed by the GUI Type FEATURE_TYPES.
+
+        Must yield FMEFeatures with the feature type set.
+        Only the feature type is required; feature attributes will be ignored.
         """
         pass
 
     def _schema_features_generator(self):
         """
-        Generate schema features.
+        A generator which produces schema features for all requested feature types.
 
-        When self._feature_types is empty, schema features for all possible feature types should be generated
-        Otherwise, a single schema feature (where attribute names correspond to names and attribute values correspond to mapped attribute types)
-        should be generated.
+        When `self._feature_types` is empty, schema features for all possible
+        feature types should be generated. Otherwise, a single schema feature
+        should be generated for each feature type in `self._feature_types`.
+
+        The function :meth:`features.build_feature` should be used to create schema features.
+        Schema features must contain the feature type, all possible geometry
+        types for the feature type, and exposed attributes for the feature.
+        The attribute value for a schema attribute should be set to the expected
+        format attribute type.
         """
         pass
 
-
     def readSchema(self):
         """
-        Creates schema features
+        Creates schema features.
+
+        Implementations should override :meth:`_feature_types_generator`
+        and :meth:`_schema_features_generator` instead of this method.
         """
         # pylint: disable=invalid-name
         if not self._readSchema_generator:
@@ -224,13 +240,18 @@ class FMESimplifiedReader(FMEReader):
 
     def _read_features_generator(self):
         """
-        Creates features for a feature type
+        Generator which yields data features for all requested feature types.
+
+        The function :meth:`features.build_feature` should be used to create data features.
         """
         pass
 
     def read(self):
         """
-        Creates features for a feature type
+        Creates features for a feature type.
+
+        Implementations should override :meth:`_read_features_generator`
+        instead of this method.
         """
         # pylint: disable=invalid-name
         if not self._read_generator:
@@ -240,7 +261,6 @@ class FMESimplifiedReader(FMEReader):
             return next(self._read_generator)
         except StopIteration:
             return None
-
 
     def readGenerator(self):
         """
@@ -391,6 +411,7 @@ class FMETransformer(FMEBaseTransformer):
     In FME versions prior to 2024.2, this will subclass :class:`fmetools._deprecated.FMEBaseTransformer`
     instead.
     """
+
     def __init__(self):
         super().__init__()
         warnings.warn(
