@@ -80,6 +80,9 @@ class FMESimplifiedReader(FMEReader):
         self._aborted = False
         self._feature_types = []
 
+
+        self._list_feature_types = None
+
         self._readSchema_generator, self._read_generator = None, None
 
     @property
@@ -173,6 +176,39 @@ class FMESimplifiedReader(FMEReader):
         if self._read_generator is not None:
             self._read_generator.close()
             self._read_generator = None
+
+
+    def _feature_types_generator(self):
+        """
+        Lists the names of feature types
+        """
+        pass
+
+    def _schema_features_generator(self):
+        """
+        Generate schema features.
+
+        When self._feature_types is empty, schema features for all possible feature types should be generated
+        Otherwise, a single schema feature (where attribute names correspond to names and attribute values correspond to mapped attribute types)
+        should be generated.
+        """
+        pass
+
+
+    def readSchema(self):
+        """
+        Creates schema features
+        """
+        # pylint: disable=invalid-name
+        if not self._readSchema_generator:
+            if self._list_feature_types:
+                self._readSchema_generator = self._feature_types_generator()
+            else:
+                self._readSchema_generator = self._schema_features_generator()
+        try:
+            return next(self._readSchema_generator)
+        except StopIteration:
+            return None
 
     def readSchemaGenerator(self):
         """
