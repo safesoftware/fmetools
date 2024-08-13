@@ -154,6 +154,10 @@ class FMESimplifiedReader(FMEReader):
         if open_parameters.get("FME_DEBUG"):
             self._debug = True
 
+        self._list_feature_types = self._mapping_file.get_flag(
+            "RETRIEVE_ALL_TABLE_NAMES"
+        )
+
         return self.enhancedOpen(open_parameters)
 
     def enhancedOpen(self, open_parameters):
