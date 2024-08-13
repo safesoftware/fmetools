@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import Optional
+from typing import Optional, Generator
 
 try:
     from fme import BaseTransformer as FMEBaseTransformer
@@ -87,12 +87,8 @@ class FMESimplifiedReader(FMEReader):
         self._readSchema_generator, self._read_generator = None, None
 
     @property
-    def log(self):
-        """
-        Provides access to the FME log.
-
-        :rtype: logging.LoggerAdapter
-        """
+    def log(self) -> logging.LoggerAdapter:
+        """Provides access to the FME log."""
         if not self._log:
             # Instantiate a logger with the appropriate debug mode.
             self._log = get_configured_logger(self.__class__.__name__, self._debug)
@@ -111,7 +107,7 @@ class FMESimplifiedReader(FMEReader):
             self._debug = new_debug
             self._log = get_configured_logger(self.__class__.__name__, self._debug)
 
-    def hasSupportFor(self, support_type):
+    def hasSupportFor(self, support_type) -> bool:
         """
         Return whether this reader supports a certain type. Currently,
         the only supported type is fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM.
@@ -129,7 +125,7 @@ class FMESimplifiedReader(FMEReader):
         """
         return False
 
-    def open(self, dataset_name, parameters):
+    def open(self, dataset_name, parameters) -> None:
         """Open the dataset for reading.
 
         Does these things for you:
@@ -160,7 +156,7 @@ class FMESimplifiedReader(FMEReader):
 
         return self.enhancedOpen(open_parameters)
 
-    def enhancedOpen(self, open_parameters):
+    def enhancedOpen(self, open_parameters) -> None:
         """
         Implementations shall override this method instead of :meth:`open`.
 
@@ -168,7 +164,7 @@ class FMESimplifiedReader(FMEReader):
         """
         pass
 
-    def setConstraints(self, feature):
+    def setConstraints(self, feature) -> None:
         """
         Reset any existing feature generator that represents the state for :meth:`read`.
 
@@ -182,7 +178,7 @@ class FMESimplifiedReader(FMEReader):
             self._read_generator.close()
             self._read_generator = None
 
-    def _feature_types_generator(self):
+    def _feature_types_generator(self) -> Generator[FMEFeature]:
         """
         A generator which produces features for each potential feature type from
         the reader's dataset.
@@ -194,7 +190,7 @@ class FMESimplifiedReader(FMEReader):
         """
         pass
 
-    def _schema_features_generator(self):
+    def _schema_features_generator(self) -> Generator[FMEFeature]:
         """
         A generator which produces schema features for all requested feature types.
 
@@ -210,7 +206,7 @@ class FMESimplifiedReader(FMEReader):
         """
         pass
 
-    def readSchema(self):
+    def readSchema(self) -> Optional[FMEFeature]:
         """
         Creates schema features.
 
@@ -228,7 +224,7 @@ class FMESimplifiedReader(FMEReader):
         except StopIteration:
             return None
 
-    def readSchemaGenerator(self):
+    def readSchemaGenerator(self) -> Generator[FMEFeature]:
         """
         Generator form of :meth:`readSchema`.
 
@@ -242,7 +238,7 @@ class FMESimplifiedReader(FMEReader):
             else:
                 break
 
-    def _read_features_generator(self):
+    def _read_features_generator(self) -> Generator[FMEFeature]:
         """
         Generator which yields data features for all requested feature types.
 
@@ -250,7 +246,7 @@ class FMESimplifiedReader(FMEReader):
         """
         pass
 
-    def read(self):
+    def read(self) -> Optional[FMEFeature]:
         """
         Creates features for a feature type.
 
@@ -266,7 +262,7 @@ class FMESimplifiedReader(FMEReader):
         except StopIteration:
             return None
 
-    def readGenerator(self):
+    def readGenerator(self) -> Generator[FMEFeature]:
         """
         Generator form of :meth:`read`.
 
@@ -280,10 +276,10 @@ class FMESimplifiedReader(FMEReader):
             else:
                 break
 
-    def abort(self):
+    def abort(self) -> None:
         self._aborted = True
 
-    def close(self):
+    def close(self) -> None:
         """
         This default implementation closes any existing read generators.
         """
