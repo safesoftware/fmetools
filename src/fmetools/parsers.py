@@ -309,3 +309,20 @@ class MappingFile:
             # Eliminate this distinction.
             return []
         return [_system_to_unicode(ft) for ft in featTypes]
+
+
+FeatureTypeInformation = namedtuple("FeatureTypeInformation", "user_attrs options")
+class EnhancedMappingFile(MappingFile):
+
+    def parse_def_lines(self, feature_type_option_names: set[str]):
+        """Return user attributes and schema for each feature type defined in the mapping file"""
+        user_attrs = {}
+        feature_type_options = {}
+        for def_line in self.def_lines():
+            defline_feature_type, attrs, def_line_options = parse_def_line(
+                def_line, feature_type_option_names
+            )
+
+            user_attrs[defline_feature_type] = attrs
+            feature_type_options[defline_feature_type] = def_line_options
+        return FeatureTypeInformation(user_attrs, feature_type_options)

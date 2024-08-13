@@ -154,6 +154,16 @@ class FMESimplifiedReader(FMEReader):
             "RETRIEVE_ALL_TABLE_NAMES"
         )
 
+
+        for def_line in self._mapping_file.def_lines():
+            defline_feature_type, attrs, def_line_options = parse_def_line(
+                def_line, DEF_LINE_OPTIONS
+            )
+
+            self._user_attrs[defline_feature_type] = attrs
+            self._options[defline_feature_type] = def_line_options
+
+
         return self.enhancedOpen(open_parameters)
 
     def enhancedOpen(self, open_parameters) -> None:
