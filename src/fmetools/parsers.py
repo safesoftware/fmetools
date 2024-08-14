@@ -5,6 +5,7 @@ It is not intended for general use.
 """
 
 from collections import OrderedDict, namedtuple
+from dataclasses import dataclass
 from typing import Union, Set
 
 import fme
@@ -315,6 +316,13 @@ class MappingFile:
 FeatureTypeInformation = namedtuple("FeatureTypeInformation", "user_attrs options")
 
 
+@dataclass
+class Directives:
+    string_directives: Set[str]
+    numeric_directives:Set[str]
+    bool_directives: Set[str]
+
+
 class EnhancedMappingFile(MappingFile):
     def parse_def_lines(
         self, feature_type_option_names: Set[str] = None
@@ -330,6 +338,7 @@ class EnhancedMappingFile(MappingFile):
             )
 
             user_attrs[defline_feature_type] = attrs
+            # todo parse options further?
             feature_type_options[defline_feature_type] = def_line_options
         return FeatureTypeInformation(user_attrs, feature_type_options)
 
@@ -353,33 +362,31 @@ class EnhancedMappingFile(MappingFile):
 
     def get_directives(
         self,
-        string_directive_names: Set[str],
-        numeric_directive_names: Set[str],
-        bool_directive_names: Set[str],
+        directives: Directives,
         string_default="",
         numeric_default=0,
         bool_default=False,
     ):
-        if not string_directive_names:
-            string_directive_names = set()
+        if not directives.string_directives:
+            directives.string_directives = set()
 
-        string_directive_names.add("fme_attribute_reading")
-        directives = {
-            key: self.get(key, default=string_default) for key in string_directive_names
+        directives.string_directives.add("fme_attribute_reading")
+        directive_values = {
+            key: self.get(key, default=string_default) for key in directives.string_directives
         }
 
-        directives.update(
+        directive_values.update(
             {
                 key: self.get_number(key, default=numeric_default)
-                for key in numeric_directive_names
+                for key in directives.numeric_directives or set()
             }
         )
 
-        directives.update(
+        directive_values.update(
             {
                 key: self.get_flag(key, default=bool_default)
-                for key in bool_directive_names
+                for key in directives.bool_directives or set()
             }
         )
 
-        return directives
+        return directive_values

@@ -28,7 +28,7 @@ except ImportError:  # Support < FME 2022.0 b22235
 from pluginbuilder import FMEReader, FMEWriter
 
 from .logfile import get_configured_logger
-from .parsers import MappingFile, OpenParameters, EnhancedMappingFile
+from .parsers import MappingFile, OpenParameters, EnhancedMappingFile, Directives
 
 # These are relevant externally.
 # Reader and writer base classes are omitted because they're not intended for general use.
@@ -67,6 +67,9 @@ class FMESimplifiedReader(FMEReader):
         whether it needs to re-instantiate its generator to honour new settings.
     """
 
+    FEATURE_TYPE_OPTIONS = set()
+    DIRECTIVES = Directives({"fme_attribute_reading"}, set(), set())
+
     def __init__(self, reader_type_name, reader_keyword, mapping_file):
         # super() is intentionally not called. Base class disallows it.
         self._type_name = reader_type_name
@@ -85,9 +88,11 @@ class FMESimplifiedReader(FMEReader):
         self._feature_types = []
 
         self._list_feature_types = False
+        self._def_line_attrs_only = False
 
         self._user_schema = {}
         self._feature_type_options = {}
+        self._directives = {}
 
         self._readSchema_generator, self._read_generator = None, None
 
@@ -159,7 +164,11 @@ class FMESimplifiedReader(FMEReader):
             "RETRIEVE_ALL_TABLE_NAMES"
         )
 
-        self._user_schema, self._feature_type_options = self._mapping_file.parse_def_lines()
+        try:
+            self._user_schema, self._feature_type_options = self._mapping_file.parse_def_lines(self.__class__.FEATURE_TYPE_OPTIONS)
+            self._directives = self._mapping_file.get_directives(self.__class__.DIRECTIVES)
+        except AttributeError:
+            pass
 
         return self.enhancedOpen(open_parameters)
 
