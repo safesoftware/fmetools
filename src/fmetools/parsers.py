@@ -5,6 +5,7 @@ It is not intended for general use.
 """
 
 from collections import OrderedDict, namedtuple
+from typing import Union
 
 import fme
 import six
@@ -314,7 +315,7 @@ class MappingFile:
 FeatureTypeInformation = namedtuple("FeatureTypeInformation", "user_attrs options")
 class EnhancedMappingFile(MappingFile):
 
-    def parse_def_lines(self, feature_type_option_names: set[str]):
+    def parse_def_lines(self, feature_type_option_names: set[str]) -> FeatureTypeInformation:
         """Return user attributes and schema for each feature type defined in the mapping file"""
         user_attrs = {}
         feature_type_options = {}
@@ -326,3 +327,19 @@ class EnhancedMappingFile(MappingFile):
             user_attrs[defline_feature_type] = attrs
             feature_type_options[defline_feature_type] = def_line_options
         return FeatureTypeInformation(user_attrs, feature_type_options)
+
+    def get_number(self, directive : str, default: Union[float, int] = 0) -> Union[float, int]:
+        """
+        Get the specified directive and interpret it as a numeric value.
+
+        :param directive: Name of the directive.
+        :param default: Value to return if directive not present or non-numeric.
+        """
+        value = self.get(directive)
+        if value is None:
+            return default
+
+        try:
+            return float(value)
+        except ValueError:
+            return default
