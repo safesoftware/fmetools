@@ -28,7 +28,7 @@ except ImportError:  # Support < FME 2022.0 b22235
 from pluginbuilder import FMEReader, FMEWriter
 
 from .logfile import get_configured_logger
-from .parsers import MappingFile, OpenParameters
+from .parsers import MappingFile, OpenParameters, EnhancedMappingFile
 
 # These are relevant externally.
 # Reader and writer base classes are omitted because they're not intended for general use.
@@ -71,7 +71,9 @@ class FMESimplifiedReader(FMEReader):
         # super() is intentionally not called. Base class disallows it.
         self._type_name = reader_type_name
         self._keyword = reader_keyword
-        self._mapping_file = MappingFile(mapping_file, reader_keyword, reader_type_name)
+        self._mapping_file = EnhancedMappingFile(
+            mapping_file, reader_keyword, reader_type_name
+        )
 
         # Check if the debug flag is set
         self._debug = self._mapping_file.mapping_file.fetch("FME_DEBUG") is not None
@@ -83,6 +85,9 @@ class FMESimplifiedReader(FMEReader):
         self._feature_types = []
 
         self._list_feature_types = False
+
+        self._user_schema = {}
+        self._feature_type_options = {}
 
         self._readSchema_generator, self._read_generator = None, None
 
@@ -154,15 +159,7 @@ class FMESimplifiedReader(FMEReader):
             "RETRIEVE_ALL_TABLE_NAMES"
         )
 
-
-        for def_line in self._mapping_file.def_lines():
-            defline_feature_type, attrs, def_line_options = parse_def_line(
-                def_line, DEF_LINE_OPTIONS
-            )
-
-            self._user_attrs[defline_feature_type] = attrs
-            self._options[defline_feature_type] = def_line_options
-
+        self._user_schema, self._feature_type_options = self._mapping_file.parse_def_lines()
 
         return self.enhancedOpen(open_parameters)
 

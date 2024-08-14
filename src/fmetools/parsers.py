@@ -5,7 +5,7 @@ It is not intended for general use.
 """
 
 from collections import OrderedDict, namedtuple
-from typing import Union
+from typing import Union, Set
 
 import fme
 import six
@@ -313,10 +313,15 @@ class MappingFile:
 
 
 FeatureTypeInformation = namedtuple("FeatureTypeInformation", "user_attrs options")
-class EnhancedMappingFile(MappingFile):
 
-    def parse_def_lines(self, feature_type_option_names: set[str]) -> FeatureTypeInformation:
+
+class EnhancedMappingFile(MappingFile):
+    def parse_def_lines(
+        self, feature_type_option_names: Set[str] = None
+    ) -> FeatureTypeInformation:
         """Return user attributes and schema for each feature type defined in the mapping file"""
+        if not feature_type_option_names:
+            feature_type_option_names = set()
         user_attrs = {}
         feature_type_options = {}
         for def_line in self.def_lines():
@@ -328,7 +333,9 @@ class EnhancedMappingFile(MappingFile):
             feature_type_options[defline_feature_type] = def_line_options
         return FeatureTypeInformation(user_attrs, feature_type_options)
 
-    def get_number(self, directive : str, default: Union[float, int] = 0) -> Union[float, int]:
+    def get_number(
+        self, directive: str, default: Union[float, int] = 0
+    ) -> Union[float, int]:
         """
         Get the specified directive and interpret it as a numeric value.
 
@@ -343,3 +350,36 @@ class EnhancedMappingFile(MappingFile):
             return float(value)
         except ValueError:
             return default
+
+    def get_directives(
+        self,
+        string_directive_names: Set[str],
+        numeric_directive_names: Set[str],
+        bool_directive_names: Set[str],
+        string_default="",
+        numeric_default=0,
+        bool_default=False,
+    ):
+        if not string_directive_names:
+            string_directive_names = set()
+
+        string_directive_names.add("fme_attribute_reading")
+        directives = {
+            key: self.get(key, default=string_default) for key in string_directive_names
+        }
+
+        directives.update(
+            {
+                key: self.get_number(key, default=numeric_default)
+                for key in numeric_directive_names
+            }
+        )
+
+        directives.update(
+            {
+                key: self.get_flag(key, default=bool_default)
+                for key in bool_directive_names
+            }
+        )
+
+        return directives
