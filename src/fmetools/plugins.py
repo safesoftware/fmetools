@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import Optional, Generator
+from typing import Optional, Generator, List
 
 try:
     from fme import BaseTransformer as FMEBaseTransformer
@@ -107,7 +107,7 @@ class FMESimplifiedReader(FMEReader):
         return self._log
 
     @property
-    def debug(self):
+    def debug(self) -> bool:
         return self._debug
 
     @debug.setter
@@ -377,7 +377,9 @@ class FMESimplifiedWriter(FMEWriter):
         # super() is intentionally not called. Base class disallows it.
         self._type_name = writer_type_name
         self._keyword = writer_keyword
-        self._mapping_file = EnhancedMappingFile(mapping_file, writer_keyword, writer_type_name)
+        self._mapping_file = EnhancedMappingFile(
+            mapping_file, writer_keyword, writer_type_name
+        )
 
         # Check if the debug flag is set
         self._debug = self._mapping_file.mapping_file.fetch("FME_DEBUG") is not None
@@ -392,7 +394,7 @@ class FMESimplifiedWriter(FMEWriter):
         self._directives = {}
 
     @property
-    def log(self):
+    def log(self) -> logging.LoggerAdapter:
         """
         Provides access to the FME log
         """
@@ -402,7 +404,7 @@ class FMESimplifiedWriter(FMEWriter):
         return self._log
 
     @property
-    def debug(self):
+    def debug(self) -> bool:
         return self._debug
 
     @debug.setter
@@ -414,7 +416,7 @@ class FMESimplifiedWriter(FMEWriter):
             self._debug = new_debug
             self._log = get_configured_logger(self.__class__.__name__, self._debug)
 
-    def open(self, dataset, parameters):
+    def open(self, dataset: str, parameters: List[str]) -> None:
         """Open the dataset for writing.
 
         Does these things for you:
@@ -425,8 +427,8 @@ class FMESimplifiedWriter(FMEWriter):
           switching `_logger` to debug mode if present.
         * Calls :meth:`enhancedOpen`.
 
-        :param str dataset: Dataset value, such as a file path or URL.
-        :param list[str] parameters: List of parameters.
+        :param dataset: Dataset value, such as a file path or URL.
+        :param parameters: List of parameters.
         """
 
         self._feature_types = self._mapping_file.get_feature_types(parameters)
@@ -448,18 +450,18 @@ class FMESimplifiedWriter(FMEWriter):
 
         return self.enhancedOpen(open_parameters)
 
-    def enhancedOpen(self, open_parameters):
+    def enhancedOpen(self, open_parameters: OpenParameters) -> None:
         """
         Implementations shall override this method instead of :meth:`open`.
 
-        :param OpenParameters open_parameters: Parameters for the writer.
+        :param open_parameters: Parameters for the writer.
         """
         pass
 
-    def abort(self):
+    def abort(self) -> None:
         self._aborted = True
 
-    def close(self):
+    def close(self) -> None:
         """
         This default implementation does nothing.
 
