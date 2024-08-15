@@ -67,7 +67,7 @@ class FMESimplifiedReader(FMEReader):
         whether it needs to re-instantiate its generator to honour new settings.
     """
 
-    FEATURE_TYPE_OPTIONS = set("fme_attribute_reading")
+    FEATURE_TYPE_OPTIONS = {"fme_attribute_reading"}
     DIRECTIVES = Directives(
         string_directives=set(), numeric_directives=set(), bool_directives=set()
     )
@@ -368,11 +368,16 @@ class FMESimplifiedWriter(FMEWriter):
     :ivar list[str] _feature_types: Ordered list of feature types.
     """
 
+    FEATURE_TYPE_OPTIONS = {"fme_feature_operation", "fme_table_handling"}
+    DIRECTIVES = Directives(
+        string_directives=set(), numeric_directives=set(), bool_directives=set()
+    )
+
     def __init__(self, writer_type_name, writer_keyword, mapping_file):
         # super() is intentionally not called. Base class disallows it.
         self._type_name = writer_type_name
         self._keyword = writer_keyword
-        self._mapping_file = MappingFile(mapping_file, writer_keyword, writer_type_name)
+        self._mapping_file = EnhancedMappingFile(mapping_file, writer_keyword, writer_type_name)
 
         # Check if the debug flag is set
         self._debug = self._mapping_file.mapping_file.fetch("FME_DEBUG") is not None
@@ -381,6 +386,10 @@ class FMESimplifiedWriter(FMEWriter):
 
         self._aborted = False
         self._feature_types = []
+
+        self._user_schema = {}
+        self._feature_type_options = {}
+        self._directives = {}
 
     @property
     def log(self):
@@ -426,6 +435,16 @@ class FMESimplifiedWriter(FMEWriter):
         open_parameters = OpenParameters(dataset, parameters)
         if open_parameters.get("FME_DEBUG"):
             self.debug = True
+
+        try:
+            self._user_schema, self._feature_type_options = (
+                self._mapping_file.parse_def_lines(self.__class__.FEATURE_TYPE_OPTIONS)
+            )
+            self._directives = self._mapping_file.get_directives(
+                self.__class__.DIRECTIVES
+            )
+        except AttributeError:
+            pass
 
         return self.enhancedOpen(open_parameters)
 
