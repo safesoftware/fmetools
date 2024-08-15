@@ -6,7 +6,7 @@ It is not intended for general use.
 
 from collections import OrderedDict, namedtuple
 from dataclasses import dataclass
-from typing import Union, Set
+from typing import Union, Set, Dict
 
 import fme
 import six
@@ -181,6 +181,16 @@ def get_template_feature_type(feature):
 SearchEnvelope = namedtuple("SearchEnvelope", "min_x min_y max_x max_y coordsys")
 
 
+FeatureTypeInformation = namedtuple("FeatureTypeInformation", "user_attrs options")
+
+
+@dataclass
+class Directives:
+    string_directives: Set[str]
+    numeric_directives: Set[str]
+    bool_directives: Set[str]
+
+
 class MappingFile:
     """
     A wrapper for accessing information from the mapping file in a simplified way.
@@ -280,6 +290,24 @@ class MappingFile:
 
         return string_to_bool(value)
 
+    def get_number(
+        self, directive: str, default: Union[float, int] = 0
+    ) -> Union[float, int]:
+        """
+        Get the specified directive and interpret it as a numeric value.
+
+        :param directive: Name of the directive.
+        :param default: Value to return if directive not present or non-numeric.
+        """
+        value = self.get(directive)
+        if value is None:
+            return default
+
+        try:
+            return float(value)
+        except ValueError:
+            return default
+
     def get_search_envelope(self):
         """Get the search envelope, with coordinate system, if any.
 
@@ -312,18 +340,6 @@ class MappingFile:
             return []
         return [_system_to_unicode(ft) for ft in featTypes]
 
-
-FeatureTypeInformation = namedtuple("FeatureTypeInformation", "user_attrs options")
-
-
-@dataclass
-class Directives:
-    string_directives: Set[str]
-    numeric_directives: Set[str]
-    bool_directives: Set[str]
-
-
-class EnhancedMappingFile(MappingFile):
     def parse_def_lines(
         self, feature_type_option_names: Set[str] = None
     ) -> FeatureTypeInformation:
@@ -344,31 +360,14 @@ class EnhancedMappingFile(MappingFile):
             feature_type_options[defline_feature_type] = def_line_options
         return FeatureTypeInformation(user_attrs, feature_type_options)
 
-    def get_number(
-        self, directive: str, default: Union[float, int] = 0
-    ) -> Union[float, int]:
-        """
-        Get the specified directive and interpret it as a numeric value.
-
-        :param directive: Name of the directive.
-        :param default: Value to return if directive not present or non-numeric.
-        """
-        value = self.get(directive)
-        if value is None:
-            return default
-
-        try:
-            return float(value)
-        except ValueError:
-            return default
-
     def get_directives(
         self,
         directives: Directives,
         string_default="",
         numeric_default=0,
         bool_default=False,
-    ):
+    ) -> Dict:
+        """Get parsed directive values from the mapping file"""
         directive_values = {
             key: self.get(key, default=string_default)
             for key in directives.string_directives or set()

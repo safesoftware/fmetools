@@ -28,7 +28,7 @@ except ImportError:  # Support < FME 2022.0 b22235
 from pluginbuilder import FMEReader, FMEWriter
 
 from .logfile import get_configured_logger
-from .parsers import MappingFile, OpenParameters, EnhancedMappingFile, Directives
+from .parsers import OpenParameters, MappingFile, Directives
 
 # These are relevant externally.
 # Reader and writer base classes are omitted because they're not intended for general use.
@@ -76,7 +76,7 @@ class FMESimplifiedReader(FMEReader):
         # super() is intentionally not called. Base class disallows it.
         self._type_name = reader_type_name
         self._keyword = reader_keyword
-        self._mapping_file = EnhancedMappingFile(
+        self._mapping_file = MappingFile(
             mapping_file, reader_keyword, reader_type_name
         )
 
@@ -377,7 +377,7 @@ class FMESimplifiedWriter(FMEWriter):
         # super() is intentionally not called. Base class disallows it.
         self._type_name = writer_type_name
         self._keyword = writer_keyword
-        self._mapping_file = EnhancedMappingFile(
+        self._mapping_file = MappingFile(
             mapping_file, writer_keyword, writer_type_name
         )
 
@@ -455,6 +455,12 @@ class FMESimplifiedWriter(FMEWriter):
         Implementations shall override this method instead of :meth:`open`.
 
         :param open_parameters: Parameters for the writer.
+        """
+        pass
+
+    def write(self, feature: FMEFeature) -> None:
+        """
+        Write a feature to the output dataset
         """
         pass
 
