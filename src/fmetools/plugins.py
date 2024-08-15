@@ -67,8 +67,10 @@ class FMESimplifiedReader(FMEReader):
         whether it needs to re-instantiate its generator to honour new settings.
     """
 
-    FEATURE_TYPE_OPTIONS = set()
-    DIRECTIVES = Directives({"fme_attribute_reading"}, set(), set())
+    FEATURE_TYPE_OPTIONS = set("fme_attribute_reading")
+    DIRECTIVES = Directives(
+        string_directives=set(), numeric_directives=set(), bool_directives=set()
+    )
 
     def __init__(self, reader_type_name, reader_keyword, mapping_file):
         # super() is intentionally not called. Base class disallows it.
@@ -165,8 +167,12 @@ class FMESimplifiedReader(FMEReader):
         )
 
         try:
-            self._user_schema, self._feature_type_options = self._mapping_file.parse_def_lines(self.__class__.FEATURE_TYPE_OPTIONS)
-            self._directives = self._mapping_file.get_directives(self.__class__.DIRECTIVES)
+            self._user_schema, self._feature_type_options = (
+                self._mapping_file.parse_def_lines(self.__class__.FEATURE_TYPE_OPTIONS)
+            )
+            self._directives = self._mapping_file.get_directives(
+                self.__class__.DIRECTIVES
+            )
         except AttributeError:
             pass
 
@@ -259,6 +265,34 @@ class FMESimplifiedReader(FMEReader):
         Generator which yields data features for all requested feature types.
 
         The function :meth:`features.build_feature` should be used to create data features.
+        """
+        for feature_type in self._feature_types:
+            # when the format parameter `ATTRIBUTE_READING` has the value `DEFLINE` in the metafile
+            # and `fme_attribute_reading` is set to `defined`, the format should only set
+            # format attributes and user attributes specified on the defline
+            fme_attribute_reading = self._feature_type_options.get(
+                feature_type, {}
+            ).get("fme_attribute_reading", "defined")
+
+            # an exception occurs in the FeatureReader/Data Inspector case, where user attributes are not
+            # explicitly specified
+            def_line_only = (
+                fme_attribute_reading == "defined"
+                and self._user_schema.get(feature_type, {})
+            )
+
+            yield from self._data_features_for_feature_type_generator(
+                feature_type, def_line_only
+            )
+
+    def _data_features_for_feature_type_generator(
+        self, feature_type: str, def_line_only: bool
+    ) -> Generator[FMEFeature]:
+        """
+        Generator which yields all data features for the requested feature type
+
+        :param feature_type: feature type name
+        :param def_line_only: True if only the output attributes on the user schema should be set on the output feature
         """
         pass
 

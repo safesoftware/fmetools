@@ -319,7 +319,7 @@ FeatureTypeInformation = namedtuple("FeatureTypeInformation", "user_attrs option
 @dataclass
 class Directives:
     string_directives: Set[str]
-    numeric_directives:Set[str]
+    numeric_directives: Set[str]
     bool_directives: Set[str]
 
 
@@ -330,6 +330,8 @@ class EnhancedMappingFile(MappingFile):
         """Return user attributes and schema for each feature type defined in the mapping file"""
         if not feature_type_option_names:
             feature_type_option_names = set()
+        feature_type_option_names.add("fme_attribute_reading")
+
         user_attrs = {}
         feature_type_options = {}
         for def_line in self.def_lines():
@@ -367,12 +369,9 @@ class EnhancedMappingFile(MappingFile):
         numeric_default=0,
         bool_default=False,
     ):
-        if not directives.string_directives:
-            directives.string_directives = set()
-
-        directives.string_directives.add("fme_attribute_reading")
         directive_values = {
-            key: self.get(key, default=string_default) for key in directives.string_directives
+            key: self.get(key, default=string_default)
+            for key in directives.string_directives or set()
         }
 
         directive_values.update(
