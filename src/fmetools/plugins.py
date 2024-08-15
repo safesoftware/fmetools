@@ -11,11 +11,11 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import Optional
+from typing import Optional, Generator
 
 try:
     from fme import BaseTransformer as FMEBaseTransformer
-except ImportError: # Support < FME 2024.2
+except ImportError:  # Support < FME 2024.2
     from ._deprecated import FMEBaseTransformer
 
 from fmeobjects import FMEFeature
@@ -54,6 +54,8 @@ class FMESimplifiedReader(FMEReader):
     :ivar bool _using_constraints: True if :meth:`setConstraints` was called.
     :ivar bool _aborted: True if :meth:`abort` was called.
     :ivar list[str] _feature_types: Ordered list of feature type names.
+    :ivar bool _list_feature_types: True if the reader was launched to produce
+        a list of feature types.
     :ivar _readSchema_generator:
         Use this member to store any generator used for :meth:`readSchema`.
        Doing so means it'll be explicitly closed for you in :meth:`close`.
@@ -80,15 +82,13 @@ class FMESimplifiedReader(FMEReader):
         self._aborted = False
         self._feature_types = []
 
+        self._list_feature_types = False
+
         self._readSchema_generator, self._read_generator = None, None
 
     @property
-    def log(self):
-        """
-        Provides access to the FME log.
-
-        :rtype: logging.LoggerAdapter
-        """
+    def log(self) -> logging.LoggerAdapter:
+        """Provides access to the FME log."""
         if not self._log:
             # Instantiate a logger with the appropriate debug mode.
             self._log = get_configured_logger(self.__class__.__name__, self._debug)
@@ -107,7 +107,7 @@ class FMESimplifiedReader(FMEReader):
             self._debug = new_debug
             self._log = get_configured_logger(self.__class__.__name__, self._debug)
 
-    def hasSupportFor(self, support_type):
+    def hasSupportFor(self, support_type) -> bool:
         """
         Return whether this reader supports a certain type. Currently,
         the only supported type is fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM.
@@ -125,7 +125,7 @@ class FMESimplifiedReader(FMEReader):
         """
         return False
 
-    def open(self, dataset_name, parameters):
+    def open(self, dataset_name, parameters) -> None:
         """Open the dataset for reading.
 
         Does these things for you:
@@ -150,9 +150,13 @@ class FMESimplifiedReader(FMEReader):
         if open_parameters.get("FME_DEBUG"):
             self._debug = True
 
+        self._list_feature_types = self._mapping_file.get_flag(
+            "RETRIEVE_ALL_TABLE_NAMES"
+        )
+
         return self.enhancedOpen(open_parameters)
 
-    def enhancedOpen(self, open_parameters):
+    def enhancedOpen(self, open_parameters) -> None:
         """
         Implementations shall override this method instead of :meth:`open`.
 
@@ -160,7 +164,7 @@ class FMESimplifiedReader(FMEReader):
         """
         pass
 
-    def setConstraints(self, feature):
+    def setConstraints(self, feature) -> None:
         """
         Reset any existing feature generator that represents the state for :meth:`read`.
 
@@ -174,7 +178,53 @@ class FMESimplifiedReader(FMEReader):
             self._read_generator.close()
             self._read_generator = None
 
-    def readSchemaGenerator(self):
+    def _feature_types_generator(self) -> Generator[FMEFeature]:
+        """
+        A generator which produces features for each potential feature type from
+        the reader's dataset.
+
+        The feature types will populate the list displayed by the GUI Type FEATURE_TYPES.
+
+        Must yield FMEFeatures with the feature type set.
+        Only the feature type is required; feature attributes will be ignored.
+        """
+        pass
+
+    def _schema_features_generator(self) -> Generator[FMEFeature]:
+        """
+        A generator which produces schema features for all requested feature types.
+
+        When `self._feature_types` is empty, schema features for all possible
+        feature types should be generated. Otherwise, a single schema feature
+        should be generated for each feature type in `self._feature_types`.
+
+        The function :meth:`features.build_feature` should be used to create schema features.
+        Schema features must contain the feature type, all possible geometry
+        types for the feature type, and exposed attributes for the feature.
+        The attribute value for a schema attribute should be set to the expected
+        format attribute type.
+        """
+        pass
+
+    def readSchema(self) -> Optional[FMEFeature]:
+        """
+        Creates schema features.
+
+        Implementations should override :meth:`_feature_types_generator`
+        and :meth:`_schema_features_generator` instead of this method.
+        """
+        # pylint: disable=invalid-name
+        if not self._readSchema_generator:
+            if self._list_feature_types:
+                self._readSchema_generator = self._feature_types_generator()
+            else:
+                self._readSchema_generator = self._schema_features_generator()
+        try:
+            return next(self._readSchema_generator)
+        except StopIteration:
+            return None
+
+    def readSchemaGenerator(self) -> Generator[FMEFeature]:
         """
         Generator form of :meth:`readSchema`.
 
@@ -188,7 +238,31 @@ class FMESimplifiedReader(FMEReader):
             else:
                 break
 
-    def readGenerator(self):
+    def _read_features_generator(self) -> Generator[FMEFeature]:
+        """
+        Generator which yields data features for all requested feature types.
+
+        The function :meth:`features.build_feature` should be used to create data features.
+        """
+        pass
+
+    def read(self) -> Optional[FMEFeature]:
+        """
+        Creates features for a feature type.
+
+        Implementations should override :meth:`_read_features_generator`
+        instead of this method.
+        """
+        # pylint: disable=invalid-name
+        if not self._read_generator:
+            self._read_generator = self._read_features_generator()
+
+        try:
+            return next(self._read_generator)
+        except StopIteration:
+            return None
+
+    def readGenerator(self) -> Generator[FMEFeature]:
         """
         Generator form of :meth:`read`.
 
@@ -202,10 +276,10 @@ class FMESimplifiedReader(FMEReader):
             else:
                 break
 
-    def abort(self):
+    def abort(self) -> None:
         self._aborted = True
 
-    def close(self):
+    def close(self) -> None:
         """
         This default implementation closes any existing read generators.
         """
@@ -337,6 +411,7 @@ class FMETransformer(FMEBaseTransformer):
     In FME versions prior to 2024.2, this will subclass :class:`fmetools._deprecated.FMEBaseTransformer`
     instead.
     """
+
     def __init__(self):
         super().__init__()
         warnings.warn(
