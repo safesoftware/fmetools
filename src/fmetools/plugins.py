@@ -264,7 +264,9 @@ class FMESimplifiedReader(FMEReader):
         """
         Generator which yields data features for all requested feature types.
 
-        The function :meth:`features.build_feature` should be used to create data features.
+        When overriding, it is recommended to implement general read setup
+        in this method, call `super()._read_features_generator()`,
+        and generate data features using :meth:`_data_features_for_feature_type_generator`
         """
         for feature_type in self._feature_types:
             # when the format parameter `ATTRIBUTE_READING` has the value `DEFLINE` in the metafile
@@ -289,7 +291,9 @@ class FMESimplifiedReader(FMEReader):
         self, feature_type: str, def_line_only: bool
     ) -> Generator[FMEFeature]:
         """
-        Generator which yields all data features for the requested feature type
+        Generator which yields all data features for the requested feature type.
+
+        The function :meth:`features.build_feature` should be used to create data features.
 
         :param feature_type: feature type name
         :param def_line_only: True if only the output attributes on the user schema should be set on the output feature
