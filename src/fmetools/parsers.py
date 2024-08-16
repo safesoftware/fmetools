@@ -6,7 +6,7 @@ It is not intended for general use.
 
 from collections import OrderedDict, namedtuple
 from dataclasses import dataclass
-from typing import Union, Set, Dict
+from typing import Union, Set, Dict, Optional, List
 
 import fme
 import six
@@ -180,8 +180,9 @@ def get_template_feature_type(feature):
 
 SearchEnvelope = namedtuple("SearchEnvelope", "min_x min_y max_x max_y coordsys")
 
-
-FeatureTypeInformation = namedtuple("FeatureTypeInformation", "user_attrs options")
+FeatureTypeInformation = namedtuple(
+    "FeatureTypeInformation", "user_attributes parameters"
+)
 
 
 @dataclass
@@ -207,11 +208,13 @@ class MappingFile:
     :ivar FMEMappingFile mapping_file: The original mapping file object.
     """
 
-    def __init__(self, mapping_file, plugin_keyword, plugin_type):
+    def __init__(
+        self, mapping_file: FMEMappingFile, plugin_keyword: str, plugin_type: str
+    ):
         """
-        :param FMEMappingFile mapping_file: The original mapping file object.
-        :param str plugin_keyword: Plugin keyword string.
-        :param str plugin_type: Plugin type string.
+        :param mapping_file: The original mapping file object.
+        :param plugin_keyword: Plugin keyword string.
+        :param plugin_type: The format short name, as specified in the metafile.
         """
         self.mapping_file = mapping_file
         self._plugin_keyword = plugin_keyword
@@ -231,17 +234,18 @@ class MappingFile:
             yield def_line_buffer
             def_line_buffer = self.mapping_file.nextLineWithFilter(def_filter)
 
-    def fetch_with_prefix(self, plugin_keyword, plugin_type, directive):
+    def fetch_with_prefix(
+        self, plugin_keyword: str, plugin_type: str, directive: str
+    ) -> str:
         """Like :meth:`FMEMappingFile.fetchWithPrefix`, but also handles the
         Python-specific situation where directive values are returned as
         2-element lists with identical values.
 
-        :param str plugin_keyword: Plugin keyword string.
-        :param str plugin_type: Plugin type string.
-        :param str directive: Name of the directive.
+        :param plugin_keyword: Plugin keyword string.
+        :param plugin_type: Plugin type string.
+        :param directive: Name of the directive.
         :return: If the value is scalar or a 2-element list with identical elements,
             return the element. Otherwise, the list is returned as-is.
-        :rtype: str
         """
         value = self.mapping_file.fetchWithPrefix(
             plugin_keyword, plugin_type, directive
@@ -250,17 +254,23 @@ class MappingFile:
             return value[0]
         return value
 
-    def get(self, directive, default=None, decode=True, as_list=False):
-        """Fetch a directive from the mapping file, assuming the given plugin
+    def get(
+        self,
+        directive: str,
+        default: Optional[str] = None,
+        decode: bool = True,
+        as_list: bool = False,
+    ) -> Optional[Union[str, int, float, List]]:
+        """
+        Fetch a directive from the mapping file, assuming the given plugin
         keyword and type.
 
-        :param str directive: Name of the directive.
-        :param str default: Value to return if directive not present.
-        :param bool decode: Whether to interpret the value as FME-encoded,
+        :param directive: Name of the directive.
+        :param default: Value to return if directive not present.
+        :param decode: Whether to interpret the value as FME-encoded,
             and return the decoded value.
-        :param bool as_list:  If true, then parse the value as a space-delimited list,
+        :param as_list:  If true, then parse the value as a space-delimited list,
             and return a list.
-        :rtype: str, int, float, list, None
         """
         value = self.fetch_with_prefix(
             self._plugin_keyword, self._plugin_type, directive
@@ -277,12 +287,11 @@ class MappingFile:
             value = self.__session.decodeFromFMEParsableText(value)
         return value
 
-    def get_flag(self, directive, default=False):
+    def get_flag(self, directive: str, default: bool = False) -> bool:
         """Get the specified directive and interpret it as a boolean value.
 
         :param str directive: Name of the directive.
         :param bool default: Value to return if directive not present.
-        :rtype: bool
         """
         value = self.get(directive)
         if value is None:
@@ -341,24 +350,24 @@ class MappingFile:
         return [_system_to_unicode(ft) for ft in featTypes]
 
     def parse_def_lines(
-        self, feature_type_option_names: Set[str] = None
+        self, parameter_names: Set[str] = None
     ) -> FeatureTypeInformation:
-        """Return user attributes and schema for each feature type defined in the mapping file"""
-        if not feature_type_option_names:
-            feature_type_option_names = set()
-        feature_type_option_names.add("fme_attribute_reading")
+        """Return the user schema and feature type options for each feature type defined in the mapping file"""
+        if not parameter_names:
+            parameter_names = set()
+        parameter_names.add("fme_attribute_reading")
 
         user_attrs = {}
-        feature_type_options = {}
+        feature_type_params = {}
         for def_line in self.def_lines():
-            defline_feature_type, attrs, def_line_options = parse_def_line(
-                def_line, feature_type_option_names
+            defline_feature_type, attrs, def_line_params = parse_def_line(
+                def_line, parameter_names
             )
 
             user_attrs[defline_feature_type] = attrs
-            # todo parse options further?
-            feature_type_options[defline_feature_type] = def_line_options
-        return FeatureTypeInformation(user_attrs, feature_type_options)
+
+            feature_type_params[defline_feature_type] = def_line_params
+        return FeatureTypeInformation(user_attrs, feature_type_params)
 
     def get_directives(
         self,
@@ -367,7 +376,7 @@ class MappingFile:
         numeric_default=0,
         bool_default=False,
     ) -> Dict:
-        """Get parsed directive values from the mapping file"""
+        """Get cast directive values from the mapping file"""
         directive_values = {
             key: self.get(key, default=string_default)
             for key in directives.string_directives or set()
