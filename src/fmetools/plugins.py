@@ -67,8 +67,8 @@ class FMESimplifiedReader(FMEReader):
         whether it needs to re-instantiate its generator to honour new settings.
     """
 
-    FEATURE_TYPE_OPTIONS = {"fme_attribute_reading"}
-    DIRECTIVES = Directives(
+    FEATURE_TYPE_PARAMETERS = {"fme_attribute_reading"}
+    DIRECTIVE_NAMES = Directives(
         string_directives=set(), numeric_directives=set(), bool_directives=set()
     )
 
@@ -76,9 +76,7 @@ class FMESimplifiedReader(FMEReader):
         # super() is intentionally not called. Base class disallows it.
         self._type_name = reader_type_name
         self._keyword = reader_keyword
-        self._mapping_file = MappingFile(
-            mapping_file, reader_keyword, reader_type_name
-        )
+        self._mapping_file = MappingFile(mapping_file, reader_keyword, reader_type_name)
 
         # Check if the debug flag is set
         self._debug = self._mapping_file.mapping_file.fetch("FME_DEBUG") is not None
@@ -92,8 +90,8 @@ class FMESimplifiedReader(FMEReader):
         self._list_feature_types = False
         self._def_line_attrs_only = False
 
-        self._user_schema = {}
-        self._feature_type_options = {}
+        self._user_attributes = {}
+        self._feature_type_parameters = {}
         self._directives = {}
 
         self._readSchema_generator, self._read_generator = None, None
@@ -167,11 +165,13 @@ class FMESimplifiedReader(FMEReader):
         )
 
         try:
-            self._user_schema, self._feature_type_options = (
-                self._mapping_file.parse_def_lines(self.__class__.FEATURE_TYPE_OPTIONS)
+            self._user_attributes, self._feature_type_parameters = (
+                self._mapping_file.parse_def_lines(
+                    self.__class__.FEATURE_TYPE_PARAMETERS
+                )
             )
             self._directives = self._mapping_file.get_directives(
-                self.__class__.DIRECTIVES
+                self.__class__.DIRECTIVE_NAMES
             )
         except AttributeError:
             pass
@@ -270,7 +270,7 @@ class FMESimplifiedReader(FMEReader):
             # when the format parameter `ATTRIBUTE_READING` has the value `DEFLINE` in the metafile
             # and `fme_attribute_reading` is set to `defined`, the format should only set
             # format attributes and user attributes specified on the defline
-            fme_attribute_reading = self._feature_type_options.get(
+            fme_attribute_reading = self._feature_type_parameters.get(
                 feature_type, {}
             ).get("fme_attribute_reading", "defined")
 
@@ -278,7 +278,7 @@ class FMESimplifiedReader(FMEReader):
             # explicitly specified
             def_line_only = (
                 fme_attribute_reading == "defined"
-                and self._user_schema.get(feature_type, {})
+                and self._user_attributes.get(feature_type, {})
             )
 
             yield from self._data_features_for_feature_type_generator(
@@ -368,8 +368,8 @@ class FMESimplifiedWriter(FMEWriter):
     :ivar list[str] _feature_types: Ordered list of feature types.
     """
 
-    FEATURE_TYPE_OPTIONS = {"fme_feature_operation", "fme_table_handling"}
-    DIRECTIVES = Directives(
+    FEATURE_TYPE_PARAMETERS = {"fme_feature_operation", "fme_table_handling"}
+    DIRECTIVE_NAMES = Directives(
         string_directives=set(), numeric_directives=set(), bool_directives=set()
     )
 
@@ -377,9 +377,7 @@ class FMESimplifiedWriter(FMEWriter):
         # super() is intentionally not called. Base class disallows it.
         self._type_name = writer_type_name
         self._keyword = writer_keyword
-        self._mapping_file = MappingFile(
-            mapping_file, writer_keyword, writer_type_name
-        )
+        self._mapping_file = MappingFile(mapping_file, writer_keyword, writer_type_name)
 
         # Check if the debug flag is set
         self._debug = self._mapping_file.mapping_file.fetch("FME_DEBUG") is not None
@@ -389,8 +387,8 @@ class FMESimplifiedWriter(FMEWriter):
         self._aborted = False
         self._feature_types = []
 
-        self._user_schema = {}
-        self._feature_type_options = {}
+        self._user_attributes = {}
+        self._feature_type_parameters = {}
         self._directives = {}
 
     @property
@@ -439,11 +437,13 @@ class FMESimplifiedWriter(FMEWriter):
             self.debug = True
 
         try:
-            self._user_schema, self._feature_type_options = (
-                self._mapping_file.parse_def_lines(self.__class__.FEATURE_TYPE_OPTIONS)
+            self._user_attributes, self._feature_type_parameters = (
+                self._mapping_file.parse_def_lines(
+                    self.__class__.FEATURE_TYPE_PARAMETERS
+                )
             )
             self._directives = self._mapping_file.get_directives(
-                self.__class__.DIRECTIVES
+                self.__class__.DIRECTIVE_NAMES
             )
         except AttributeError:
             pass
