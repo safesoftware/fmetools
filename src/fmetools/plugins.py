@@ -295,6 +295,9 @@ class FMESimplifiedReader(FMEReader):
 
         The function :meth:`features.build_feature` should be used to create data features.
 
+        The `def_line_only` parameter should only be honoured if
+        the metafile contains the line `FORMAT_PARAMETER ATTRIBUTE_READING DEFLINE`.
+
         :param feature_type: feature type name
         :param def_line_only: True if only the output attributes on the user schema should be set on the output feature
         """
