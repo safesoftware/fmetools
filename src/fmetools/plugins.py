@@ -11,14 +11,16 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import Optional, Generator, List, Dict
+from typing import Optional, Generator, List
+
+from . import tr
 
 try:
     from fme import BaseTransformer as FMEBaseTransformer
 except ImportError:  # Support < FME 2024.2
     from ._deprecated import FMEBaseTransformer
 
-from fmeobjects import FMEFeature
+from fmeobjects import FMEFeature, FMEException
 
 try:
     from fmeobjects import FME_SUPPORT_FEATURE_TABLE_SHIM
@@ -28,13 +30,30 @@ except ImportError:  # Support < FME 2022.0 b22235
 from pluginbuilder import FMEReader, FMEWriter
 
 from .logfile import get_configured_logger
-from .parsers import OpenParameters, MappingFile, Directives, FeatureTypeInfo
+from .parsers import OpenParameters, MappingFile, Directives, get_template_feature_type, FeatureTypeInfo
 
 # These are relevant externally.
 # Reader and writer base classes are omitted because they're not intended for general use.
 __all__ = [
     "FMEEnhancedTransformer",
 ]
+
+
+class MissingDefForIncomingFeatureType(FMEException):
+    """The def line could not be resolved."""
+
+    def __init__(self, log_prefix: str, feature_type: str):
+        """
+        :param log_prefix: The prefix for the exception's message.
+            e.g. ``[format name] [direction]``.
+        :param feature_type: Feature type for the DEF line.
+        """
+        message = tr(
+            "{prefix}: No DEF line could be found for feature type '{feature_type}'. If you are using dynamic schemas, ensure that the fme_feature_type attribute exists on the incoming feature and corresponds to a valid feature type definition")
+
+        super().__init__(
+            message.format(prefix=log_prefix, feature_type=feature_type)
+        )
 
 
 class FMESimplifiedReader(FMEReader):
@@ -454,6 +473,23 @@ class FMESimplifiedWriter(FMEWriter):
     def write(self, feature: FMEFeature) -> None:
         """
         Write a feature to the output dataset.
+        """
+        # get feature type and info from def line
+        feature_type = feature.getFeatureType()
+
+        try:
+            feature_type_info = self._feature_type_information[feature_type]
+        except KeyError as e:
+            def_feature_type = get_template_feature_type(feature)
+            if def_feature_type not in self._feature_type_information:
+                raise MissingDefForIncomingFeatureType(self.log.name, feature_type) from e
+            feature_type_info = self._feature_type_information[def_feature_type]
+
+        self.write_feature(feature, feature_type_info)
+
+    def write_feature(self, feature: FMEFeature, feature_type_info: FeatureTypeInformation) -> None:
+        """
+        Write a feature to the output data set.
         """
         pass
 
