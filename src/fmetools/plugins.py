@@ -164,17 +164,14 @@ class FMESimplifiedReader(FMEReader):
             "RETRIEVE_ALL_TABLE_NAMES"
         )
 
-        try:
-            self._user_attributes, self._feature_type_parameters = (
-                self._mapping_file.parse_def_lines(
-                    self.__class__.FEATURE_TYPE_PARAMETERS
-                )
+        self._user_attributes, self._feature_type_parameters = (
+            self._mapping_file.parse_def_lines(
+                self.__class__.FEATURE_TYPE_PARAMETERS
             )
-            self._directives = self._mapping_file.get_directives(
-                self.__class__.DIRECTIVE_NAMES
-            )
-        except AttributeError:
-            pass
+        )
+        self._directives = self._mapping_file.get_directives(
+            self.__class__.DIRECTIVE_NAMES
+        )
 
         return self.enhancedOpen(open_parameters)
 
@@ -393,6 +390,23 @@ class FMESimplifiedWriter(FMEWriter):
 
         self._aborted = False
         self._feature_types = []
+
+
+        class EnhancedMappingFile():
+
+            def __init__(self):
+            def get_user_attributes(self, feature_type):
+                pass
+
+            def get_feature_type_parameters(self, feature_type):
+                pass
+
+            def get_feature_type_parameter(self, feature_type, parameter_name):
+                pass
+
+            def get_directive(self, parameter):
+                pass
+
 
         self._user_attributes = {}
         self._feature_type_parameters = {}
