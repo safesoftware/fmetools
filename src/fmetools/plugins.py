@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import Optional, Generator, List
+from typing import Optional, Generator, List, Dict
 
 try:
     from fme import BaseTransformer as FMEBaseTransformer
@@ -281,11 +281,11 @@ class FMESimplifiedReader(FMEReader):
             )
 
             yield from self._data_features_for_feature_type_generator(
-                feature_type, def_line_only
+                feature_type, self._user_attributes[feature_type], self._feature_type_parameters[feature_type], def_line_only
             )
 
     def _data_features_for_feature_type_generator(
-        self, feature_type: str, def_line_only: bool
+        self, feature_type: str, user_attributes: Dict, feature_type_parameters: Dict, def_line_only: bool, **kwargs
     ) -> Generator[FMEFeature]:
         """
         Generator which yields all data features for the requested feature type.
@@ -296,6 +296,8 @@ class FMESimplifiedReader(FMEReader):
         the metafile contains the line `FORMAT_PARAMETER ATTRIBUTE_READING DEFLINE`.
 
         :param feature_type: feature type name
+        :param user_attributes: expected attribute names and types from the user schema
+        :param feature_type_parameters: parameters set for each feature type
         :param def_line_only: True if only the output attributes on the user schema should be set on the output feature
         """
         pass
