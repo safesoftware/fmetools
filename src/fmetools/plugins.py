@@ -467,7 +467,7 @@ class FMESimplifiedWriter(FMEWriter):
 
     def write(self, feature: FMEFeature) -> None:
         """
-        Write a feature to the output dataset
+        Write a feature to the output dataset.
         """
         pass
 
