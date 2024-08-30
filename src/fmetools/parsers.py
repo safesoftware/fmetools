@@ -364,23 +364,21 @@ class MappingFile:
 
     def parse_def_lines(
         self, parameter_names: Set[str] = None
-    ) -> FeatureTypeInformation:
+    ) -> Dict[str, FeatureTypeInformation]:
         """Return the user schema and feature type options for each feature type defined in the mapping file"""
         if not parameter_names:
             parameter_names = set()
         parameter_names.add("fme_attribute_reading")
 
-        user_attrs = {}
-        feature_type_params = {}
+        def_line_info = {}
         for def_line in self.def_lines():
             defline_feature_type, attrs, def_line_params = parse_def_line(
                 def_line, parameter_names
             )
-
-            user_attrs[defline_feature_type] = attrs
-
-            feature_type_params[defline_feature_type] = def_line_params
-        return FeatureTypeInformation(user_attrs, feature_type_params)
+            def_line_info[defline_feature_type] = FeatureTypeInformation(
+                attrs, def_line_params
+            )
+        return def_line_info
 
     def get_directives(
         self,

@@ -28,7 +28,7 @@ except ImportError:  # Support < FME 2022.0 b22235
 from pluginbuilder import FMEReader, FMEWriter
 
 from .logfile import get_configured_logger
-from .parsers import OpenParameters, MappingFile, Directives
+from .parsers import OpenParameters, MappingFile, Directives, FeatureTypeInformation
 
 # These are relevant externally.
 # Reader and writer base classes are omitted because they're not intended for general use.
@@ -88,8 +88,7 @@ class FMESimplifiedReader(FMEReader):
         self._list_feature_types = False
         self._def_line_attrs_only = False
 
-        self._user_attributes = {}
-        self._feature_type_parameters = {}
+        self._feature_type_information = {}
         self._directives = {}
 
         self._readSchema_generator, self._read_generator = None, None
@@ -162,8 +161,8 @@ class FMESimplifiedReader(FMEReader):
             "RETRIEVE_ALL_TABLE_NAMES"
         )
 
-        self._user_attributes, self._feature_type_parameters = (
-            self._mapping_file.parse_def_lines(self.__class__.FEATURE_TYPE_PARAMETERS)
+        self._feature_type_information = self._mapping_file.parse_def_lines(
+            self.__class__.FEATURE_TYPE_PARAMETERS
         )
         self._directives = self._mapping_file.get_directives(self.__class__.DIRECTIVES)
 
@@ -263,29 +262,29 @@ class FMESimplifiedReader(FMEReader):
             # when the format parameter `ATTRIBUTE_READING` has the value `DEFLINE` in the metafile
             # and `fme_attribute_reading` is set to `defined`, the format should only set
             # format attributes and user attributes specified on the defline
-            fme_attribute_reading = self._feature_type_parameters.get(
-                feature_type, {}
-            ).get("fme_attribute_reading", "defined")
+            feature_type_info = self._feature_type_information.get(
+                feature_type, FeatureTypeInformation({}, {})
+            )
+            fme_attribute_reading = feature_type_info.parameters.get(
+                "fme_attribute_reading", "defined"
+            )
 
             # an exception occurs in the FeatureReader/Data Inspector case, where user attributes are not
             # explicitly specified
             def_line_only = (
-                fme_attribute_reading == "defined"
-                and self._user_attributes.get(feature_type, {})
+                fme_attribute_reading == "defined" and feature_type_info.user_attributes
             )
 
             yield from self._data_features_for_feature_type_generator(
                 feature_type,
-                self._user_attributes[feature_type],
-                self._feature_type_parameters[feature_type],
+                feature_type_info,
                 def_line_only,
             )
 
     def _data_features_for_feature_type_generator(
         self,
         feature_type: str,
-        user_attributes: Dict,
-        feature_type_parameters: Dict,
+        feature_type_info: FeatureTypeInformation,
         def_line_only: bool,
         **kwargs,
     ) -> Generator[FMEFeature]:
@@ -298,8 +297,7 @@ class FMESimplifiedReader(FMEReader):
         the metafile contains the line `FORMAT_PARAMETER ATTRIBUTE_READING DEFLINE`.
 
         :param feature_type: feature type name
-        :param user_attributes: expected attribute names and types from the user schema
-        :param feature_type_parameters: parameters set for each feature type
+        :param feature_type_info: user attributes and parameters for the feature type
         :param def_line_only: True if only the output attributes on the user schema should be set on the output feature
         """
         pass
@@ -393,8 +391,7 @@ class FMESimplifiedWriter(FMEWriter):
         self._aborted = False
         self._feature_types = []
 
-        self._user_attributes = {}
-        self._feature_type_parameters = {}
+        self._feature_type_information = {}
         self._directives = {}
 
     @property
@@ -442,17 +439,10 @@ class FMESimplifiedWriter(FMEWriter):
         if open_parameters.get("FME_DEBUG"):
             self.debug = True
 
-        try:
-            self._user_attributes, self._feature_type_parameters = (
-                self._mapping_file.parse_def_lines(
-                    self.__class__.FEATURE_TYPE_PARAMETERS
-                )
-            )
-            self._directives = self._mapping_file.get_directives(
-                self.__class__.DIRECTIVES
-            )
-        except AttributeError:
-            pass
+        self._feature_type_information = self._mapping_file.parse_def_lines(
+            self.__class__.FEATURE_TYPE_PARAMETERS
+        )
+        self._directives = self._mapping_file.get_directives(self.__class__.DIRECTIVES)
 
         return self.enhancedOpen(open_parameters)
 
