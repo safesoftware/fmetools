@@ -6,6 +6,7 @@ It is not intended for general use.
 
 from collections import OrderedDict, namedtuple
 from dataclasses import dataclass
+from enum import Enum, auto
 from typing import Union, Set, Dict, Optional, List
 
 import fme
@@ -14,6 +15,7 @@ from fmeobjects import FMEFeature, FMESession  # noqa F401
 from pluginbuilder import FMEMappingFile  # noqa F401
 from six import string_types
 
+from .guiparams import parse_gui_type
 from .utils import string_to_bool
 
 # Nothing here is intended for general use.
@@ -185,11 +187,22 @@ FeatureTypeInformation = namedtuple(
 )
 
 
-@dataclass
-class Directives:
-    string_directives: Set[str]
-    numeric_directives: Set[str]
-    bool_directives: Set[str]
+class MappingFileDirectiveType(Enum):
+    STRING = auto()
+    NUMERIC = auto()
+    BOOL = auto()
+
+
+class Directives(dict):
+    def __init__(self, directive_names, directive_gui_types=None):
+        super().__init__()
+        self.names = directive_names
+        if directive_gui_types is None:
+            directive_gui_types = dict()
+        self.name_to_type = {
+            name: directive_gui_types.get(name, MappingFileDirectiveType.STRING)
+            for name in directive_names
+        }
 
 
 class MappingFile:
@@ -377,23 +390,43 @@ class MappingFile:
         bool_default=False,
     ) -> Dict:
         """Get cast directive values from the mapping file"""
-        directive_values = {
-            key: self.get(key, default=string_default)
-            for key in directives.string_directives or set()
+        # todo bake defaults into directives class?
+
+        MAP_DICT = {
+            "ACTIVECHOICE_LOOKUP": MappingFileDirectiveType.STRING,
+            "CHECKBOX": MappingFileDirectiveType.BOOL,
+            "CHOICE": MappingFileDirectiveType.STRING,
+            "FLOAT": MappingFileDirectiveType.NUMERIC,
+            "INTEGER": MappingFileDirectiveType.NUMERIC,
+            # "LISTBOX": ListParser,
+            # "LOOKUP_LISTBOX": ListParser,
+            "LOOKUP_CHOICE": MappingFileDirectiveType.STRING,
+            "NAMED_CONNECTION": MappingFileDirectiveType.STRING,
+            "PASSWORD": MappingFileDirectiveType.STRING,
+            "PASSWORD_CONFIRM": MappingFileDirectiveType.STRING,
+            "RANGE_SLIDER": MappingFileDirectiveType.NUMERIC,
+            MappingFileDirectiveType.STRING: "STRING",
+            "TEXT_EDIT": MappingFileDirectiveType.STRING,
         }
 
-        directive_values.update(
-            {
-                key: self.get_number(key, default=numeric_default)
-                for key in directives.numeric_directives or set()
-            }
-        )
+        for name, gui_type in directives.name_to_type.items():
+            parsed_gui_type = parse_gui_type(gui_type)
 
-        directive_values.update(
-            {
-                key: self.get_flag(key, default=bool_default)
-                for key in directives.bool_directives or set()
-            }
-        )
+            if parsed_gui_type.gui_type not in MAP_DICT:
+                # todo debug log?
+                # print(f"warn {name} uses undefined GUI type {parsed_gui_type}, treating as a string")
+                pass
 
-        return directive_values
+            broad_type = MAP_DICT.get(
+                parsed_gui_type.name, MappingFileDirectiveType.STRING
+            )
+
+            if broad_type == MappingFileDirectiveType.STRING:
+                # always decode, regardless of GUI value?
+                directives[name] = self.get(name, default=string_default)
+            elif broad_type == MappingFileDirectiveType.NUMERIC:
+                directives[name] = self.get_number(name, default=numeric_default)
+            elif broad_type == MappingFileDirectiveType.BOOL:
+                directives[name] = self.get_flag(name, default=bool_default)
+
+        return directives

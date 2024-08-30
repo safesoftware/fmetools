@@ -68,9 +68,7 @@ class FMESimplifiedReader(FMEReader):
     """
 
     FEATURE_TYPE_PARAMETERS = {"fme_attribute_reading"}
-    DIRECTIVE_NAMES = Directives(
-        string_directives=set(), numeric_directives=set(), bool_directives=set()
-    )
+    DIRECTIVES = Directives([])
 
     def __init__(self, reader_type_name, reader_keyword, mapping_file):
         # super() is intentionally not called. Base class disallows it.
@@ -165,13 +163,9 @@ class FMESimplifiedReader(FMEReader):
         )
 
         self._user_attributes, self._feature_type_parameters = (
-            self._mapping_file.parse_def_lines(
-                self.__class__.FEATURE_TYPE_PARAMETERS
-            )
+            self._mapping_file.parse_def_lines(self.__class__.FEATURE_TYPE_PARAMETERS)
         )
-        self._directives = self._mapping_file.get_directives(
-            self.__class__.DIRECTIVE_NAMES
-        )
+        self._directives = self._mapping_file.get_directives(self.__class__.DIRECTIVES)
 
         return self.enhancedOpen(open_parameters)
 
@@ -281,11 +275,19 @@ class FMESimplifiedReader(FMEReader):
             )
 
             yield from self._data_features_for_feature_type_generator(
-                feature_type, self._user_attributes[feature_type], self._feature_type_parameters[feature_type], def_line_only
+                feature_type,
+                self._user_attributes[feature_type],
+                self._feature_type_parameters[feature_type],
+                def_line_only,
             )
 
     def _data_features_for_feature_type_generator(
-        self, feature_type: str, user_attributes: Dict, feature_type_parameters: Dict, def_line_only: bool, **kwargs
+        self,
+        feature_type: str,
+        user_attributes: Dict,
+        feature_type_parameters: Dict,
+        def_line_only: bool,
+        **kwargs,
     ) -> Generator[FMEFeature]:
         """
         Generator which yields all data features for the requested feature type.
@@ -375,9 +377,7 @@ class FMESimplifiedWriter(FMEWriter):
     """
 
     FEATURE_TYPE_PARAMETERS = {"fme_feature_operation", "fme_table_handling"}
-    DIRECTIVE_NAMES = Directives(
-        string_directives=set(), numeric_directives=set(), bool_directives=set()
-    )
+    DIRECTIVES = Directives([])
 
     def __init__(self, writer_type_name, writer_keyword, mapping_file):
         # super() is intentionally not called. Base class disallows it.
@@ -392,23 +392,6 @@ class FMESimplifiedWriter(FMEWriter):
 
         self._aborted = False
         self._feature_types = []
-
-
-        class EnhancedMappingFile():
-
-            def __init__(self):
-            def get_user_attributes(self, feature_type):
-                pass
-
-            def get_feature_type_parameters(self, feature_type):
-                pass
-
-            def get_feature_type_parameter(self, feature_type, parameter_name):
-                pass
-
-            def get_directive(self, parameter):
-                pass
-
 
         self._user_attributes = {}
         self._feature_type_parameters = {}
@@ -466,7 +449,7 @@ class FMESimplifiedWriter(FMEWriter):
                 )
             )
             self._directives = self._mapping_file.get_directives(
-                self.__class__.DIRECTIVE_NAMES
+                self.__class__.DIRECTIVES
             )
         except AttributeError:
             pass
