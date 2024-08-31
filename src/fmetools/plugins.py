@@ -68,7 +68,7 @@ class FMESimplifiedReader(FMEReader):
     """
 
     FEATURE_TYPE_PARAMETERS = {"fme_attribute_reading"}
-    DIRECTIVES = Directives([])
+    DIRECTIVES = Directives(set())
 
     def __init__(self, reader_type_name, reader_keyword, mapping_file):
         # super() is intentionally not called. Base class disallows it.
@@ -190,7 +190,7 @@ class FMESimplifiedReader(FMEReader):
             self._read_generator.close()
             self._read_generator = None
 
-    def _feature_types_generator(self) -> Generator[FMEFeature]:
+    def _feature_types_generator(self) -> Generator[FMEFeature, None, None]:
         """
         A generator which produces features for each potential feature type from
         the reader's dataset.
@@ -202,7 +202,7 @@ class FMESimplifiedReader(FMEReader):
         """
         pass
 
-    def _schema_features_generator(self) -> Generator[FMEFeature]:
+    def _schema_features_generator(self) -> Generator[FMEFeature, None, None]:
         """
         A generator which produces schema features for all requested feature types.
 
@@ -236,7 +236,7 @@ class FMESimplifiedReader(FMEReader):
         except StopIteration:
             return None
 
-    def readSchemaGenerator(self) -> Generator[FMEFeature]:
+    def readSchemaGenerator(self) -> Generator[FMEFeature, None, None]:
         """
         Generator form of :meth:`readSchema`.
 
@@ -250,7 +250,7 @@ class FMESimplifiedReader(FMEReader):
             else:
                 break
 
-    def _read_features_generator(self) -> Generator[FMEFeature]:
+    def _read_features_generator(self) -> Generator[FMEFeature, None, None]:
         """
         Generator which yields data features for all requested feature types.
 
@@ -287,7 +287,7 @@ class FMESimplifiedReader(FMEReader):
         feature_type_info: FeatureTypeInformation,
         def_line_only: bool,
         **kwargs,
-    ) -> Generator[FMEFeature]:
+    ) -> Generator[FMEFeature, None, None]:
         """
         Generator which yields all data features for the requested feature type.
 
@@ -318,7 +318,7 @@ class FMESimplifiedReader(FMEReader):
         except StopIteration:
             return None
 
-    def readGenerator(self) -> Generator[FMEFeature]:
+    def readGenerator(self) -> Generator[FMEFeature, None, None]:
         """
         Generator form of :meth:`read`.
 
@@ -375,7 +375,7 @@ class FMESimplifiedWriter(FMEWriter):
     """
 
     FEATURE_TYPE_PARAMETERS = {"fme_feature_operation", "fme_table_handling"}
-    DIRECTIVES = Directives([])
+    DIRECTIVES = Directives(set())
 
     def __init__(self, writer_type_name, writer_keyword, mapping_file):
         # super() is intentionally not called. Base class disallows it.

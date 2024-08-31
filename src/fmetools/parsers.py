@@ -194,7 +194,7 @@ class MappingFileDirectiveType(Enum):
 
 
 class Directives(dict):
-    def __init__(self, directive_names, directive_gui_types=None):
+    def __init__(self, directive_names: Set[str], directive_gui_types=None):
         super().__init__()
         self.names = directive_names
         if directive_gui_types is None:
@@ -203,6 +203,25 @@ class Directives(dict):
             name: directive_gui_types.get(name, MappingFileDirectiveType.STRING)
             for name in directive_names
         }
+
+
+# todo into Directives class?
+SUPPORTED_TYPES = {
+    "ACTIVECHOICE_LOOKUP": MappingFileDirectiveType.STRING,
+    "CHECKBOX": MappingFileDirectiveType.BOOL,
+    "CHOICE": MappingFileDirectiveType.STRING,
+    "FLOAT": MappingFileDirectiveType.NUMERIC,
+    "INTEGER": MappingFileDirectiveType.NUMERIC,
+    # "LISTBOX": ListParser,
+    # "LOOKUP_LISTBOX": ListParser,
+    "LOOKUP_CHOICE": MappingFileDirectiveType.STRING,
+    "NAMED_CONNECTION": MappingFileDirectiveType.STRING,
+    "PASSWORD": MappingFileDirectiveType.STRING,
+    "PASSWORD_CONFIRM": MappingFileDirectiveType.STRING,
+    "RANGE_SLIDER": MappingFileDirectiveType.NUMERIC,
+    MappingFileDirectiveType.STRING: "STRING",
+    "TEXT_EDIT": MappingFileDirectiveType.STRING,
+}
 
 
 class MappingFile:
@@ -390,32 +409,15 @@ class MappingFile:
         """Get cast directive values from the mapping file"""
         # todo bake defaults into directives class?
 
-        MAP_DICT = {
-            "ACTIVECHOICE_LOOKUP": MappingFileDirectiveType.STRING,
-            "CHECKBOX": MappingFileDirectiveType.BOOL,
-            "CHOICE": MappingFileDirectiveType.STRING,
-            "FLOAT": MappingFileDirectiveType.NUMERIC,
-            "INTEGER": MappingFileDirectiveType.NUMERIC,
-            # "LISTBOX": ListParser,
-            # "LOOKUP_LISTBOX": ListParser,
-            "LOOKUP_CHOICE": MappingFileDirectiveType.STRING,
-            "NAMED_CONNECTION": MappingFileDirectiveType.STRING,
-            "PASSWORD": MappingFileDirectiveType.STRING,
-            "PASSWORD_CONFIRM": MappingFileDirectiveType.STRING,
-            "RANGE_SLIDER": MappingFileDirectiveType.NUMERIC,
-            MappingFileDirectiveType.STRING: "STRING",
-            "TEXT_EDIT": MappingFileDirectiveType.STRING,
-        }
-
         for name, gui_type in directives.name_to_type.items():
             parsed_gui_type = parse_gui_type(gui_type)
 
-            if parsed_gui_type.gui_type not in MAP_DICT:
+            if parsed_gui_type.name not in SUPPORTED_TYPES:
                 # todo debug log?
                 # print(f"warn {name} uses undefined GUI type {parsed_gui_type}, treating as a string")
                 pass
 
-            broad_type = MAP_DICT.get(
+            broad_type = SUPPORTED_TYPES.get(
                 parsed_gui_type.name, MappingFileDirectiveType.STRING
             )
 
