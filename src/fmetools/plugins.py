@@ -397,7 +397,7 @@ class FMESimplifiedWriter(FMEWriter):
     @property
     def log(self) -> logging.LoggerAdapter:
         """
-        Provides access to the FME log
+        Provides access to the FME log.
         """
         if not self._log:
             # Instantiate a logger with the appropriate debug mode.

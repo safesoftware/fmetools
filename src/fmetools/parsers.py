@@ -5,8 +5,7 @@ It is not intended for general use.
 """
 
 from collections import OrderedDict, namedtuple
-from dataclasses import dataclass
-from enum import Enum, auto
+from enum import Enum
 from typing import Union, Set, Dict, Optional, List
 
 import fme
@@ -188,9 +187,9 @@ FeatureTypeInformation = namedtuple(
 
 
 class MappingFileDirectiveType(Enum):
-    STRING = auto()
-    NUMERIC = auto()
-    BOOL = auto()
+    STRING = "STRING"
+    NUMERIC = "NUMERIC"
+    BOOL = "BOOL"
 
 
 class Directives(dict):
@@ -200,23 +199,23 @@ class Directives(dict):
     """
 
     SUPPORTED_TYPES = {
-        "ACTIVECHOICE_LOOKUP": MappingFileDirectiveType.STRING,
-        "CHECKBOX": MappingFileDirectiveType.BOOL,
-        "CHOICE": MappingFileDirectiveType.STRING,
-        "FLOAT": MappingFileDirectiveType.NUMERIC,
-        "INTEGER": MappingFileDirectiveType.NUMERIC,
-        "LOOKUP_CHOICE": MappingFileDirectiveType.STRING,
-        "NAMED_CONNECTION": MappingFileDirectiveType.STRING,
-        "PASSWORD": MappingFileDirectiveType.STRING,
-        "PASSWORD_CONFIRM": MappingFileDirectiveType.STRING,
-        "RANGE_SLIDER": MappingFileDirectiveType.NUMERIC,
-        "STRING": MappingFileDirectiveType.STRING,
-        "TEXT_EDIT": MappingFileDirectiveType.STRING,
+        "ACTIVECHOICE_LOOKUP": MappingFileDirectiveType.STRING.value,
+        "CHECKBOX": MappingFileDirectiveType.BOOL.value,
+        "CHOICE": MappingFileDirectiveType.STRING.value,
+        "FLOAT": MappingFileDirectiveType.NUMERIC.value,
+        "INTEGER": MappingFileDirectiveType.NUMERIC.value,
+        "LOOKUP_CHOICE": MappingFileDirectiveType.STRING.value,
+        "NAMED_CONNECTION": MappingFileDirectiveType.STRING.value,
+        "PASSWORD": MappingFileDirectiveType.STRING.value,
+        "PASSWORD_CONFIRM": MappingFileDirectiveType.STRING.value,
+        "RANGE_SLIDER": MappingFileDirectiveType.NUMERIC.value,
+        "STRING": MappingFileDirectiveType.STRING.value,
+        "TEXT_EDIT": MappingFileDirectiveType.STRING.value,
     }
     TYPE_DEFAULTS = {
-        MappingFileDirectiveType.STRING: "",
-        MappingFileDirectiveType.BOOL: False,
-        MappingFileDirectiveType.NUMERIC: 0,
+        MappingFileDirectiveType.STRING.value: "",
+        MappingFileDirectiveType.BOOL.value: False,
+        MappingFileDirectiveType.NUMERIC.value: 0,
     }
 
     def __init__(
@@ -259,7 +258,7 @@ class Directives(dict):
 
         # default to treating values as strings if the GUI type specified isn't a supported type
         return self.__class__.SUPPORTED_TYPES.get(
-            parsed_gui_type.name, MappingFileDirectiveType.STRING
+            parsed_gui_type.name, MappingFileDirectiveType.STRING.value
         )
 
     def _get_directive_default(self, directive_type: MappingFileDirectiveType):
@@ -271,7 +270,7 @@ class Directives(dict):
             return self.__class__.TYPE_DEFAULTS[directive_type]
 
         # directive type doesn't have a default set, return the default for STRING (or None)
-        return self.__class__.TYPE_DEFAULTS.get(MappingFileDirectiveType.STRING)
+        return self.__class__.TYPE_DEFAULTS.get(MappingFileDirectiveType.STRING.value)
 
 
 class MappingFile:
@@ -453,12 +452,12 @@ class MappingFile:
         """Get cast directive values from the mapping file."""
         for name, gui_type in directives.directive_types.items():
             directive_default = directives.directive_defaults[name]
-            if gui_type == MappingFileDirectiveType.STRING:
+            if gui_type == MappingFileDirectiveType.STRING.value:
                 # always decode, regardless of GUI value?
                 directives[name] = self.get(name, default=directive_default)
-            elif gui_type == MappingFileDirectiveType.NUMERIC:
+            elif gui_type == MappingFileDirectiveType.NUMERIC.value:
                 directives[name] = self.get_number(name, default=directive_default)
-            elif gui_type == MappingFileDirectiveType.BOOL:
+            elif gui_type == MappingFileDirectiveType.BOOL.value:
                 directives[name] = self.get_flag(name, default=directive_default)
 
         return directives
