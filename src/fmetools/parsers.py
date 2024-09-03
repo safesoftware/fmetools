@@ -194,34 +194,44 @@ class MappingFileDirectiveType(Enum):
 
 
 class Directives(dict):
+    SUPPORTED_TYPES = {
+        "ACTIVECHOICE_LOOKUP": MappingFileDirectiveType.STRING,
+        "CHECKBOX": MappingFileDirectiveType.BOOL,
+        "CHOICE": MappingFileDirectiveType.STRING,
+        "FLOAT": MappingFileDirectiveType.NUMERIC,
+        "INTEGER": MappingFileDirectiveType.NUMERIC,
+        # "LISTBOX": ListParser,
+        # "LOOKUP_LISTBOX": ListParser,
+        "LOOKUP_CHOICE": MappingFileDirectiveType.STRING,
+        "NAMED_CONNECTION": MappingFileDirectiveType.STRING,
+        "PASSWORD": MappingFileDirectiveType.STRING,
+        "PASSWORD_CONFIRM": MappingFileDirectiveType.STRING,
+        "RANGE_SLIDER": MappingFileDirectiveType.NUMERIC,
+        "STRING": MappingFileDirectiveType.STRING,
+        "TEXT_EDIT": MappingFileDirectiveType.STRING,
+    }
+
     def __init__(self, directive_names: Set[str], directive_gui_types=None):
         super().__init__()
         self.names = directive_names
         if directive_gui_types is None:
             directive_gui_types = dict()
-        self.name_to_type = {
-            name: directive_gui_types.get(name, MappingFileDirectiveType.STRING)
-            for name in directive_names
-        }
 
+        self.name_to_directive_type = {}
+        for name in directive_names:
+            # default to GUI type STRING if no GUI type was explicitly specified
+            gui_type = directive_gui_types.get(name, "STRING")
+            parsed_gui_type = parse_gui_type(gui_type)
 
-# todo into Directives class?
-SUPPORTED_TYPES = {
-    "ACTIVECHOICE_LOOKUP": MappingFileDirectiveType.STRING,
-    "CHECKBOX": MappingFileDirectiveType.BOOL,
-    "CHOICE": MappingFileDirectiveType.STRING,
-    "FLOAT": MappingFileDirectiveType.NUMERIC,
-    "INTEGER": MappingFileDirectiveType.NUMERIC,
-    # "LISTBOX": ListParser,
-    # "LOOKUP_LISTBOX": ListParser,
-    "LOOKUP_CHOICE": MappingFileDirectiveType.STRING,
-    "NAMED_CONNECTION": MappingFileDirectiveType.STRING,
-    "PASSWORD": MappingFileDirectiveType.STRING,
-    "PASSWORD_CONFIRM": MappingFileDirectiveType.STRING,
-    "RANGE_SLIDER": MappingFileDirectiveType.NUMERIC,
-    MappingFileDirectiveType.STRING: "STRING",
-    "TEXT_EDIT": MappingFileDirectiveType.STRING,
-}
+            if parsed_gui_type.name not in self.__class__.SUPPORTED_TYPES:
+                # todo debug log?
+                # print(f"warn {name} uses undefined GUI type {parsed_gui_type}, treating as a string")
+                pass
+
+            # default to treating values as strings if the GUI type specified isn't a supported type
+            self.name_to_directive_type[name] = self.__class__.SUPPORTED_TYPES.get(
+                parsed_gui_type.name, MappingFileDirectiveType.STRING
+            )
 
 
 class MappingFile:
@@ -409,24 +419,13 @@ class MappingFile:
         """Get cast directive values from the mapping file"""
         # todo bake defaults into directives class?
 
-        for name, gui_type in directives.name_to_type.items():
-            parsed_gui_type = parse_gui_type(gui_type)
-
-            if parsed_gui_type.name not in SUPPORTED_TYPES:
-                # todo debug log?
-                # print(f"warn {name} uses undefined GUI type {parsed_gui_type}, treating as a string")
-                pass
-
-            broad_type = SUPPORTED_TYPES.get(
-                parsed_gui_type.name, MappingFileDirectiveType.STRING
-            )
-
-            if broad_type == MappingFileDirectiveType.STRING:
+        for name, gui_type in directives.name_to_directive_type.items():
+            if gui_type == MappingFileDirectiveType.STRING:
                 # always decode, regardless of GUI value?
                 directives[name] = self.get(name, default=string_default)
-            elif broad_type == MappingFileDirectiveType.NUMERIC:
+            elif gui_type == MappingFileDirectiveType.NUMERIC:
                 directives[name] = self.get_number(name, default=numeric_default)
-            elif broad_type == MappingFileDirectiveType.BOOL:
+            elif gui_type == MappingFileDirectiveType.BOOL:
                 directives[name] = self.get_flag(name, default=bool_default)
 
         return directives
