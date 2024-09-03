@@ -459,5 +459,7 @@ class MappingFile:
                 directives[name] = self.get_number(name, default=directive_default)
             elif gui_type == MappingFileDirectiveType.BOOL.value:
                 directives[name] = self.get_flag(name, default=directive_default)
+            else:
+                directives[name] = self.get(name, default=directive_default)
 
         return directives
