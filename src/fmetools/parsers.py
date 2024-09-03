@@ -194,14 +194,17 @@ class MappingFileDirectiveType(Enum):
 
 
 class Directives(dict):
+    """
+    Directives which can be populated by using a mapping file.
+    Can be configured with expected directive types and defaults.
+    """
+
     SUPPORTED_TYPES = {
         "ACTIVECHOICE_LOOKUP": MappingFileDirectiveType.STRING,
         "CHECKBOX": MappingFileDirectiveType.BOOL,
         "CHOICE": MappingFileDirectiveType.STRING,
         "FLOAT": MappingFileDirectiveType.NUMERIC,
         "INTEGER": MappingFileDirectiveType.NUMERIC,
-        # "LISTBOX": ListParser,
-        # "LOOKUP_LISTBOX": ListParser,
         "LOOKUP_CHOICE": MappingFileDirectiveType.STRING,
         "NAMED_CONNECTION": MappingFileDirectiveType.STRING,
         "PASSWORD": MappingFileDirectiveType.STRING,
@@ -210,28 +213,65 @@ class Directives(dict):
         "STRING": MappingFileDirectiveType.STRING,
         "TEXT_EDIT": MappingFileDirectiveType.STRING,
     }
+    TYPE_DEFAULTS = {
+        MappingFileDirectiveType.STRING: "",
+        MappingFileDirectiveType.BOOL: False,
+        MappingFileDirectiveType.NUMERIC: 0,
+    }
 
-    def __init__(self, directive_names: Set[str], directive_gui_types=None):
+    def __init__(
+        self,
+        directive_names: Set[str],
+        directive_gui_types: Dict[str, str] = None,
+        directive_defaults: Dict = None,
+    ):
         super().__init__()
         self.names = directive_names
         if directive_gui_types is None:
             directive_gui_types = dict()
 
-        self.name_to_directive_type = {}
+        if directive_defaults is None:
+            directive_defaults = dict()
+
+        self.directive_types = {}
+        self.directive_defaults = {}
         for name in directive_names:
-            # default to GUI type STRING if no GUI type was explicitly specified
-            gui_type = directive_gui_types.get(name, "STRING")
-            parsed_gui_type = parse_gui_type(gui_type)
-
-            if parsed_gui_type.name not in self.__class__.SUPPORTED_TYPES:
-                # todo debug log?
-                # print(f"warn {name} uses undefined GUI type {parsed_gui_type}, treating as a string")
-                pass
-
-            # default to treating values as strings if the GUI type specified isn't a supported type
-            self.name_to_directive_type[name] = self.__class__.SUPPORTED_TYPES.get(
-                parsed_gui_type.name, MappingFileDirectiveType.STRING
+            gui_type = directive_gui_types.get(name)
+            self.directive_types[name] = self._get_directive_type_from_gui_type(
+                gui_type
             )
+
+            if name in directive_defaults:
+                self.directive_defaults[name] = directive_defaults[name]
+            else:
+                self.directive_defaults[name] = self._get_directive_default(
+                    self.directive_types[name]
+                )
+
+    def _get_directive_type_from_gui_type(
+        self, gui_type: str
+    ) -> MappingFileDirectiveType:
+        """Determine a MappingFileDirectiveType from the GUI type."""
+        if gui_type is None:
+            # default to GUI type STRING if no GUI type was explicitly specified
+            gui_type = "STRING"
+        parsed_gui_type = parse_gui_type(gui_type)
+
+        # default to treating values as strings if the GUI type specified isn't a supported type
+        return self.__class__.SUPPORTED_TYPES.get(
+            parsed_gui_type.name, MappingFileDirectiveType.STRING
+        )
+
+    def _get_directive_default(self, directive_type: MappingFileDirectiveType):
+        """
+        Return a default value for the directive type if the corresponding directive is not
+        found in the mapping file.
+        """
+        if directive_type in self.__class__.TYPE_DEFAULTS:
+            return self.__class__.TYPE_DEFAULTS[directive_type]
+
+        # directive type doesn't have a default set, return the default for STRING (or None)
+        return self.__class__.TYPE_DEFAULTS.get(MappingFileDirectiveType.STRING)
 
 
 class MappingFile:
@@ -394,7 +434,7 @@ class MappingFile:
     def parse_def_lines(
         self, parameter_names: Set[str] = None
     ) -> Dict[str, FeatureTypeInformation]:
-        """Return the user schema and feature type options for each feature type defined in the mapping file"""
+        """Return the user schema and feature type options for each feature type defined in the mapping file."""
         if not parameter_names:
             parameter_names = set()
         parameter_names.add("fme_attribute_reading")
@@ -409,23 +449,16 @@ class MappingFile:
             )
         return def_line_info
 
-    def get_directives(
-        self,
-        directives: Directives,
-        string_default="",
-        numeric_default=0,
-        bool_default=False,
-    ) -> Dict:
-        """Get cast directive values from the mapping file"""
-        # todo bake defaults into directives class?
-
-        for name, gui_type in directives.name_to_directive_type.items():
+    def get_directives(self, directives: Directives) -> Directives:
+        """Get cast directive values from the mapping file."""
+        for name, gui_type in directives.directive_types.items():
+            directive_default = directives.directive_defaults[name]
             if gui_type == MappingFileDirectiveType.STRING:
                 # always decode, regardless of GUI value?
-                directives[name] = self.get(name, default=string_default)
+                directives[name] = self.get(name, default=directive_default)
             elif gui_type == MappingFileDirectiveType.NUMERIC:
-                directives[name] = self.get_number(name, default=numeric_default)
+                directives[name] = self.get_number(name, default=directive_default)
             elif gui_type == MappingFileDirectiveType.BOOL:
-                directives[name] = self.get_flag(name, default=bool_default)
+                directives[name] = self.get_flag(name, default=directive_default)
 
         return directives
