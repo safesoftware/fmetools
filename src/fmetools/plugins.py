@@ -30,7 +30,13 @@ except ImportError:  # Support < FME 2022.0 b22235
 from pluginbuilder import FMEReader, FMEWriter
 
 from .logfile import get_configured_logger
-from .parsers import OpenParameters, MappingFile, Directives, get_template_feature_type, FeatureTypeInfo
+from .parsers import (
+    OpenParameters,
+    MappingFile,
+    Directives,
+    get_template_feature_type,
+    FeatureTypeInfo
+)
 
 # These are relevant externally.
 # Reader and writer base classes are omitted because they're not intended for general use.
@@ -49,11 +55,10 @@ class MissingDefForIncomingFeatureType(FMEException):
         :param feature_type: Feature type for the DEF line.
         """
         message = tr(
-            "{prefix}: No DEF line could be found for feature type '{feature_type}'. If you are using dynamic schemas, ensure that the fme_feature_type attribute exists on the incoming feature and corresponds to a valid feature type definition")
-
-        super().__init__(
-            message.format(prefix=log_prefix, feature_type=feature_type)
+            "{prefix}: No DEF line could be found for feature type '{feature_type}'. If you are using dynamic schemas, ensure that the fme_feature_type attribute exists on the incoming feature and corresponds to a valid feature type definition"
         )
+
+        super().__init__(message.format(prefix=log_prefix, feature_type=feature_type))
 
 
 class FMESimplifiedReader(FMEReader):
@@ -482,12 +487,58 @@ class FMESimplifiedWriter(FMEWriter):
         except KeyError as e:
             def_feature_type = get_template_feature_type(feature)
             if def_feature_type not in self._feature_type_information:
-                raise MissingDefForIncomingFeatureType(self.log.name, feature_type) from e
+                raise MissingDefForIncomingFeatureType(
+                    self.log.name, feature_type
+                ) from e
             feature_type_info = self._feature_type_information[def_feature_type]
 
         self.write_feature(feature, feature_type_info)
 
-    def write_feature(self, feature: FMEFeature, feature_type_info: FeatureTypeInformation) -> None:
+    def get_feature_operation(
+        self,
+        feature: FMEFeature,
+        feature_type_info: FeatureTypeInfo,
+        supported_types=("INSERT"),
+    ) -> Optional[str]:
+        """
+        Get the feature operation for the current feature.
+
+        If the configuration is somehow invalid, logs a warning and returns None.
+        """
+        fme_db_operation_value = feature.getAttribute("fme_db_operation")
+        operation_type = feature_type_info.parameters["fme_feature_operation"]
+
+        if operation_type == "MULTIPLE":
+            # when using fme_db_operation, we need to check that our value is supported
+            # if the fme_db_operation value is missing, the feature operation defaults to insert
+            fme_db_operation_value = fme_db_operation_value or "INSERT"
+            operation_type = fme_db_operation_value.upper()
+            if operation_type not in supported_types:
+                self.log.warning(
+                    tr(
+                        "The fme_db_operation value '%s' is not supported. Rejecting feature"
+                    )
+                    % fme_db_operation_value
+                )
+                return None
+            return operation_type
+
+        if fme_db_operation_value and fme_db_operation_value.upper() != operation_type:
+            # an fme_db_operation value exists on the feature, but it does not agree
+            # with the feature operation set on the writer
+            # the def line is overspecified
+            self._log.warning(
+                tr(
+                    "The fme_db_operation attribute value '{db_op_val}' on feature conflicts with Feature Operation '{param_val}'. Rejecting feature"
+                ).format(db_op_val=fme_db_operation_value, param_val=operation_type)
+            )
+            return None
+
+        return operation_type
+
+    def write_feature(
+        self, feature: FMEFeature, feature_type_info: FeatureTypeInfo
+    ) -> None:
         """
         Write a feature to the output data set.
         """
