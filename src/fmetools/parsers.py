@@ -185,9 +185,17 @@ SearchEnvelope = namedtuple("SearchEnvelope", "min_x min_y max_x max_y coordsys"
 
 
 @dataclass
+class UserSchemaInformation:
+    attr_type: str
+    attr_index: Optional[str]
+
+
+@dataclass
 class FeatureTypeInfo:
     name: str
-    user_attributes: Dict = dataclasses.field(default_factory=lambda: {})
+    user_attributes: Dict[str, UserSchemaInformation] = dataclasses.field(
+        default_factory=lambda: {}
+    )
     parameters: Dict = dataclasses.field(default_factory=lambda: {})
 
 
@@ -446,12 +454,22 @@ class MappingFile:
 
         def_line_info = {}
         for def_line in self.def_lines():
-            defline_feature_type, attrs, def_line_params = parse_def_line(
+            defline_feature_type, raw_attrs, def_line_params = parse_def_line(
                 def_line, parameter_names
             )
+
+            attrs = {}
+            for attr_name, attr_type in raw_attrs:
+                # if an index was selected, attr_type will have form <raw_attr_type>,<attr_index>
+                attr_index = None
+                if "," in attr_type:
+                    attr_type, attr_index = attr_type.split(",", maxsplit=1)
+                attrs[attr_name] = UserSchemaInformation(attr_type, attr_index)
+
             def_line_info[defline_feature_type] = FeatureTypeInfo(
                 defline_feature_type, attrs, def_line_params
             )
+
         return def_line_info
 
     def get_directives(self, directives: Directives) -> Directives:

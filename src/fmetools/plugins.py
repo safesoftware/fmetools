@@ -35,7 +35,7 @@ from .parsers import (
     MappingFile,
     Directives,
     get_template_feature_type,
-    FeatureTypeInfo
+    FeatureTypeInfo,
 )
 
 # These are relevant externally.
