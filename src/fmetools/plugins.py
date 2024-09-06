@@ -9,6 +9,7 @@ Transformer developers should subclass it to implement their own transformers.
 
 from __future__ import annotations
 
+import itertools
 import logging
 import warnings
 from typing import Optional, Generator, List
@@ -20,7 +21,7 @@ try:
 except ImportError:  # Support < FME 2024.2
     from ._deprecated import FMEBaseTransformer
 
-from fmeobjects import FMEFeature, FMEException
+from fmeobjects import FMEFeature, FMEException, kFME_ReaderPropAll
 
 try:
     from fmeobjects import FME_SUPPORT_FEATURE_TABLE_SHIM
@@ -106,6 +107,7 @@ class FMESimplifiedReader(FMEReader):
         self._log = None
 
         self._using_constraints = False
+        self._constraints_properties = {}
         self._aborted = False
         self._feature_types = []
 
@@ -199,6 +201,46 @@ class FMESimplifiedReader(FMEReader):
         :param OpenParameters open_parameters: Parameters for the reader.
         """
         pass
+
+    def spatialEnabled(self) -> bool:
+        """
+        Indicates whether or not this reader supports spatial constraints.
+
+        If this reader supports spatial constraints, they should be defined in
+        `self._constraints_properties`
+        """
+        # todo now make constraints properties its own class
+        return bool(self._constraints_properties)
+
+    def getProperties(self, property_category):
+        def _zip_properties(category: str, properties: Optional[List[str]]) -> Optional[List[str]]:
+            """
+            Given a single category and a list of corresponding properties,
+            return a list where each odd index contains the category,
+            and each even index is a property.
+
+            Example:
+
+               ``[category, property[0], category, property[1], ..., category, property[n]]``
+            """
+            if not properties:
+                return None
+            return list(itertools.zip_longest([category], properties, fillvalue=category))
+
+        if not self.spatialEnabled():
+            # if spatial constraints are not enabled, do not return anything
+            return
+
+        if property_category == kFME_ReaderPropAll:
+            # declare all supported constraints
+            all_properties = []
+            for propertyCategory, props in self._constraints_properties.items():
+                all_properties.extend(_zip_properties(property_category, props))
+            return all_properties
+
+        return _zip_properties(
+            property_category, self._constraints_properties.get(property_category, [])
+        )
 
     def setConstraints(self, feature) -> None:
         """
