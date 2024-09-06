@@ -4,7 +4,9 @@ This module contains parsers to support FME reader/writer development.
 It is not intended for general use.
 """
 
+import dataclasses
 from collections import OrderedDict, namedtuple
+from dataclasses import dataclass
 from enum import Enum
 from typing import Union, Set, Dict, Optional, List
 
@@ -181,9 +183,12 @@ def get_template_feature_type(feature):
 
 SearchEnvelope = namedtuple("SearchEnvelope", "min_x min_y max_x max_y coordsys")
 
-FeatureTypeInformation = namedtuple(
-    "FeatureTypeInformation", "user_attributes parameters"
-)
+
+@dataclass
+class FeatureTypeInfo:
+    name: str
+    user_attributes: Dict = dataclasses.field(default_factory=lambda: {})
+    parameters: Dict = dataclasses.field(default_factory=lambda: {})
 
 
 class MappingFileDirectiveType(Enum):
@@ -432,7 +437,7 @@ class MappingFile:
 
     def parse_def_lines(
         self, parameter_names: Set[str] = None
-    ) -> Dict[str, FeatureTypeInformation]:
+    ) -> Dict[str, FeatureTypeInfo]:
         """Return the user schema and feature type options for each feature type defined in the mapping file."""
         if not parameter_names:
             parameter_names = set()
@@ -443,8 +448,8 @@ class MappingFile:
             defline_feature_type, attrs, def_line_params = parse_def_line(
                 def_line, parameter_names
             )
-            def_line_info[defline_feature_type] = FeatureTypeInformation(
-                attrs, def_line_params
+            def_line_info[defline_feature_type] = FeatureTypeInfo(
+                defline_feature_type, attrs, def_line_params
             )
         return def_line_info
 

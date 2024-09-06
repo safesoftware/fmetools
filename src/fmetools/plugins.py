@@ -28,7 +28,7 @@ except ImportError:  # Support < FME 2022.0 b22235
 from pluginbuilder import FMEReader, FMEWriter
 
 from .logfile import get_configured_logger
-from .parsers import OpenParameters, MappingFile, Directives, FeatureTypeInformation
+from .parsers import OpenParameters, MappingFile, Directives, FeatureTypeInfo
 
 # These are relevant externally.
 # Reader and writer base classes are omitted because they're not intended for general use.
@@ -263,7 +263,7 @@ class FMESimplifiedReader(FMEReader):
             # and `fme_attribute_reading` is set to `defined`, the format should only set
             # format attributes and user attributes specified on the defline
             feature_type_info = self._feature_type_information.get(
-                feature_type, FeatureTypeInformation({}, {})
+                feature_type, FeatureTypeInfo(feature_type)
             )
             fme_attribute_reading = feature_type_info.parameters.get(
                 "fme_attribute_reading", "defined"
@@ -276,15 +276,13 @@ class FMESimplifiedReader(FMEReader):
             )
 
             yield from self._data_features_for_feature_type_generator(
-                feature_type,
                 feature_type_info,
                 def_line_only,
             )
 
     def _data_features_for_feature_type_generator(
         self,
-        feature_type: str,
-        feature_type_info: FeatureTypeInformation,
+        feature_type_info: FeatureTypeInfo,
         def_line_only: bool,
         **kwargs,
     ) -> Generator[FMEFeature, None, None]:
@@ -296,8 +294,7 @@ class FMESimplifiedReader(FMEReader):
         The `def_line_only` parameter should only be honoured if
         the metafile contains the line `FORMAT_PARAMETER ATTRIBUTE_READING DEFLINE`.
 
-        :param feature_type: feature type name
-        :param feature_type_info: user attributes and parameters for the feature type
+        :param feature_type_info: name, user attributes, and parameters for the feature type
         :param def_line_only: True if only the output attributes on the user schema should be set on the output feature
         """
         pass
