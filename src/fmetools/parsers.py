@@ -343,6 +343,7 @@ class MappingFile:
     def get(
         self,
         directive: str,
+        *,
         default: Optional[str] = None,
         decode: bool = True,
         as_list: bool = False,
