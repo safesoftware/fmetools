@@ -459,7 +459,7 @@ class MappingFile:
             )
 
             attrs = {}
-            for attr_name, attr_type in raw_attrs:
+            for attr_name, attr_type in raw_attrs.items():
                 # if an index was selected, attr_type will have form <raw_attr_type>,<attr_index>
                 attr_index = None
                 if "," in attr_type:

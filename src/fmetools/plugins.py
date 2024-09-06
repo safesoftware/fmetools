@@ -490,7 +490,12 @@ class FMESimplifiedWriter(FMEWriter):
                 raise MissingDefForIncomingFeatureType(
                     self.log.name, feature_type
                 ) from e
-            feature_type_info = self._feature_type_information[def_feature_type]
+            def_line_info = self._feature_type_information[def_feature_type]
+            feature_type_info = FeatureTypeInfo(
+                feature.getFeatureType(),
+                def_line_info.user_attributes,
+                def_line_info.parameters,
+            )
 
         self.write_feature(feature, feature_type_info)
 
