@@ -9,7 +9,6 @@ Transformer developers should subclass it to implement their own transformers.
 
 from __future__ import annotations
 
-import itertools
 import logging
 import warnings
 from typing import Optional, Generator, List
@@ -21,7 +20,10 @@ try:
 except ImportError:  # Support < FME 2024.2
     from ._deprecated import FMEBaseTransformer
 
-from fmeobjects import FMEFeature, FMEException, kFME_ReaderPropAll
+from fmeobjects import (
+    FMEFeature,
+    FMEException,
+)
 
 try:
     from fmeobjects import FME_SUPPORT_FEATURE_TABLE_SHIM
@@ -107,7 +109,7 @@ class FMESimplifiedReader(FMEReader):
         self._log = None
 
         self._using_constraints = False
-        self._constraints_properties = {}
+        self._constraints_properties = None
         self._aborted = False
         self._feature_types = []
 
@@ -140,7 +142,7 @@ class FMESimplifiedReader(FMEReader):
             self._debug = new_debug
             self._log = get_configured_logger(self.__class__.__name__, self._debug)
 
-    def hasSupportFor(self, support_type) -> bool:
+    def hasSupportFor(self, support_type: int) -> bool:
         """
         Return whether this reader supports a certain type. Currently,
         the only supported type is fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM.
@@ -152,13 +154,12 @@ class FMESimplifiedReader(FMEReader):
         To declare feature table shim support, the reader's metafile SOURCE_SETTINGS
         must also contain the line 'DEFAULT_VALUE CREATE_FEATURE_TABLES_FROM_DATA Yes'.
 
-        :param int support_type: support type passed in by Workbench infrastructure
+        :param support_type: support type passed in by Workbench infrastructure
         :returns: True if the passed in support type is supported.
-        :rtype: bool
         """
         return False
 
-    def open(self, dataset_name, parameters) -> None:
+    def open(self, dataset_name: str, parameters: List[str]) -> None:
         """Open the dataset for reading.
 
         Does these things for you:
@@ -170,8 +171,8 @@ class FMESimplifiedReader(FMEReader):
         If setConstraints() wasn't called earlier, then this method also:
         * Sets `_feature_types` using the mapping file and/or open parameters.
 
-        :param str dataset_name: Name of the dataset.
-        :param list[str] parameters: List of parameters.
+        :param dataset_name: Name of the dataset.
+        :param[str] parameters: List of parameters.
         """
 
         # If not using setConstraints(), then get some basics from the mapping file.
@@ -194,59 +195,46 @@ class FMESimplifiedReader(FMEReader):
 
         return self.enhancedOpen(open_parameters)
 
-    def enhancedOpen(self, open_parameters) -> None:
+    def enhancedOpen(self, open_parameters: OpenParameters) -> None:
         """
         Implementations shall override this method instead of :meth:`open`.
 
-        :param OpenParameters open_parameters: Parameters for the reader.
+        :param open_parameters: Parameters for the reader.
         """
         pass
 
     def spatialEnabled(self) -> bool:
         """
-        Indicates whether or not this reader supports spatial constraints.
+        Indicates whether this reader supports spatial constraints.
 
         If this reader supports spatial constraints, they should be defined in
-        `self._constraints_properties`
+        `self._constraints_properties` using :class:`fmetools.parsers.ConstraintsProperties`.
         """
-        # todo now make constraints properties its own class
         return bool(self._constraints_properties)
 
-    def getProperties(self, property_category):
-        def _zip_properties(category: str, properties: Optional[List[str]]) -> Optional[List[str]]:
-            """
-            Given a single category and a list of corresponding properties,
-            return a list where each odd index contains the category,
-            and each even index is a property.
-
-            Example:
-
-               ``[category, property[0], category, property[1], ..., category, property[n]]``
-            """
-            if not properties:
-                return None
-            return list(itertools.zip_longest([category], properties, fillvalue=category))
-
-        if not self.spatialEnabled():
-            # if spatial constraints are not enabled, do not return anything
-            return
-
-        if property_category == kFME_ReaderPropAll:
-            # declare all supported constraints
-            all_properties = []
-            for propertyCategory, props in self._constraints_properties.items():
-                all_properties.extend(_zip_properties(property_category, props))
-            return all_properties
-
-        return _zip_properties(
-            property_category, self._constraints_properties.get(property_category, [])
-        )
-
-    def setConstraints(self, feature) -> None:
+    def getProperties(self, property_category: str) -> Optional[str]:
         """
-        Reset any existing feature generator that represents the state for :meth:`read`.
+        Returns an even-length list of flat list of property category to constraint primitive pairs.
+        If the property was not recognized, returns `None`.
 
-        :param FMEFeature feature: The constraint feature.
+        Properties should be defined in `self._constraints_properties` using :class:`fmetools.parsers.ConstraintsProperties`.
+        """
+        if not self.spatialEnabled() or not self._constraints_properties:
+            # if spatial constraints are not enabled, do not return anything
+            return None
+
+        return self._constraints_properties.get_property_list(property_category)
+
+    def setConstraints(self, feature: FMEFeature) -> None:
+        """
+        Specifies the spatial and attribute constraints to be used when reading the data.
+
+        This method only needs to be implemented when :meth:`spatialEnabled` returns `True`.
+
+        This can be called at any time after the reader is created.
+        If any read is in progress then it is terminated and the next read will reflect the new constraints.
+
+        :param feature: a constraint feature which contains the spatial and attribute query
         """
         assert isinstance(feature, FMEFeature)
         self._using_constraints = True

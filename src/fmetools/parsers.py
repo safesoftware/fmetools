@@ -6,6 +6,7 @@ It is not intended for general use.
 
 import dataclasses
 import re
+import itertools
 from collections import OrderedDict, namedtuple
 from dataclasses import dataclass
 from enum import Enum
@@ -13,7 +14,7 @@ from typing import Union, Set, Dict, Optional, List, Iterable
 
 import fme
 import six
-from fmeobjects import FMEFeature, FMESession  # noqa F401
+from fmeobjects import FMEFeature, FMESession, kFME_ReaderPropAll, kFMERead_SearchType  # noqa F401
 from pluginbuilder import FMEMappingFile  # noqa F401
 from six import string_types
 
@@ -556,3 +557,107 @@ class MappingFile:
                 directives[name] = self.get(name, default=directive_default)
 
         return directives
+
+
+class ConstraintSearchTypes(Enum):
+    ALL_FEATURES = "fme_all_features"
+    ENVELOPE_INTERSECTS = "fme_envelope_intersects"
+    ENVELOPE_IDS = "fme_envelope_ids"
+    NONSPATIAL_IDS = "fme_nonspatial_ids"
+    FEATURE_TYPE_IDS = "fme_feature_type_ids"
+    CLOSEST = "fme_closest"
+    SPECIFIED_FEATURE = "fme_specified_feature"
+    SPECIFIED_FEATURE_LIST = "fme_specified_feature_list"
+    SPECIFIED_FEATURE_RANGE = "fme_specified_feature_range"
+    EXECUTE_SQL = "fme_execute_sql"
+    SCHEMA_FROM_QUERY = "fme_schema_from_query"
+    DB_JOIN = "fme_db_join"
+    METADATA = "fme_metadata"
+    GET_VERSION_LIST = "fme_get_version_list"
+    GET_HISTORICAL_VERSION_LIST = "fme_get_historical_version_list"
+    SPATIAL_INTERSECTION = "fme_spatial_interaction"
+
+    PROP_PERSISTENT_CACHE_LOADED = "fme_prop_persistent_cache_loaded"
+    PROP_PERSISTENT_CACHE_FEATURES_LOADED = "fme_prop_persistent_cache_features_loaded"
+    PROP_PERSISTENT_CACHE_SCHEMAS_LOADED = "fme_prop_persistent_cache_schemas_loaded"
+    PROP_PERSISTENT_CACHE_VALID = "fme_prop_persistent_cache_valid"
+
+    PROP_COORD_SYS_AWARE = "fme_prop_coord_sys_aware"
+    PROP_SPATIAL_INDEX = "fme_prop_spatial_index"
+
+
+class ConstraintsProperties:
+    def __init__(
+        self,
+        *,
+        fme_all_features=None,
+        fme_envelope_intersects=None,
+        fme_envelope_ids=None,
+        fme_nonspatial_ids=None,
+        fme_feature_type_ids=None,
+        fme_closest=None,
+        fme_specified_feature=None,
+        fme_specified_feature_list=None,
+        fme_specified_feature_range=None,
+        fme_execute_sql=None,
+        fme_schema_from_query=None,
+        fme_db_join=None,
+        fme_metadata=None,
+        fme_get_version_list=None,
+        fme_get_historical_version_list=None,
+        fme_spatial_interaction=None,
+        fme_prop_persistent_cache_loaded=None,
+        fme_prop_persistent_cache_features_loaded=None,
+        fme_prop_persistent_cache_schemas_loaded=None,
+        fme_prop_persistent_cache_valid=None,
+        fme_prop_coord_sys_aware=None,
+        fme_prop_spatial_index=None,
+    ):
+        self.properties = {
+            e.value: locals().get(e.value)
+            for e in ConstraintSearchTypes
+            if locals().get(e.value) is not None
+        }
+
+    @staticmethod
+    def _zip_properties(
+        category: str, properties: Optional[List[str]]
+    ) -> Optional[List[str]]:
+        """
+        Given a single category and a list of corresponding properties,
+        return a list where each odd index contains the category,
+        and each even index is a property.
+
+        Example:
+
+           ``[category, property[0], category, property[1], ..., category, property[n]]``
+        """
+        if not properties:
+            return None
+        return list(itertools.zip_longest([category], properties, fillvalue=category))
+
+    def _get_all_properties(self):
+        all_properties = []
+        for property_category, props in self.properties.items():
+            all_properties.extend(self._zip_properties(property_category, props))
+        return all_properties
+
+    def get_property_list(self, property_category: str) -> Optional[List[str]]:
+        """
+        Returns an even-length list of flat list of property category to constraint primitive pairs.
+        If the property was not recognized, returns `None`.
+        """
+        if property_category == kFME_ReaderPropAll:
+            # declare all supported constraints
+            return self._get_all_properties()
+
+        return self._zip_properties(
+            property_category, self.properties.get(property_category, [])
+        )
+
+    def get_constraint_primitives(self, search_type: str) -> List[str]:
+        """
+        Returns a list of constraint primitives supported for the corresponding search type.
+        """
+
+        return self.properties.get(search_type, [])
