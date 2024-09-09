@@ -20,7 +20,7 @@ try:
 except ImportError:  # Support < FME 2024.2
     from ._deprecated import FMEBaseTransformer
 
-from fmeobjects import FMEFeature, FMEException
+from fmeobjects import FMEFeature, FMEException, FMESession
 
 try:
     from fmeobjects import FME_SUPPORT_FEATURE_TABLE_SHIM
@@ -510,16 +510,37 @@ class FMESimplifiedWriter(FMEWriter):
 
         self.write_feature(feature, feature_type_info)
 
-    def get_feature_operation(
+    def write_feature(
+        self, feature: FMEFeature, feature_type_info: FeatureTypeInfo
+    ) -> None:
+        """
+        Write a feature to the output data set.
+        """
+        pass
+
+    def abort(self) -> None:
+        self._aborted = True
+
+    def close(self) -> None:
+        """
+        This default implementation does nothing.
+
+        It's defined here because :class:`pluginbuilder.FMEWriter` requires it to be
+        overridden.
+        """
+        pass
+
+    def _get_feature_operation(
         self,
         feature: FMEFeature,
         feature_type_info: FeatureTypeInfo,
-        supported_types: Iterable[str] = ("INSERT"),
+        supported_types: Iterable[str] = ("INSERT",),
     ) -> Optional[str]:
         """
         Get the feature operation for the current feature.
 
-        If the configuration is somehow invalid, logs a warning and returns None.
+        If the configuration is somehow invalid, logs a warning and returns `None`.
+        Callers are expected to skip the feature if a `None` return value is received.
         """
         fme_db_operation_value = feature.getAttribute("fme_db_operation")
         operation_type = feature_type_info.parameters["fme_feature_operation"]
@@ -552,26 +573,6 @@ class FMESimplifiedWriter(FMEWriter):
             return None
 
         return operation_type
-
-    def write_feature(
-        self, feature: FMEFeature, feature_type_info: FeatureTypeInfo
-    ) -> None:
-        """
-        Write a feature to the output data set.
-        """
-        pass
-
-    def abort(self) -> None:
-        self._aborted = True
-
-    def close(self) -> None:
-        """
-        This default implementation does nothing.
-
-        It's defined here because :class:`pluginbuilder.FMEWriter` requires it to be
-        overridden.
-        """
-        pass
 
     def __enter__(self):
         return self
