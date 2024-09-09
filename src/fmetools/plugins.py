@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import Optional, Generator, List
+from typing import Optional, Generator, List, Iterable
 
 from . import tr
 
@@ -477,11 +477,22 @@ class FMESimplifiedWriter(FMEWriter):
 
     def write(self, feature: FMEFeature) -> None:
         """
-        Write a feature to the output dataset.
+        Write the input feature to the output dataset.
+
+        If overriding, it is recommended to implement feature type-specific setup
+        in this method, call `super().write()`, then implement feature serialization
+        using :meth:`write_feature`.
+
+        There is no guarantee that this method will be called with all the features
+        for one feature type before moving onto a different feature type.
         """
-        # get feature type and info from def line
+
         feature_type = feature.getFeatureType()
 
+        # get the user attributes and parameters for the feature
+        # under certain circumstances (e.g. feature fanout mode),
+        # the feature type declared on the DEF line will not match the
+        # feature type actually found on the feature
         try:
             feature_type_info = self._feature_type_information[feature_type]
         except KeyError as e:
@@ -503,7 +514,7 @@ class FMESimplifiedWriter(FMEWriter):
         self,
         feature: FMEFeature,
         feature_type_info: FeatureTypeInfo,
-        supported_types=("INSERT"),
+        supported_types: Iterable[str] = ("INSERT"),
     ) -> Optional[str]:
         """
         Get the feature operation for the current feature.
@@ -534,7 +545,8 @@ class FMESimplifiedWriter(FMEWriter):
             # the def line is overspecified
             self._log.warning(
                 tr(
-                    "The fme_db_operation attribute value '{db_op_val}' on feature conflicts with Feature Operation '{param_val}'. Rejecting feature"
+                    "The fme_db_operation attribute value '{db_op_val}' on feature "
+                    "conflicts with Feature Operation '{param_val}'. Rejecting feature"
                 ).format(db_op_val=fme_db_operation_value, param_val=operation_type)
             )
             return None
