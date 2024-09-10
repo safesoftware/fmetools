@@ -85,6 +85,8 @@ class FMESimplifiedReader(FMEReader):
     :ivar list[str] _feature_types: Ordered list of feature type names.
     :ivar bool _list_feature_types: True if the reader was launched to produce
         a list of feature types.
+    :ivar dict[str, FeatureTypeInfo] _feature_type_info: Dict of feature type names
+        to corresponding def line information (user attributes and parameters).
     :ivar _readSchema_generator:
         Use this member to store any generator used for :meth:`readSchema`.
        Doing so means it'll be explicitly closed for you in :meth:`close`.
@@ -117,7 +119,7 @@ class FMESimplifiedReader(FMEReader):
 
         self._list_feature_types = False
 
-        self._feature_type_information = {}
+        self._feature_type_info = {}
         self._directives = {}
 
         self._readSchema_generator, self._read_generator = None, None
@@ -189,7 +191,7 @@ class FMESimplifiedReader(FMEReader):
             "RETRIEVE_ALL_TABLE_NAMES"
         )
 
-        self._feature_type_information = self._mapping_file.parse_def_lines(
+        self._feature_type_info = self._mapping_file.parse_def_lines(
             self.__class__.FEATURE_TYPE_PARAMETERS
         )
         self._directives = self._mapping_file.get_directives(self.__class__.DIRECTIVES)
@@ -336,7 +338,7 @@ class FMESimplifiedReader(FMEReader):
             # when the format parameter `ATTRIBUTE_READING` has the value `DEFLINE` in the metafile
             # and `fme_attribute_reading` is set to `defined`, the format should only set
             # format attributes and user attributes specified on the defline
-            feature_type_info = self._feature_type_information.get(
+            feature_type_info = self._feature_type_info.get(
                 feature_type, FeatureTypeInfo(feature_type)
             )
             fme_attribute_reading = feature_type_info.parameters.get(
@@ -462,7 +464,7 @@ class FMESimplifiedWriter(FMEWriter):
         self._aborted = False
         self._feature_types = []
 
-        self._feature_type_information = {}
+        self._feature_type_info = {}
         self._directives = {}
 
     @property
@@ -510,7 +512,7 @@ class FMESimplifiedWriter(FMEWriter):
         if open_parameters.get("FME_DEBUG"):
             self.debug = True
 
-        self._feature_type_information = self._mapping_file.parse_def_lines(
+        self._feature_type_info = self._mapping_file.parse_def_lines(
             self.__class__.FEATURE_TYPE_PARAMETERS
         )
         self._directives = self._mapping_file.get_directives(self.__class__.DIRECTIVES)
@@ -544,14 +546,14 @@ class FMESimplifiedWriter(FMEWriter):
         # the feature type declared on the DEF line will not match the
         # feature type actually found on the feature
         try:
-            feature_type_info = self._feature_type_information[feature_type]
+            feature_type_info = self._feature_type_info[feature_type]
         except KeyError as e:
             def_feature_type = get_template_feature_type(feature)
-            if def_feature_type not in self._feature_type_information:
+            if def_feature_type not in self._feature_type_info:
                 raise MissingDefForIncomingFeatureType(
                     self.log.name, feature_type
                 ) from e
-            def_line_info = self._feature_type_information[def_feature_type]
+            def_line_info = self._feature_type_info[def_feature_type]
             feature_type_info = FeatureTypeInfo(
                 feature.getFeatureType(),
                 def_line_info.user_attributes,
