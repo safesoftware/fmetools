@@ -23,6 +23,7 @@ except ImportError:  # Support < FME 2024.2
 from fmeobjects import (
     FMEFeature,
     FMEException,
+    kFMERead_SearchType,
 )
 
 try:
@@ -214,7 +215,7 @@ class FMESimplifiedReader(FMEReader):
 
     def getProperties(self, property_category: str) -> Optional[str]:
         """
-        Returns an even-length list of flat list of property category to constraint primitive pairs.
+        Return the constraint primitives supported by this reader for the property category.
         If the property was not recognized, returns `None`.
 
         Properties should be defined in `self._constraints_properties` using :class:`fmetools.parsers.ConstraintsProperties`.
@@ -223,6 +224,7 @@ class FMESimplifiedReader(FMEReader):
             # if spatial constraints are not enabled, do not return anything
             return None
 
+        # return an even-length flat list of property category to constraint primitive pairs
         return self._constraints_properties.get_property_list(property_category)
 
     def setConstraints(self, feature: FMEFeature) -> None:
@@ -230,9 +232,7 @@ class FMESimplifiedReader(FMEReader):
         Specifies the spatial and attribute constraints to be used when reading the data.
 
         This method only needs to be implemented when :meth:`spatialEnabled` returns `True`.
-
-        This can be called at any time after the reader is created.
-        If any read is in progress then it is terminated and the next read will reflect the new constraints.
+        Implementations should override :meth:`_set_constraints` instead of this method.
 
         :param feature: a constraint feature which contains the spatial and attribute query
         """
@@ -243,6 +243,24 @@ class FMESimplifiedReader(FMEReader):
         if self._read_generator is not None:
             self._read_generator.close()
             self._read_generator = None
+
+        search_type = feature.getAttribute(kFMERead_SearchType)
+
+        primitives = self._constraints_properties.get_constraint_primitives(search_type)
+        self._set_constraints(feature, search_type, primitives)
+
+    def _set_constraints(
+        self, feature, search_type: str, constraint_primitives: Optional[List[str]]
+    ):
+        """
+        Specifies the spatial and attribute constraints to be used when reading the data.
+
+        This method only needs to be implemented when :meth:`spatialEnabled` returns `True`.
+
+        This can be called at any time after the reader is created.
+        If any read is in progress then it is terminated and the next read will reflect the new constraints.
+        """
+        pass
 
     def _feature_types_generator(self) -> Generator[FMEFeature, None, None]:
         """
