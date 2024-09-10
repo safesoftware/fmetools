@@ -40,6 +40,7 @@ from .parsers import (
     Directives,
     get_template_feature_type,
     FeatureTypeInfo,
+    ConstraintsProperties,
 )
 
 # These are relevant externally.
@@ -97,6 +98,7 @@ class FMESimplifiedReader(FMEReader):
 
     FEATURE_TYPE_PARAMETERS = {"fme_attribute_reading"}
     DIRECTIVES = Directives(set())
+    SUPPORTED_CONSTRAINTS = ConstraintsProperties()
 
     def __init__(self, reader_type_name, reader_keyword, mapping_file):
         # super() is intentionally not called. Base class disallows it.
@@ -110,12 +112,10 @@ class FMESimplifiedReader(FMEReader):
         self._log = None
 
         self._using_constraints = False
-        self._constraints_properties = None
         self._aborted = False
         self._feature_types = []
 
         self._list_feature_types = False
-        self._def_line_attrs_only = False
 
         self._feature_type_information = {}
         self._directives = {}
@@ -208,24 +208,24 @@ class FMESimplifiedReader(FMEReader):
         """
         Indicates whether this reader supports spatial constraints.
 
-        If this reader supports spatial constraints, they should be defined in
-        `self._constraints_properties` using :class:`fmetools.parsers.ConstraintsProperties`.
+        If this reader supports spatial constraints, they should be defined
+        in :const:`FMESimplifiedReader.ConstraintsProperties`.
         """
-        return bool(self._constraints_properties)
+        return self.__class__.SUPPORTED_CONSTRAINTS.constraints_supported
 
     def getProperties(self, property_category: str) -> Optional[str]:
         """
         Return the constraint primitives supported by this reader for the property category.
         If the property was not recognized, returns `None`.
 
-        Properties should be defined in `self._constraints_properties` using :class:`fmetools.parsers.ConstraintsProperties`.
+        Properties should be defined in :const:`FMESimplifiedReader.ConstraintsProperties`.
         """
-        if not self.spatialEnabled() or not self._constraints_properties:
+        if not self.spatialEnabled():
             # if spatial constraints are not enabled, do not return anything
             return None
 
         # return an even-length flat list of property category to constraint primitive pairs
-        return self._constraints_properties.get_property_list(property_category)
+        return self.__class__.SUPPORTED_CONSTRAINTS.get_property_list(property_category)
 
     def setConstraints(self, feature: FMEFeature) -> None:
         """
@@ -246,7 +246,9 @@ class FMESimplifiedReader(FMEReader):
 
         search_type = feature.getAttribute(kFMERead_SearchType)
 
-        primitives = self._constraints_properties.get_constraint_primitives(search_type)
+        primitives = self.__class__.SUPPORTED_CONSTRAINTS.get_constraint_primitives(
+            search_type
+        )
         self._set_constraints(feature, search_type, primitives)
 
     def _set_constraints(

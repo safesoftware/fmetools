@@ -619,6 +619,10 @@ class ConstraintsProperties:
             if locals().get(e.value) is not None
         }
 
+    @property
+    def constraints_supported(self):
+        return bool(self.properties)
+
     @staticmethod
     def _zip_properties(
         category: str, properties: Optional[List[str]]
