@@ -9,6 +9,7 @@ Transformer developers should subclass it to implement their own transformers.
 
 from __future__ import annotations
 
+import copy
 import logging
 import warnings
 from typing import Optional, Generator, List
@@ -87,6 +88,7 @@ class FMESimplifiedReader(FMEReader):
         a list of feature types.
     :ivar dict[str, FeatureTypeInfo] _feature_type_info: Dict of feature type names
         to corresponding def line information (user attributes and parameters).
+    :ivar Directives _directives: Directive values populated using the mapping file.
     :ivar _readSchema_generator:
         Use this member to store any generator used for :meth:`readSchema`.
        Doing so means it'll be explicitly closed for you in :meth:`close`.
@@ -194,7 +196,9 @@ class FMESimplifiedReader(FMEReader):
         self._feature_type_info = self._mapping_file.parse_def_lines(
             self.__class__.FEATURE_TYPE_PARAMETERS
         )
-        self._directives = self._mapping_file.get_directives(self.__class__.DIRECTIVES)
+        self._directives = self._mapping_file.get_directives(
+            copy.copy(self.__class__.DIRECTIVES)
+        )
 
         return self.enhancedOpen(open_parameters)
 
@@ -445,6 +449,9 @@ class FMESimplifiedWriter(FMEWriter):
     :ivar bool debug: Toggle for debug mode.
     :ivar bool _aborted: True if :meth:`abort` was called.
     :ivar list[str] _feature_types: Ordered list of feature types.
+    :ivar dict[str, FeatureTypeInfo] _feature_type_info: Dict of feature type names
+        to corresponding def line information (user attributes and parameters).
+    :ivar Directives _directives: Directive values populated using the mapping file.
     """
 
     FEATURE_TYPE_PARAMETERS = {"fme_feature_operation", "fme_table_handling"}
@@ -515,7 +522,9 @@ class FMESimplifiedWriter(FMEWriter):
         self._feature_type_info = self._mapping_file.parse_def_lines(
             self.__class__.FEATURE_TYPE_PARAMETERS
         )
-        self._directives = self._mapping_file.get_directives(self.__class__.DIRECTIVES)
+        self._directives = self._mapping_file.get_directives(
+            copy.copy(self.__class__.DIRECTIVES)
+        )
 
         return self.enhancedOpen(open_parameters)
 
