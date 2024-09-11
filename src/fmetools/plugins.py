@@ -150,14 +150,14 @@ class FMESimplifiedReader(FMEReader):
     def hasSupportFor(self, support_type: int) -> bool:
         """
         Return whether this reader supports a certain type. Currently,
-        the only supported type is fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM.
+        the only supported type is const:`fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM`.
 
-        When a reader supports fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM,
+        When a reader supports const:`fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM`,
         a feature table object will be created from features produced by this reader.
         This will allow for significant performance gains if the reader will output
         a large number of features which share the same schema.
-        To declare feature table shim support, the reader's metafile SOURCE_SETTINGS
-        must also contain the line 'DEFAULT_VALUE CREATE_FEATURE_TABLES_FROM_DATA Yes'.
+        To declare feature table shim support, the reader's metafile ``SOURCE_SETTINGS``
+        must also contain the line ``DEFAULT_VALUE CREATE_FEATURE_TABLES_FROM_DATA Yes``.
 
         :param support_type: support type passed in by Workbench infrastructure
         :returns: True if the passed in support type is supported.
@@ -173,11 +173,11 @@ class FMESimplifiedReader(FMEReader):
         * Checks for the debug flag in open() parameters.
         * Calls :meth:`enhancedOpen`.
 
-        If setConstraints() wasn't called earlier, then this method also:
-        * Sets `_feature_types` using the mapping file and/or open parameters.
+        If :meth:`setConstraints()` wasn't called earlier, then this method also:
+        * Sets :attr:`_feature_types` using the mapping file and/or open parameters.
 
         :param dataset_name: Name of the dataset.
-        :param[str] parameters: List of parameters.
+        :param parameters: List of parameters.
         """
 
         # If not using setConstraints(), then get some basics from the mapping file.
@@ -215,7 +215,7 @@ class FMESimplifiedReader(FMEReader):
         Indicates whether this reader supports spatial constraints.
 
         If this reader supports spatial constraints, they should be defined
-        in :const:`FMESimplifiedReader.ConstraintsProperties`.
+        by overriding :const:`FMESimplifiedReader.SUPPORTED_CONSTRAINTS`.
         """
         return self.__class__.SUPPORTED_CONSTRAINTS.constraints_supported
 
@@ -224,7 +224,7 @@ class FMESimplifiedReader(FMEReader):
         Return the constraint primitives supported by this reader for the property category.
         If the property was not recognized, returns `None`.
 
-        Properties should be defined in :const:`FMESimplifiedReader.ConstraintsProperties`.
+        Properties should be defined by overriding :const:`FMESimplifiedReader.SUPPORTED_CONSTRAINTS`.
         """
         if not self.spatialEnabled():
             # if spatial constraints are not enabled, do not return anything
@@ -286,11 +286,11 @@ class FMESimplifiedReader(FMEReader):
         """
         A generator which produces schema features for all requested feature types.
 
-        When `self._feature_types` is empty, schema features for all possible
+        When :attr:`_feature_types` is empty, schema features for all possible
         feature types should be generated. Otherwise, a single schema feature
-        should be generated for each feature type in `self._feature_types`.
+        should be generated for each feature type in :attr:`_feature_types`.
 
-        The function :meth:`features.build_feature` should be used to create schema features.
+        The function :meth:`fmetools.features.build_feature` should be used to create schema features.
         Schema features must contain the feature type, all possible geometry
         types for the feature type, and exposed attributes for the feature.
         The attribute value for a schema attribute should be set to the expected
@@ -335,7 +335,7 @@ class FMESimplifiedReader(FMEReader):
         Generator which yields data features for all requested feature types.
 
         When overriding, it is recommended to implement general read setup
-        in this method, call `super()._read_features_generator()`,
+        in this method, call ``super()._read_features_generator()``,
         and generate data features using :meth:`_data_features_for_feature_type_generator`
         """
         for feature_type in self._feature_types:
@@ -371,8 +371,8 @@ class FMESimplifiedReader(FMEReader):
 
         The function :meth:`features.build_feature` should be used to create data features.
 
-        The `def_line_only` parameter should only be honoured if
-        the metafile contains the line `FORMAT_PARAMETER ATTRIBUTE_READING DEFLINE`.
+        The ``def_line_only`` parameter should only be honoured if
+        the metafile contains the line ``FORMAT_PARAMETER ATTRIBUTE_READING DEFLINE``.
 
         :param feature_type_info: name, user attributes, and parameters for the feature type
         :param def_line_only: True if only the output attributes on the user schema should be set on the output feature
@@ -400,7 +400,7 @@ class FMESimplifiedReader(FMEReader):
         Generator form of :meth:`read`.
 
         Simplifies some logic in tests by eliminating the need to
-        check whether the return value is `None`.
+        check whether the return value is ``None``.
         """
         while True:
             feature = self.read()
@@ -502,10 +502,10 @@ class FMESimplifiedWriter(FMEWriter):
 
         Does these things for you:
 
-        * Sets `_feature_types` using the mapping file and/or open parameters.
+        * Sets :attr:`_feature_types` using the mapping file and/or open parameters.
         * Parses the open() parameters.
         * Checks for the debug flag in open() parameters,
-          switching `_logger` to debug mode if present.
+          switching :attr:`log` to debug mode if present.
         * Calls :meth:`enhancedOpen`.
 
         :param dataset: Dataset value, such as a file path or URL.

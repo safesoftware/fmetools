@@ -337,7 +337,7 @@ class Directives(dict):
     def _get_directive_type_from_gui_type(
         self, gui_type: str
     ) -> MappingFileDirectiveType:
-        """Determine a MappingFileDirectiveType from the GUI type."""
+        """Determine the :class:`fmetools.parsers.MappingFileDirectiveType` corresponding to the GUI type."""
         if gui_type is None:
             # default to GUI type STRING if no GUI type was explicitly specified
             gui_type = "STRING"
@@ -350,8 +350,8 @@ class Directives(dict):
 
     def _get_directive_default(self, directive_type: MappingFileDirectiveType):
         """
-        Return a default value for the directive type if the corresponding directive is not
-        found in the mapping file.
+        Return a default value for the directive type.
+        This is used when the corresponding directive is not found in the mapping file.
         """
         if directive_type in self.__class__.TYPE_DEFAULTS:
             return self.__class__.TYPE_DEFAULTS[directive_type]
@@ -486,11 +486,10 @@ class MappingFile:
         except ValueError:
             return default
 
-    def get_search_envelope(self):
+    def get_search_envelope(self) -> SearchEnvelope:
         """Get the search envelope, with coordinate system, if any.
 
         :returns: The search envelope, or None if not set.
-        :rtype: SearchEnvelope
         """
         env = self.mapping_file.fetchSearchEnvelope(
             self._plugin_keyword, self._plugin_type
@@ -500,13 +499,14 @@ class MappingFile:
         coordsys = self.get("_SEARCH_ENVELOPE_COORDINATE_SYSTEM")
         return SearchEnvelope(env[0][0], env[0][1], env[1][0], env[1][1], coordsys)
 
-    def get_feature_types(self, open_parameters, fetch_mode="FETCH_IDS_AND_DEFS"):
+    def get_feature_types(
+        self, open_parameters: List[str], fetch_mode: str = "FETCH_IDS_AND_DEFS"
+    ) -> List[str]:
         """Get the feature types, if any.
 
-        :param list[str] open_parameters: Parameters for the reader.
-        :param str fetch_mode: `FETCH_IDS_AND_DEFS` or `FETCH_DEFS_ONLY`
+        :param open_parameters: Parameters for the reader.
+        :param fetch_mode: `FETCH_IDS_AND_DEFS` or `FETCH_DEFS_ONLY`
         :returns: List of feature types.
-        :rtype: list[str]
         """
         featTypes = self.mapping_file.fetchFeatureTypes(
             self._plugin_keyword, self._plugin_type, open_parameters, fetch_mode
@@ -560,6 +560,8 @@ class MappingFile:
 
 
 class ConstraintSearchTypes(Enum):
+    """Potential search types supported by :meth:`fmetools.plugins.FMESimplifiedReader.setConstraints`."""
+
     ALL_FEATURES = "fme_all_features"
     ENVELOPE_INTERSECTS = "fme_envelope_intersects"
     ENVELOPE_IDS = "fme_envelope_ids"
@@ -587,31 +589,36 @@ class ConstraintSearchTypes(Enum):
 
 
 class ConstraintsProperties:
+    """
+    Defines constraint types and associated constraint primitives.
+    For use with :meth:`fmetools.plugins.FMESimplifiedReader.setConstraints`.
+    """
+
     def __init__(
         self,
         *,
-        fme_all_features=None,
-        fme_envelope_intersects=None,
-        fme_envelope_ids=None,
-        fme_nonspatial_ids=None,
-        fme_feature_type_ids=None,
-        fme_closest=None,
-        fme_specified_feature=None,
-        fme_specified_feature_list=None,
-        fme_specified_feature_range=None,
-        fme_execute_sql=None,
-        fme_schema_from_query=None,
-        fme_db_join=None,
-        fme_metadata=None,
-        fme_get_version_list=None,
-        fme_get_historical_version_list=None,
-        fme_spatial_interaction=None,
-        fme_prop_persistent_cache_loaded=None,
-        fme_prop_persistent_cache_features_loaded=None,
-        fme_prop_persistent_cache_schemas_loaded=None,
-        fme_prop_persistent_cache_valid=None,
-        fme_prop_coord_sys_aware=None,
-        fme_prop_spatial_index=None,
+        fme_all_features: List[str] = None,
+        fme_envelope_intersects: List[str] = None,
+        fme_envelope_ids: List[str] = None,
+        fme_nonspatial_ids: List[str] = None,
+        fme_feature_type_ids: List[str] = None,
+        fme_closest: List[str] = None,
+        fme_specified_feature: List[str] = None,
+        fme_specified_feature_list: List[str] = None,
+        fme_specified_feature_range: List[str] = None,
+        fme_execute_sql: List[str] = None,
+        fme_schema_from_query: List[str] = None,
+        fme_db_join: List[str] = None,
+        fme_metadata: List[str] = None,
+        fme_get_version_list: List[str] = None,
+        fme_get_historical_version_list: List[str] = None,
+        fme_spatial_interaction: List[str] = None,
+        fme_prop_persistent_cache_loaded: List[str] = None,
+        fme_prop_persistent_cache_features_loaded: List[str] = None,
+        fme_prop_persistent_cache_schemas_loaded: List[str] = None,
+        fme_prop_persistent_cache_valid: List[str] = None,
+        fme_prop_coord_sys_aware: List[str] = None,
+        fme_prop_spatial_index: List[str] = None,
     ):
         self.properties = {
             e.value: locals().get(e.value)
@@ -648,7 +655,7 @@ class ConstraintsProperties:
 
     def get_property_list(self, property_category: str) -> Optional[List[str]]:
         """
-        Returns an even-length list of flat list of property category to constraint primitive pairs.
+        Returns an even-length flat list of property category to constraint primitive pairs.
         If the property was not recognized, returns `None`.
         """
         if property_category == kFME_ReaderPropAll:
