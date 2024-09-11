@@ -70,6 +70,11 @@ class MissingDefForIncomingFeatureType(FMEException):
 class FMESimplifiedReader(FMEReader):
     """Base class for Python-based FME reader implementations.
 
+    :cvar Set[str] FEATURE_TYPE_PARAMETERS: the names of feature type parameters.
+        Values for these parameters can be found in :attr:`_directives[<feature_type>].parameters`.
+    :cvar Directives DIRECTIVES: the metafile directive configuration by for the format.
+    :cvar ConstraintsProperties SUPPORTED_CONSTRAINTS: spatial constraints supported by the format.
+
     :ivar str _type_name: The name used in the following contexts:
 
         * the name of the format's .db file in the formats info folder
@@ -435,6 +440,10 @@ class FMESimplifiedReader(FMEReader):
 
 class FMESimplifiedWriter(FMEWriter):
     """Base class for Python-based FME writer implementations.
+
+    :cvar Set[str] FEATURE_TYPE_PARAMETERS: the names of feature type parameters.
+        Values for these parameters can be found in :attr:`_directives[<feature_type>].parameters`.
+    :cvar Directives DIRECTIVES: the metafile directive configuration by for the format.
 
     :ivar str _type_name: The name used in the following contexts:
 
