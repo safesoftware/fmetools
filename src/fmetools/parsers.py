@@ -8,7 +8,7 @@ import dataclasses
 from collections import OrderedDict, namedtuple
 from dataclasses import dataclass
 from enum import Enum
-from typing import Union, Set, Dict, Optional, List
+from typing import Union, Set, Dict, Optional, List, Tuple
 
 import fme
 import six
@@ -37,6 +37,23 @@ def _system_to_unicode(original):
         # If input is already a Unicode string, return it as-is.
         return original
     return original.decode(fme.systemEncoding, "replace")
+
+
+def _parse_raw_attr_type(raw_attr_type: str) -> Tuple[str, Optional[str]]:
+    """
+    Parse a DEF line attribute type into an attribute type and an optional index.
+
+    Supports attribute types which specify width and/or precision.
+    """
+    # if an index was selected, raw_attr_type will have form <attr_type>,<attr_index>
+    attr_index = None
+    if ")," in raw_attr_type:
+        # raw_attr_type has format <attr_type>(<precision>[,<value>]),attr_index
+        attr_type, attr_index = raw_attr_type.split("),", maxsplit=1)
+        attr_type += ")"
+    elif "," in raw_attr_type:
+        attr_type, attr_index = raw_attr_type.split(",", maxsplit=1)
+    return raw_attr_type, attr_index
 
 
 def stringarray_to_dict(stringarray, start=0):
@@ -460,11 +477,7 @@ class MappingFile:
 
             attrs = {}
             for attr_name, attr_type in raw_attrs.items():
-                # if an index was selected, attr_type will have form <raw_attr_type>,<attr_index>
-                attr_index = None
-                if "," in attr_type:
-                    attr_type, attr_index = attr_type.split(",", maxsplit=1)
-                attrs[attr_name] = UserAttributeInfo(attr_type, attr_index)
+                attrs[attr_name] = UserAttributeInfo(*_parse_raw_attr_type(attr_type))
 
             def_line_info[defline_feature_type] = FeatureTypeInfo(
                 defline_feature_type, attrs, def_line_params
