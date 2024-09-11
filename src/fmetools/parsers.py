@@ -194,9 +194,9 @@ class UserAttributeInfo:
 class FeatureTypeInfo:
     name: str
     user_attributes: Dict[str, UserAttributeInfo] = dataclasses.field(
-        default_factory=lambda: {}
+        default_factory=dict
     )
-    parameters: Dict = dataclasses.field(default_factory=lambda: {})
+    parameters: Dict = dataclasses.field(default_factory=dict)
 
 
 class MappingFileDirectiveType(Enum):
