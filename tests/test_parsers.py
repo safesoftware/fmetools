@@ -1,12 +1,19 @@
 # coding: utf-8
 
 from collections import Counter
+from itertools import zip_longest
 
 import pytest
+from fmetools.parsers import (
+    stringarray_to_dict,
+    parse_def_line,
+    Directives,
+    ConstraintSearchTypes,
+    ConstraintsProperties, _parse_raw_attr_type
+)
 from hypothesis import given, assume, example, settings
-from hypothesis.strategies import integers, text, lists
-
-from fmetools.parsers import stringarray_to_dict, parse_def_line, _parse_raw_attr_type
+from hypothesis import strategies as st
+from hypothesis.strategies import integers, text, lists, sets
 
 
 @given(lists(text(), max_size=6), integers(min_value=0, max_value=6))
@@ -69,3 +76,70 @@ def test_parse_def_line(keys, num_matching_options):
         # Don't proceed if there are dupe user attrs.
         assume(Counter(expected_user_attrs).most_common()[0][1] == 1)
     assert list(parsed.attributes.keys()) == expected_user_attrs
+
+
+@given(
+    sets(text(), min_size=1, max_size=6),
+    lists(
+        st.sampled_from(list(Directives.SUPPORTED_TYPES.keys()) + ["RANDOM_GUI_TYPE"]),
+        max_size=6,
+    ),
+    lists(text(), max_size=6),
+)
+def test_directives(directive_names, directive_types_raw, directive_defaults_raw):
+    directive_types = {}
+    directive_defaults = {}
+    for directive_name, directive_type, directive_default in zip_longest(
+        directive_names, directive_types_raw, directive_defaults_raw
+    ):
+        if directive_name is None:
+            continue
+        directive_types[directive_name] = directive_type
+        directive_defaults[directive_name] = directive_default
+
+    directives = Directives(directive_names, directive_types, directive_defaults)
+    assert directives.names == directive_names
+    for name in directive_names:
+        directive_type = directive_types[name] or "STRING"
+        # should map to a primitive type
+        assert directives.directive_types[name] == Directives.SUPPORTED_TYPES.get(
+            directive_type, "STRING"
+        )
+        # should have some default defined
+        assert name in directives.directive_defaults
+
+
+@given(
+    lists(st.sampled_from(ConstraintSearchTypes), min_size=1, max_size=6),
+    lists(lists(text()), min_size=1, max_size=6),
+)
+def test_constraint_properties(property_names, constraint_primitives):
+    constraints_kwargs = {
+        name.value: primitives
+        for name, primitives in zip_longest(
+            property_names, constraint_primitives, fillvalue=[]
+        )
+        if name
+    }
+    properties = ConstraintsProperties(**constraints_kwargs)
+    expected_all_properties_len = 0
+    for property_name, expected_primitives in constraints_kwargs.items():
+        if len(expected_primitives) > 0:
+            assert (
+                properties.get_constraint_primitives(property_name)
+                == expected_primitives
+            )
+            property_list = properties.get_property_list(property_name)
+            for idx, val in enumerate(expected_primitives):
+                assert property_list[2 * idx] == property_name
+                assert property_list[2 * idx + 1] == val
+            expected_all_properties_len += len(property_list)
+        else:
+            assert (
+                properties.get_constraint_primitives(property_name)
+                == expected_primitives
+            )
+            assert properties.get_property_list(property_name) is None
+
+    # validate all properties request
+    assert len(properties.get_property_list("*")) == expected_all_properties_len
