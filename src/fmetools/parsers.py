@@ -6,11 +6,10 @@ It is not intended for general use.
 
 import dataclasses
 import re
-import itertools
 from collections import OrderedDict, namedtuple
 from dataclasses import dataclass
 from enum import Enum
-from typing import Union, Set, Dict, Optional, List, Iterable
+from typing import Iterable, Union, Set, Dict, Optional, List, Generator
 
 import fme
 import six
@@ -633,7 +632,7 @@ class ConstraintsProperties:
     @staticmethod
     def _zip_properties(
         category: str, properties: Optional[List[str]]
-    ) -> Optional[List[str]]:
+    ) -> Generator[str, None, None]:
         """
         Given a single category and a list of corresponding properties,
         return a list where each odd index contains the category,
@@ -645,12 +644,14 @@ class ConstraintsProperties:
         """
         if not properties:
             return None
-        return list(itertools.zip_longest([category], properties, fillvalue=category))
+        for property_name in properties:
+            yield category
+            yield property_name
 
     def _get_all_properties(self):
         all_properties = []
         for property_category, props in self.properties.items():
-            all_properties.extend(self._zip_properties(property_category, props))
+            all_properties.extend(list(self._zip_properties(property_category, props)))
         return all_properties
 
     def get_property_list(self, property_category: str) -> Optional[List[str]]:
@@ -662,8 +663,13 @@ class ConstraintsProperties:
             # declare all supported constraints
             return self._get_all_properties()
 
-        return self._zip_properties(
-            property_category, self.properties.get(property_category, [])
+        return (
+            list(
+                self._zip_properties(
+                    property_category, self.properties.get(property_category, [])
+                )
+            )
+            or None
         )
 
     def get_constraint_primitives(self, search_type: str) -> List[str]:
