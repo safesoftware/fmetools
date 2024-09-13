@@ -5,6 +5,7 @@ It is not intended for general use.
 """
 
 import dataclasses
+import re
 from collections import OrderedDict, namedtuple
 from dataclasses import dataclass
 from enum import Enum
@@ -39,21 +40,18 @@ def _system_to_unicode(original):
     return original.decode(fme.systemEncoding, "replace")
 
 
-def _parse_raw_attr_type(raw_attr_type: str) -> Tuple[str, Optional[str]]:
+def _parse_raw_attr_type(raw_attr_type: str) -> "UserAttributeInfo":
     """
     Parse a DEF line attribute type into an attribute type and an optional index.
 
     Supports attribute types which specify width and/or precision.
     """
-    # if an index was selected, raw_attr_type will have form <attr_type>,<attr_index>
-    attr_index = None
-    if ")," in raw_attr_type:
-        # raw_attr_type has format <attr_type>(<precision>[,<value>]),attr_index
-        attr_type, attr_index = raw_attr_type.split("),", maxsplit=1)
-        attr_type += ")"
-    elif "," in raw_attr_type:
-        attr_type, attr_index = raw_attr_type.split(",", maxsplit=1)
-    return raw_attr_type, attr_index
+    attr_pattern = r"(?P<attr_type>\w+)(\((?P<attr_width>\d+)(,(?P<attr_precision>\d+))?\))?(,(?P<attr_index>\w+))?"
+    match = re.match(attr_pattern, raw_attr_type)
+    if match is None:
+        # couldn't parse (this shouldn't happen), return the entire type the base attribute type
+        return UserAttributeInfo(raw_attr_type)
+    return UserAttributeInfo(**match.groupdict())
 
 
 def stringarray_to_dict(stringarray, start=0):
@@ -204,6 +202,8 @@ SearchEnvelope = namedtuple("SearchEnvelope", "min_x min_y max_x max_y coordsys"
 @dataclass
 class UserAttributeInfo:
     attr_type: str
+    attr_width: Optional[int]
+    attr_precision: Optional[int]
     attr_index: Optional[str]
 
 
