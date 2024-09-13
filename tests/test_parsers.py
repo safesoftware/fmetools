@@ -2,10 +2,11 @@
 
 from collections import Counter
 
+import pytest
 from hypothesis import given, assume, example, settings
 from hypothesis.strategies import integers, text, lists
 
-from fmetools.parsers import stringarray_to_dict, parse_def_line
+from fmetools.parsers import stringarray_to_dict, parse_def_line, _parse_raw_attr_type
 
 
 @given(lists(text(), max_size=6), integers(min_value=0, max_value=6))
@@ -21,6 +22,27 @@ def test_stringarray_to_dict(stringarray, start):
         assert isinstance(parsed[top_key], list)
     else:
         assert parsed[top_key] == stringarray[stringarray.index(top_key, start) + 1]
+
+
+@pytest.mark.parametrize(
+    "raw_attr,expected_type,expected_width,expected_precision,expected_index",
+    [
+        ("str", "str", None, None, None),
+        ("str,pk", "str", None, None, "pk"),
+        ("str(50)", "str", 50, None, None),
+        ("str(50),unique", "str", 50, None, "unique"),
+        ("float(3,10)", "float", 3, 10, None),
+        ("float(50,4),unique", "float", 50, 4, "unique"),
+    ],
+)
+def test_parse_raw_attr_type(
+    raw_attr, expected_type, expected_width, expected_precision, expected_index
+):
+    parsed_attr = _parse_raw_attr_type(raw_attr)
+    assert parsed_attr.attr_type == expected_type
+    assert parsed_attr.attr_width == expected_width
+    assert parsed_attr.attr_precision == expected_precision
+    assert parsed_attr.attr_index == expected_index
 
 
 @given(lists(text(min_size=1), max_size=10), integers(0, 2))
