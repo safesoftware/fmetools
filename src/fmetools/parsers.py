@@ -128,13 +128,18 @@ def get_feature_operation(
     feature: FMEFeature,
     feature_type_info: FeatureTypeInfo,
     log,
-    supported_types: Iterable[str] = ("INSERT",),
+    supported_fme_db_operations: Iterable[str] = ("INSERT",),
 ) -> Optional[str]:
     """
     Get the feature operation which the writer should use for the input feature.
 
     If the configuration is somehow invalid, logs a warning and returns ``None``.
     Callers are expected to skip the feature if a `None` return value is received.
+
+    :param feature: input feature to the writer
+    :param feature_type_info: feature type information for the current feature
+    :param log: the writer logger
+    :param supported_fme_db_operations: supported feature operations when the writer is in fme_db_operation mode
     """
     fme_db_operation_value = feature.getAttribute("fme_db_operation")
     operation_type = feature_type_info.parameters["fme_feature_operation"]
