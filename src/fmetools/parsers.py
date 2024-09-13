@@ -40,7 +40,7 @@ def _system_to_unicode(original):
     return original.decode(fme.systemEncoding, "replace")
 
 
-def _parse_raw_attr_type(raw_attr_type: str) -> "UserAttributeInfo":
+def _parse_raw_attr_type(raw_attr_type: str) -> UserAttributeInfo:
     """
     Parse a DEF line attribute type into an attribute type and an optional index.
 
@@ -79,6 +79,92 @@ def stringarray_to_dict(stringarray, start=0):
         else:
             result[key] = value
     return result
+
+
+def parse_def_line(def_line, option_names):
+    """
+    Iterate through elements in a DEF line and extract elements into
+    more convenient structures.
+
+    :param list[str] def_line: The DEF line. Must have an even number of elements.
+    :param set option_names: If a key matches one of these names,
+        it'll be separated from the attributes.
+    :return: Tuple of:
+
+        - Feature type
+        - OrderedDict of attributes and their types
+        - dict of options and their values, FME-decoded.
+          All `option_names` are guaranteed to be keys in this dict,
+          with a value of `None` if the option wasn't present on the DEF line.
+    :rtype: DefLine
+    """
+    assert len(def_line) % 2 == 0
+
+    def decode(v):
+        if isinstance(v, list):
+            return [decode(x) for x in v]
+        return v if v is None else FMESession().decodeFromFMEParsableText(v)
+
+    attributes = stringarray_to_dict(def_line, start=2)
+    options = {option: decode(attributes.pop(option, None)) for option in option_names}
+    return DefLine(_system_to_unicode(def_line[1]), attributes, options)
+
+
+def get_template_feature_type(feature):
+    """Get the template feature type of a feature, which is the value of the
+    `fme_template_feature_type` attribute if present, or
+    :meth:`FMEFeature.getFeatureType` otherwise. These are the feature types
+    found on DEF lines when FME writers are in dynamic mode.
+
+    :param FMEFeature feature: Feature to query.
+    :return: Feature type to look for on DEF lines.
+    :rtype: str
+    """
+    template_feature_type = feature.getAttribute("fme_template_feature_type")
+    return _system_to_unicode(template_feature_type or feature.getFeatureType())
+
+
+def get_feature_operation(
+    feature: FMEFeature,
+    feature_type_info: FeatureTypeInfo,
+    log,
+    supported_types: Iterable[str] = ("INSERT",),
+) -> Optional[str]:
+    """
+    Get the feature operation which the writer should use for the input feature.
+
+    If the configuration is somehow invalid, logs a warning and returns ``None``.
+    Callers are expected to skip the feature if a `None` return value is received.
+    """
+    fme_db_operation_value = feature.getAttribute("fme_db_operation")
+    operation_type = feature_type_info.parameters["fme_feature_operation"]
+
+    if operation_type == "MULTIPLE":
+        # when using fme_db_operation, we need to check that our value is supported
+        # if the fme_db_operation value is missing, the feature operation defaults to insert
+        fme_db_operation_value = fme_db_operation_value or "INSERT"
+        operation_type = fme_db_operation_value.upper()
+        if operation_type not in supported_types:
+            log.warning(
+                tr("The fme_db_operation value '%s' is not supported")
+                % fme_db_operation_value
+            )
+            return None
+        return operation_type
+
+    if fme_db_operation_value and fme_db_operation_value.upper() != operation_type:
+        # an fme_db_operation value exists on the feature, but it does not agree
+        # with the feature operation set on the writer
+        # the def line is overspecified
+        self._log.warning(
+            tr(
+                "The fme_db_operation attribute value '{db_op_val}' on feature "
+                "conflicts with Feature Operation '{param_val}'"
+            ).format(db_op_val=fme_db_operation_value, param_val=operation_type)
+        )
+        return None
+
+    return operation_type
 
 
 class OpenParameters(OrderedDict):
@@ -151,49 +237,6 @@ class OpenParameters(OrderedDict):
 
 
 DefLine = namedtuple("DefLine", "feature_type attributes options")
-
-
-def parse_def_line(def_line, option_names):
-    """
-    Iterate through elements in a DEF line and extract elements into
-    more convenient structures.
-
-    :param list[str] def_line: The DEF line. Must have an even number of elements.
-    :param set option_names: If a key matches one of these names,
-        it'll be separated from the attributes.
-    :return: Tuple of:
-
-        - Feature type
-        - OrderedDict of attributes and their types
-        - dict of options and their values, FME-decoded.
-          All `option_names` are guaranteed to be keys in this dict,
-          with a value of `None` if the option wasn't present on the DEF line.
-    :rtype: DefLine
-    """
-    assert len(def_line) % 2 == 0
-
-    def decode(v):
-        if isinstance(v, list):
-            return [decode(x) for x in v]
-        return v if v is None else FMESession().decodeFromFMEParsableText(v)
-
-    attributes = stringarray_to_dict(def_line, start=2)
-    options = {option: decode(attributes.pop(option, None)) for option in option_names}
-    return DefLine(_system_to_unicode(def_line[1]), attributes, options)
-
-
-def get_template_feature_type(feature):
-    """Get the template feature type of a feature, which is the value of the
-    `fme_template_feature_type` attribute if present, or
-    :meth:`FMEFeature.getFeatureType` otherwise. These are the feature types
-    found on DEF lines when FME writers are in dynamic mode.
-
-    :param FMEFeature feature: Feature to query.
-    :return: Feature type to look for on DEF lines.
-    :rtype: str
-    """
-    template_feature_type = feature.getAttribute("fme_template_feature_type")
-    return _system_to_unicode(template_feature_type or feature.getFeatureType())
 
 
 SearchEnvelope = namedtuple("SearchEnvelope", "min_x min_y max_x max_y coordsys")

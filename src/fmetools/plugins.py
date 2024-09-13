@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import Optional, Generator, List, Iterable
+from typing import Optional, Generator, List
 
 from . import tr
 
@@ -20,7 +20,7 @@ try:
 except ImportError:  # Support < FME 2024.2
     from ._deprecated import FMEBaseTransformer
 
-from fmeobjects import FMEFeature, FMEException, FMESession
+from fmeobjects import FMEFeature, FMEException
 
 try:
     from fmeobjects import FME_SUPPORT_FEATURE_TABLE_SHIM
@@ -529,50 +529,6 @@ class FMESimplifiedWriter(FMEWriter):
         overridden.
         """
         pass
-
-    def _get_feature_operation(
-        self,
-        feature: FMEFeature,
-        feature_type_info: FeatureTypeInfo,
-        supported_types: Iterable[str] = ("INSERT",),
-    ) -> Optional[str]:
-        """
-        Get the feature operation for the current feature.
-
-        If the configuration is somehow invalid, logs a warning and returns `None`.
-        Callers are expected to skip the feature if a `None` return value is received.
-        """
-        fme_db_operation_value = feature.getAttribute("fme_db_operation")
-        operation_type = feature_type_info.parameters["fme_feature_operation"]
-
-        if operation_type == "MULTIPLE":
-            # when using fme_db_operation, we need to check that our value is supported
-            # if the fme_db_operation value is missing, the feature operation defaults to insert
-            fme_db_operation_value = fme_db_operation_value or "INSERT"
-            operation_type = fme_db_operation_value.upper()
-            if operation_type not in supported_types:
-                self.log.warning(
-                    tr(
-                        "The fme_db_operation value '%s' is not supported. Rejecting feature"
-                    )
-                    % fme_db_operation_value
-                )
-                return None
-            return operation_type
-
-        if fme_db_operation_value and fme_db_operation_value.upper() != operation_type:
-            # an fme_db_operation value exists on the feature, but it does not agree
-            # with the feature operation set on the writer
-            # the def line is overspecified
-            self._log.warning(
-                tr(
-                    "The fme_db_operation attribute value '{db_op_val}' on feature "
-                    "conflicts with Feature Operation '{param_val}'. Rejecting feature"
-                ).format(db_op_val=fme_db_operation_value, param_val=operation_type)
-            )
-            return None
-
-        return operation_type
 
     def __enter__(self):
         return self
