@@ -9,7 +9,7 @@ import re
 from collections import OrderedDict, namedtuple
 from dataclasses import dataclass
 from enum import Enum
-from typing import Union, Set, Dict, Optional, List, Tuple
+from typing import Union, Set, Dict, Optional, List, Iterable
 
 import fme
 import six
@@ -40,18 +40,26 @@ def _system_to_unicode(original):
     return original.decode(fme.systemEncoding, "replace")
 
 
-def _parse_raw_attr_type(raw_attr_type: str) -> UserAttributeInfo:
+def _parse_raw_attr_type(raw_attr_type: str) -> "UserAttributeInfo":
     """
-    Parse a DEF line attribute type into an attribute type and an optional index.
-
-    Supports attribute types which specify width and/or precision.
+    Parse a DEF line attribute type into an attribute type and optional width, precision, and index fields.
     """
-    attr_pattern = r"(?P<attr_type>\w+)(\((?P<attr_width>\d+)(,(?P<attr_precision>\d+))?\))?(,(?P<attr_index>\w+))?"
+    attr_pattern = r"(?P<attr_type>\w+)(\((?P<width>\d+)(,(?P<precision>\d+))?\))?(,(?P<attr_index>\w+))?"
     match = re.match(attr_pattern, raw_attr_type)
     if match is None:
         # couldn't parse (this shouldn't happen), return the entire type the base attribute type
         return UserAttributeInfo(raw_attr_type)
-    return UserAttributeInfo(**match.groupdict())
+
+    width = match.group("width")
+    if width is not None:
+        width = int(width)
+    precision = match.group("precision")
+    if precision is not None:
+        precision = int(precision)
+
+    return UserAttributeInfo(
+        match.group("attr_type"), width, precision, match.group("attr_index")
+    )
 
 
 def stringarray_to_dict(stringarray, start=0):
@@ -126,7 +134,7 @@ def get_template_feature_type(feature):
 
 def get_feature_operation(
     feature: FMEFeature,
-    feature_type_info: FeatureTypeInfo,
+    feature_type_info: "FeatureTypeInfo",
     log,
     supported_fme_db_operations: Iterable[str] = ("INSERT",),
 ) -> Optional[str]:
