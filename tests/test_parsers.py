@@ -9,7 +9,8 @@ from fmetools.parsers import (
     parse_def_line,
     Directives,
     ConstraintSearchTypes,
-    ConstraintsProperties, _parse_raw_attr_type
+    ConstraintsProperties,
+    _parse_raw_attr_type,
 )
 from hypothesis import given, assume, example, settings
 from hypothesis import strategies as st
