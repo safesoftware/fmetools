@@ -8,7 +8,7 @@ import dataclasses
 import re
 from collections import OrderedDict, namedtuple
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, StrEnum, auto
 from typing import Iterable, Union, Set, Dict, Optional, List, Generator
 
 import fme
@@ -561,30 +561,35 @@ class MappingFile:
 class ConstraintSearchTypes(Enum):
     """Potential search types supported by :meth:`fmetools.plugins.FMESimplifiedReader.setConstraints`."""
 
-    ALL_FEATURES = "fme_all_features"
-    ENVELOPE_INTERSECTS = "fme_envelope_intersects"
-    ENVELOPE_IDS = "fme_envelope_ids"
-    NONSPATIAL_IDS = "fme_nonspatial_ids"
-    FEATURE_TYPE_IDS = "fme_feature_type_ids"
-    CLOSEST = "fme_closest"
-    SPECIFIED_FEATURE = "fme_specified_feature"
-    SPECIFIED_FEATURE_LIST = "fme_specified_feature_list"
-    SPECIFIED_FEATURE_RANGE = "fme_specified_feature_range"
-    EXECUTE_SQL = "fme_execute_sql"
-    SCHEMA_FROM_QUERY = "fme_schema_from_query"
-    DB_JOIN = "fme_db_join"
-    METADATA = "fme_metadata"
-    GET_VERSION_LIST = "fme_get_version_list"
-    GET_HISTORICAL_VERSION_LIST = "fme_get_historical_version_list"
-    SPATIAL_INTERSECTION = "fme_spatial_interaction"
+    @staticmethod
+    def _generate_next_value_(name, start, count, last_values):
+        # fme_ prefix all search types
+        return f"fme_{name.lower()}"
 
-    PROP_PERSISTENT_CACHE_LOADED = "fme_prop_persistent_cache_loaded"
-    PROP_PERSISTENT_CACHE_FEATURES_LOADED = "fme_prop_persistent_cache_features_loaded"
-    PROP_PERSISTENT_CACHE_SCHEMAS_LOADED = "fme_prop_persistent_cache_schemas_loaded"
-    PROP_PERSISTENT_CACHE_VALID = "fme_prop_persistent_cache_valid"
+    ALL_FEATURES = auto()
+    ENVELOPE_INTERSECTS = auto()
+    ENVELOPE_IDS = auto()
+    NONSPATIAL_IDS = auto()
+    FEATURE_TYPE_IDS = auto()
+    CLOSEST = auto()
+    SPECIFIED_FEATURE = auto()
+    SPECIFIED_FEATURE_LIST = auto()
+    SPECIFIED_FEATURE_RANGE = auto()
+    EXECUTE_SQL = auto()
+    SCHEMA_FROM_QUERY = auto()
+    DB_JOIN = auto()
+    METADATA = auto()
+    GET_VERSION_LIST = auto()
+    GET_HISTORICAL_VERSION_LIST = auto()
+    SPATIAL_INTERSECTION = auto()
 
-    PROP_COORD_SYS_AWARE = "fme_prop_coord_sys_aware"
-    PROP_SPATIAL_INDEX = "fme_prop_spatial_index"
+    PROP_PERSISTENT_CACHE_LOADED = auto()
+    PROP_PERSISTENT_CACHE_FEATURES_LOADED = auto()
+    PROP_PERSISTENT_CACHE_SCHEMAS_LOADED = auto()
+    PROP_PERSISTENT_CACHE_VALID = auto()
+
+    PROP_COORD_SYS_AWARE = auto()
+    PROP_SPATIAL_INDEX = auto()
 
 
 class ConstraintsProperties:
