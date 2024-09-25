@@ -598,36 +598,11 @@ class ConstraintsProperties:
     For use with :meth:`fmetools.plugins.FMESimplifiedReader.setConstraints`.
     """
 
-    def __init__(
-        self,
-        *,
-        fme_all_features: Optional[List[str]] = None,
-        fme_envelope_intersects: Optional[List[str]] = None,
-        fme_envelope_ids: Optional[List[str]] = None,
-        fme_nonspatial_ids: Optional[List[str]] = None,
-        fme_feature_type_ids: Optional[List[str]] = None,
-        fme_closest: Optional[List[str]] = None,
-        fme_specified_feature: Optional[List[str]] = None,
-        fme_specified_feature_list: Optional[List[str]] = None,
-        fme_specified_feature_range: Optional[List[str]] = None,
-        fme_execute_sql: Optional[List[str]] = None,
-        fme_schema_from_query: Optional[List[str]] = None,
-        fme_db_join: Optional[List[str]] = None,
-        fme_metadata: Optional[List[str]] = None,
-        fme_get_version_list: Optional[List[str]] = None,
-        fme_get_historical_version_list: Optional[List[str]] = None,
-        fme_spatial_interaction: Optional[List[str]] = None,
-        fme_prop_persistent_cache_loaded: Optional[List[str]] = None,
-        fme_prop_persistent_cache_features_loaded: Optional[List[str]] = None,
-        fme_prop_persistent_cache_schemas_loaded: Optional[List[str]] = None,
-        fme_prop_persistent_cache_valid: Optional[List[str]] = None,
-        fme_prop_coord_sys_aware: Optional[List[str]] = None,
-        fme_prop_spatial_index: Optional[List[str]] = None,
-    ):
+    def __init__(self, **kwargs: Dict[ConstraintSearchTypes, List[str]]):
         self.properties = {
-            e.value: locals().get(e.value)
+            e.value: kwargs.get(e.value)
             for e in ConstraintSearchTypes
-            if locals().get(e.value) is not None
+            if kwargs.get(e.value) is not None
         }
 
     @property
