@@ -174,7 +174,7 @@ class FMESimplifiedReader(FMEReader):
 
         * Parses the open() parameters.
         * Checks for the debug flag in open() parameters.
-        * Calls :meth:`enhancedOpen`.
+        * Calls :meth:`enhanced_open`.
 
         If :meth:`setConstraints()` wasn't called earlier, then this method also:
         * Sets :attr:`_feature_types` using the mapping file and/or open parameters.
@@ -203,9 +203,9 @@ class FMESimplifiedReader(FMEReader):
             copy.copy(self.__class__.DIRECTIVES)
         )
 
-        return self.enhancedOpen(open_parameters)
+        return self.enhanced_open(open_parameters)
 
-    def enhancedOpen(self, open_parameters: OpenParameters) -> None:
+    def enhanced_open(self, open_parameters: OpenParameters) -> None:
         """
         Implementations shall override this method instead of :meth:`open`.
 
@@ -213,7 +213,7 @@ class FMESimplifiedReader(FMEReader):
         """
         pass
 
-    def _get_supported_constraints(self) -> ConstraintsProperties:
+    def get_supported_constraints(self) -> ConstraintsProperties:
         """
         Returns the spatial and attribute constraints which are supported by this reader.
         """
@@ -224,30 +224,30 @@ class FMESimplifiedReader(FMEReader):
         Indicates whether this reader supports spatial constraints.
 
         If this reader supports spatial constraints, they should be defined
-        by overriding :meth:`_get_supported_constraints`.
+        by overriding :meth:`get_supported_constraints`.
         """
-        return self._get_supported_constraints().constraints_supported
+        return self.get_supported_constraints().constraints_supported
 
     def getProperties(self, property_category: str) -> Optional[str]:
         """
         Return the constraint primitives supported by this reader for the property category.
         If the property was not recognized, returns ``None``.
 
-        Properties shall be defined by overriding :meth:`_get_supported_constraints`.
+        Properties shall be defined by overriding :meth:`get_supported_constraints`.
         """
         if not self.spatialEnabled():
             # if spatial constraints are not enabled, do not return anything
             return None
 
         # return an even-length flat list of property category to constraint primitive pairs
-        return self._get_supported_constraints().get_property_list(property_category)
+        return self.get_supported_constraints().get_property_list(property_category)
 
     def setConstraints(self, feature: FMEFeature) -> None:
         """
         Specifies the spatial and attribute constraints to be used when reading the data.
 
-        The method is only called when :meth:`_get_supported_constraints` declares search
-        types to support. Implementations shall override :meth:`_set_constraints` instead
+        The method is only called when :meth:`get_supported_constraints` declares search
+        types to support. Implementations shall override :meth:`set_constraints` instead
         of this method.
 
         :param feature: a constraint feature which contains the spatial and attribute query
@@ -262,18 +262,18 @@ class FMESimplifiedReader(FMEReader):
 
         search_type = feature.getAttribute(kFMERead_SearchType)
 
-        primitives = self._get_supported_constraints().get_constraint_primitives(
+        primitives = self.get_supported_constraints().get_constraint_primitives(
             search_type
         )
-        self._set_constraints(feature, search_type, primitives)
+        self.set_constraints(feature, search_type, primitives)
 
-    def _set_constraints(
+    def set_constraints(
         self, feature, search_type: str, constraint_primitives: Optional[List[str]]
     ):
         """
         Specifies the spatial and attribute constraints to be used when reading the data.
 
-        This method only needs to be implemented when :meth:`_get_supported_constraints`.
+        This method only needs to be implemented when :meth:`get_supported_constraints`.
         declares search types to support.
 
         This can be called at any time after the reader is created.
@@ -281,7 +281,7 @@ class FMESimplifiedReader(FMEReader):
         """
         pass
 
-    def _feature_types_generator(self) -> Generator[FMEFeature, None, None]:
+    def feature_types_generator(self) -> Generator[FMEFeature, None, None]:
         """
         A generator which produces features for each potential feature type from
         the reader's dataset.
@@ -293,7 +293,7 @@ class FMESimplifiedReader(FMEReader):
         """
         pass
 
-    def _schema_features_generator(self) -> Generator[FMEFeature, None, None]:
+    def schema_features_generator(self) -> Generator[FMEFeature, None, None]:
         """
         A generator which produces schema features for all requested feature types.
 
@@ -313,15 +313,15 @@ class FMESimplifiedReader(FMEReader):
         """
         Creates schema features.
 
-        Implementations should override :meth:`_feature_types_generator`
-        and :meth:`_schema_features_generator` instead of this method.
+        Implementations should override :meth:`feature_types_generator`
+        and :meth:`schema_features_generator` instead of this method.
         """
         # pylint: disable=invalid-name
         if not self._readSchema_generator:
             if self._list_feature_types:
-                self._readSchema_generator = self._feature_types_generator()
+                self._readSchema_generator = self.feature_types_generator()
             else:
-                self._readSchema_generator = self._schema_features_generator()
+                self._readSchema_generator = self.schema_features_generator()
         try:
             return next(self._readSchema_generator)
         except StopIteration:
@@ -341,13 +341,13 @@ class FMESimplifiedReader(FMEReader):
             else:
                 break
 
-    def _read_features_generator(self) -> Generator[FMEFeature, None, None]:
+    def read_features_generator(self) -> Generator[FMEFeature, None, None]:
         """
         Generator which yields data features for all requested feature types.
 
         When overriding, it is recommended to implement general read setup
-        in this method, call ``super()._read_features_generator()``,
-        and generate data features using :meth:`_data_features_for_feature_type_generator`
+        in this method, call ``super().read_features_generator()``,
+        and generate data features using :meth:`data_features_for_feature_type_generator`
         """
         for feature_type in self._feature_types:
             # when the format parameter `ATTRIBUTE_READING` has the value `DEFLINE` in the metafile
@@ -366,12 +366,12 @@ class FMESimplifiedReader(FMEReader):
                 fme_attribute_reading == "defined" and feature_type_info.user_attributes
             )
 
-            yield from self._data_features_for_feature_type_generator(
+            yield from self.data_features_for_feature_type_generator(
                 feature_type_info,
                 def_line_only,
             )
 
-    def _data_features_for_feature_type_generator(
+    def data_features_for_feature_type_generator(
         self,
         feature_type_info: FeatureTypeInfo,
         def_line_only: bool,
@@ -394,12 +394,12 @@ class FMESimplifiedReader(FMEReader):
         """
         Creates features for a feature type.
 
-        Implementations should override :meth:`_read_features_generator`
+        Implementations should override :meth:`read_features_generator`
         instead of this method.
         """
         # pylint: disable=invalid-name
         if not self._read_generator:
-            self._read_generator = self._read_features_generator()
+            self._read_generator = self.read_features_generator()
 
         try:
             return next(self._read_generator)
@@ -521,7 +521,7 @@ class FMESimplifiedWriter(FMEWriter):
         * Parses the open() parameters.
         * Checks for the debug flag in open() parameters,
           switching :attr:`log` to debug mode if present.
-        * Calls :meth:`enhancedOpen`.
+        * Calls :meth:`enhanced_open`.
 
         :param dataset: Dataset value, such as a file path or URL.
         :param parameters: List of parameters.
@@ -541,9 +541,9 @@ class FMESimplifiedWriter(FMEWriter):
             copy.copy(self.__class__.DIRECTIVES)
         )
 
-        return self.enhancedOpen(open_parameters)
+        return self.enhanced_open(open_parameters)
 
-    def enhancedOpen(self, open_parameters: OpenParameters) -> None:
+    def enhanced_open(self, open_parameters: OpenParameters) -> None:
         """
         Implementations shall override this method instead of :meth:`open`.
 
