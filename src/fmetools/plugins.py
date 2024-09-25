@@ -107,9 +107,6 @@ class FMESimplifiedReader(FMEReader):
     #: :class:`fmetools.parsers.Directives` the metafile directive configuration for the format.
     DIRECTIVES = Directives(set())
 
-    #: :class:`fmetools.parsers.ConstraintsProperties` spatial constraints supported by the format.
-    SUPPORTED_CONSTRAINTS = ConstraintsProperties()
-
     def __init__(self, reader_type_name, reader_keyword, mapping_file):
         # super() is intentionally not called. Base class disallows it.
         self._type_name = reader_type_name
@@ -218,28 +215,25 @@ class FMESimplifiedReader(FMEReader):
 
     def _get_supported_constraints(self) -> ConstraintsProperties:
         """
-        Returns the spatial and attribute constraints which can be enabled when reading the data.
-
-        If this reader supports spatial constraints, they should be defined
-        by overriding :const:`FMESimplifiedReader.SUPPORTED_CONSTRAINTS`.
+        Returns the spatial and attribute constraints which are supported by this reader.
         """
-        return self.__class__.SUPPORTED_CONSTRAINTS
+        return ConstraintsProperties()
 
     def spatialEnabled(self) -> bool:
         """
         Indicates whether this reader supports spatial constraints.
 
         If this reader supports spatial constraints, they should be defined
-        by overriding :const:`FMESimplifiedReader.SUPPORTED_CONSTRAINTS`.
+        by overriding :meth:`_get_supported_constraints`.
         """
         return self._get_supported_constraints().constraints_supported
 
     def getProperties(self, property_category: str) -> Optional[str]:
         """
         Return the constraint primitives supported by this reader for the property category.
-        If the property was not recognized, returns `None`.
+        If the property was not recognized, returns ``None``.
 
-        Properties should be defined by overriding :const:`FMESimplifiedReader.SUPPORTED_CONSTRAINTS`.
+        Properties shall be defined by overriding :meth:`_get_supported_constraints`.
         """
         if not self.spatialEnabled():
             # if spatial constraints are not enabled, do not return anything
@@ -252,9 +246,9 @@ class FMESimplifiedReader(FMEReader):
         """
         Specifies the spatial and attribute constraints to be used when reading the data.
 
-        The method is only called when :const:`FMESimplifiedReader.SUPPORTED_CONSTRAINTS`
-        defines search types to support.
-        Implementations should override :meth:`_set_constraints` instead of this method.
+        The method is only called when :meth:`_get_supported_constraints` declares search
+        types to support. Implementations shall override :meth:`_set_constraints` instead
+        of this method.
 
         :param feature: a constraint feature which contains the spatial and attribute query
         """
@@ -279,8 +273,8 @@ class FMESimplifiedReader(FMEReader):
         """
         Specifies the spatial and attribute constraints to be used when reading the data.
 
-        This method only needs to be implemented when :const:`FMESimplifiedReader.SUPPORTED_CONSTRAINTS`
-        defines search types to support.
+        This method only needs to be implemented when :meth:`_get_supported_constraints`.
+        declares search types to support.
 
         This can be called at any time after the reader is created.
         If any read is in progress then it is terminated and the next read will reflect the new constraints.
