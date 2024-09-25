@@ -46,9 +46,9 @@ from .parsers import (
 
 # These are relevant externally.
 # Reader and writer base classes are omitted because they're not intended for general use.
-# __all__ = [
-#     "FMEEnhancedTransformer",
-# ]
+__all__ = [
+    "FMEEnhancedTransformer",
+]
 
 
 class MissingDefForIncomingFeatureType(FMEException):
@@ -447,10 +447,6 @@ class FMESimplifiedReader(FMEReader):
 class FMESimplifiedWriter(FMEWriter):
     """Base class for Python-based FME writer implementations.
 
-    :cvar Set[str] FEATURE_TYPE_PARAMETERS: the names of feature type parameters.
-        Values for these parameters can be found in :attr:`_directives[<feature_type>].parameters`.
-    :cvar Directives DIRECTIVES: the metafile directive configuration by for the format.
-
     :ivar str _type_name: The name used in the following contexts:
 
         * the name of the format's .db file in the formats info folder
@@ -469,7 +465,11 @@ class FMESimplifiedWriter(FMEWriter):
     :ivar Directives _directives: Directive values populated using the mapping file.
     """
 
-    FEATURE_TYPE_PARAMETERS = {"fme_feature_operation", "fme_table_handling"}
+    #: ``Set[str]`` The names of feature type parameters.
+    #: Values for these parameters can be found in :attr:`_directives[<feature_type>].parameters`.
+    FEATURE_TYPE_PARAMETERS = {"fme_attribute_reading"}
+
+    #: :class:`fmetools.parsers.Directives` the metafile directive configuration for the format.
     DIRECTIVES = Directives(set())
 
     def __init__(self, writer_type_name, writer_keyword, mapping_file):
