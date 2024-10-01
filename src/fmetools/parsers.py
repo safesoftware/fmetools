@@ -8,7 +8,7 @@ import dataclasses
 import re
 from collections import OrderedDict, namedtuple
 from dataclasses import dataclass
-from enum import Enum, StrEnum, auto
+from enum import Enum, auto
 from typing import Iterable, Union, Set, Dict, Optional, List, Generator
 
 import fme
@@ -17,6 +17,7 @@ from fmeobjects import FMEFeature, FMESession, kFME_ReaderPropAll, kFMERead_Sear
 from pluginbuilder import FMEMappingFile  # noqa F401
 from six import string_types
 
+from . import tr
 from .guiparams import parse_gui_type
 from .utils import string_to_bool
 
@@ -157,7 +158,7 @@ def get_feature_operation(
         # if the fme_db_operation value is missing, the feature operation defaults to insert
         fme_db_operation_value = fme_db_operation_value or "INSERT"
         operation_type = fme_db_operation_value.upper()
-        if operation_type not in supported_types:
+        if operation_type not in supported_fme_db_operations:
             log.warning(
                 tr("The fme_db_operation value '%s' is not supported")
                 % fme_db_operation_value
@@ -533,7 +534,7 @@ class MappingFile:
 
             attrs = {}
             for attr_name, attr_type in raw_attrs.items():
-                attrs[attr_name] = UserAttributeInfo(*_parse_raw_attr_type(attr_type))
+                attrs[attr_name] = _parse_raw_attr_type(attr_type)
 
             def_line_info[defline_feature_type] = FeatureTypeInfo(
                 defline_feature_type, attrs, def_line_params

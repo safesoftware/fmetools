@@ -300,7 +300,7 @@ class FMESimplifiedReader(FMEReader):
         feature types should be generated. Otherwise, a single schema feature
         should be generated for each feature type in :attr:`_feature_types`.
 
-        The function :meth:`fmetools.features.build_feature` should be used to create schema features.
+        The function :meth:`fmetools.features.build_schema_feature` should be used to create schema features.
         Schema features must contain the feature type, all possible geometry
         types for the feature type, and exposed attributes for the feature.
         The attribute value for a schema attribute should be set to the expected
@@ -586,7 +586,7 @@ class FMESimplifiedWriter(FMEWriter):
         self.write_feature(feature, feature_type_info)
 
     def write_feature(
-        self, feature: FMEFeature, feature_type_info: FeatureTypeInfo
+        self, feature: FMEFeature, feature_type_info: FeatureTypeInfo, **kwargs
     ) -> None:
         """
         Write a feature to the output data set.
