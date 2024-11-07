@@ -5,7 +5,7 @@ Developers should use fmetools as a foundation to create plugins such as transfo
 It's part of the recommended toolchain for developing FME Packages to share on [FME Hub][hub].
 
 fmetools is built on top of the [Python `fmeobjects` API][fmeobjects] that's included with FME,
-and requires an FME installation with Python 3.7 or newer.
+and requires an FME installation with Python 3.8 or newer.
 
 ## Getting started
 
