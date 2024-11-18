@@ -279,6 +279,39 @@ def test_ssl_fail_reraise(no_proxy_requests_session):
             no_proxy_requests_session.get("http://example.org")
 
 
+@pytest.mark.parametrize("url,verify,expected_exc", [
+    ("http://google.ca", True, None),
+    ("https://google.ca", True, None),
+    ("https://google.ca", "", None),
+    ("https://google.ca", False, None),
+    ("https://self-signed.badssl.com/", True, SSLError),
+    ("https://self-signed.badssl.com/", False, None),
+    ("https://untrusted-root.badssl.com/", False, None),
+])
+def test_SystemCertStoreAdapter(url, verify, expected_exc):
+    """
+    Verify that SystemCertStoreAdapter works with a variety of URLs and verify settings.
+    """
+    session = FMERequestsSession(fme_session=MockFMESession([]))
+    if expected_exc:
+        with pytest.raises(expected_exc):
+            session.get(url, verify=verify)
+    else:
+        session.get(url, verify=verify)
+
+
+def test_SystemCertStoreAdapter_verify_not_persistent():
+    """
+    Ensure that disabling verification doesn't persist and
+    disable hostname verification in later requests.
+    """
+    session = FMERequestsSession(fme_session=MockFMESession([]))
+    session.get("https://wrong.host.badssl.com/", verify=False)
+    with pytest.raises(SSLError) as e:
+        session.get("https://wrong.host.badssl.com/")
+    assert "hostname mismatch" in str(e).lower()
+
+
 @pytest.mark.parametrize(
     "auth_type", ["none", "BaSiC", "digest", "ntlm", "kerberos", "foo"]
 )

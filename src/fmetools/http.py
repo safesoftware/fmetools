@@ -80,34 +80,25 @@ def _toggle_http_debug_logging(enabled):
 
 class SystemCertStoreAdapter(HTTPAdapter):
     """
-    An HTTPAdapter that makes Requests use the system certificate store
-    on Windows and Python 3 instead of the bundled root CAs from certifi.
-
-    Python 3.4+ defaults to using the Windows Certificate Store on Windows.
-    urllib3 falls back to Python's default certificate store if no CA bundle is given.
-    But Requests always passes the certifi bundle to urllib3, which this adapter undoes.
-
-    This class is a no-op for:
-    - Python 2.7, because there's no fallback on Windows without certifi.
-    - MacOS, as Python 3.6+ stopped using Apple's OpenSSL and so can't use the keychain.
-      Therefore the system certificate store as seen by Python could be empty.
-      certifi is recommended by Python maintainers.
-      See https://bugs.python.org/issue28150.
-    - Linux, because certifi from the system package manager should be an alias to the
-      system certificate store, like it is on CentOS and Debian.
+    Makes Requests use the system certificate store
+    instead of the bundled root CAs from certifi.
     """
 
-    # See also:
-    # https://github.com/psf/requests/issues/5316#issuecomment-604518757
-    # https://urllib3.readthedocs.io/en/latest/reference/index.html#urllib3.connection.VerifiedHTTPSConnection
+    def init_poolmanager(self, *args, **kwargs):
+        import ssl
+        ctx = ssl.create_default_context()
+        ctx.load_default_certs()
+        kwargs["ssl_context"] = ctx
+        super().init_poolmanager(*args, **kwargs)
+
     def cert_verify(self, conn, url, verify, cert):
-        # Let the overloaded method do all its config for urllib3:
-        # set urllib3 behaviour for `verify` flag, and resolve certifi CAs
-        super(SystemCertStoreAdapter, self).cert_verify(conn, url, verify, cert)
-        # If applicable, undo certifi config so urllib3 falls back to system cert store.
-        if sys.version_info.major > 2 and sys.platform == "win32":
-            conn.ca_certs = None
-            conn.ca_cert_dir = None
+        super().cert_verify(conn, url, verify, cert)
+        try:  # flag must be off when not verifying
+            conn.conn_kw["ssl_context"].check_hostname = bool(verify)
+        except KeyError:
+            pass  # Only have SSL context for HTTPS
+        conn.ca_certs = None
+        conn.ca_cert_dir = None
 
 
 class FMERequestsSession(PACSession):
@@ -144,9 +135,9 @@ class FMERequestsSession(PACSession):
             Defaults to a new :class:`~fmeobjects.FMESession` instance.
         """
         super(FMERequestsSession, self).__init__()
-        adapter = SystemCertStoreAdapter()
-        self.mount("http://", adapter)
-        self.mount("https://", adapter)
+        if sys.platform == "win32":  # Use the system certificate store on Windows.
+            for scheme in ("http://", "https://"):
+                self.mount(scheme, SystemCertStoreAdapter())
 
         self._log_prefix = self.__class__.__name__
         self._log = log or get_configured_logger(self._log_prefix)

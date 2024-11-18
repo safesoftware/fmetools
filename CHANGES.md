@@ -1,5 +1,10 @@
 # fmetools changes
 
+## 0.10.2
+
+* FMERequestsSession: Fix use of Windows Certificate Store in
+  FME 2024.1.2+ and Requests 2.32.3+.
+
 ## 0.10.1
 
 * Use `fme.BaseTransformer` if it exists.
