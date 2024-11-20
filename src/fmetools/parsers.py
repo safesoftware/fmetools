@@ -562,7 +562,6 @@ class MappingFile:
 class ConstraintSearchTypes(Enum):
     """Potential search types supported by :meth:`fmetools.plugins.FMESimplifiedReader.setConstraints`."""
 
-    @staticmethod
     def _generate_next_value_(name, start, count, last_values):
         # fme_ prefix all search types
         return f"fme_{name.lower()}"
