@@ -1,9 +1,12 @@
 # fmetools changes
 
+## 0.10.4
+
+* <Placeholder>: Reader Writer Improvements
+
 ## 0.10.3
 
 * Updated docstring references to `fmetools._deprecated.FMEBaseTransformer.*` to link to new `fme.BaseTransformer` documentation.
-
 
 ## 0.10.2
 
