@@ -12,7 +12,7 @@ from __future__ import annotations
 import copy
 import logging
 import warnings
-from typing import Optional, Generator, List
+from typing import Optional, Generator, List, Dict
 
 from . import tr
 
@@ -264,11 +264,23 @@ class FMESimplifiedReader(FMEReader):
         search_type = feature.getAttribute(kFMERead_SearchType)
 
         primitives = self.supported_constraints.get_constraint_primitives(search_type)
-        self.set_constraints(feature, search_type, primitives)
+        primitive_values = {}
 
-    def set_constraints(
-        self, feature, search_type: str, constraint_primitives: Optional[List[str]]
-    ):
+        for primitive_name in primitives:
+            primitive_value = feature.getAttribute(primitive_name)
+            if primitive_name == "fme_feature_type" and not primitive_value:
+                primitive_value = []
+            elif primitive_name == "fme_where" and primitive_value is None:
+                # fme_where must be defined
+                continue
+            elif primitive_name == "fme_type" and not isinstance(primitive_value, list):
+                # fme_type values only used if the value is a list
+                continue
+            primitive_values[primitive_name] = primitive_value
+
+        self.set_constraints(feature, search_type, primitive_values)
+
+    def set_constraints(self, feature, search_type: str, constraint_primitives: Dict):
         """
         Specifies the spatial and attribute constraints to be used when reading the data.
 
@@ -277,6 +289,11 @@ class FMESimplifiedReader(FMEReader):
 
         This can be called at any time after the reader is created.
         If any read is in progress then it is terminated and the next read will reflect the new constraints.
+
+        Some constraint primitives are pre-processed:
+        - ``fme_feature_type`` defaults to an empty list
+        - ``fme_where`` is only included if it has a valid WHERE clause
+        - ``fme_type`` is only included if it was provided as a list attribute
         """
         pass
 
