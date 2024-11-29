@@ -566,6 +566,9 @@ class ConstraintSearchTypes(Enum):
         # fme_ prefix all search types
         return f"fme_{name.lower()}"
 
+    SEARCH_TYPE = auto()
+
+    ALL_SCHEMAS = auto()
     ALL_FEATURES = auto()
     ENVELOPE_INTERSECTS = auto()
     ENVELOPE_IDS = auto()
@@ -604,6 +607,14 @@ class ConstraintsProperties:
             for e in ConstraintSearchTypes
             if kwargs.get(e.value) is not None
         }
+        # if not specified, populate the fme_search_type property with a list of the other supported search types
+        if ConstraintSearchTypes.SEARCH_TYPE.value not in self.properties:
+            # ignore fme_prop_* as search types to support
+            self.properties[ConstraintSearchTypes.SEARCH_TYPE.value] = [
+                search_type
+                for search_type in self.properties
+                if not search_type.startswith("fme_prop_")
+            ]
 
     @property
     def constraints_supported(self):
