@@ -365,6 +365,16 @@ class FMESimplifiedReader(FMEReader):
         in this method, call ``super().read_features_generator()``,
         and generate data features using :meth:`data_features_for_feature_type_generator`
         """
+        if not self._using_constraints and len(self._feature_types) == 0:
+            # reader was called without explicit feature types (e.g. FeatureReader, DI)
+            # in setConstraints() mode, read() can also be called without def lines,
+            # but the format implementation is responsible for handling this case
+            # (DB readers should proceed as-is, non-DB readers should assume all feature types
+            # were requested)
+            self._feature_types = [
+                feature.getFeatureType() for feature in self.feature_types_generator()
+            ]
+
         for feature_type in self._feature_types:
             # when the format parameter `ATTRIBUTE_READING` has the value `DEFLINE` in the metafile
             # and `fme_attribute_reading` is set to `defined`, the format should only set
