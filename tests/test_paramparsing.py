@@ -67,6 +67,14 @@ def test_system_transformer(creator):
     assert t["GEOM"]  # Enabled again
 
 
+@pytest.mark.xfail(fmeobjects.FME_BUILD_NUM < 25158, reason="FMEFORM-32592")
+def test_empty_optional_int():
+    t = TransformerParameterParser("VertexCreator", version=5)
+    assert t["ZVAL"] == ""  #  OPTIONAL FLOAT_OR_ATTR, empty default
+    # Before b25158:
+    # ValueError: parameter value does not match the parameter type
+
+
 def test_params_from_feature(creator):
     # Get parameters from an input feature.
     # Creator doesn't use attr prefixes. Provide list of internal param attr names.
