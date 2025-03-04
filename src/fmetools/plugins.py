@@ -9,16 +9,23 @@ Transformer developers should subclass it to implement their own transformers.
 
 from __future__ import annotations
 
+import copy
 import logging
 import warnings
-from typing import Optional, Generator
+from typing import Optional, Generator, List, Dict
+
+from . import tr
 
 try:
     from fme import BaseTransformer as FMEBaseTransformer
 except ImportError:  # Support < FME 2024.2
     from ._deprecated import FMEBaseTransformer
 
-from fmeobjects import FMEFeature
+from fmeobjects import (
+    FMEFeature,
+    FMEException,
+    kFMERead_SearchType,
+)
 
 try:
     from fmeobjects import FME_SUPPORT_FEATURE_TABLE_SHIM
@@ -28,13 +35,36 @@ except ImportError:  # Support < FME 2022.0 b22235
 from pluginbuilder import FMEReader, FMEWriter
 
 from .logfile import get_configured_logger
-from .parsers import MappingFile, OpenParameters
+from .parsers import (
+    OpenParameters,
+    MappingFile,
+    Directives,
+    get_template_feature_type,
+    FeatureTypeInfo,
+    ConstraintsProperties,
+)
 
 # These are relevant externally.
 # Reader and writer base classes are omitted because they're not intended for general use.
 __all__ = [
     "FMEEnhancedTransformer",
 ]
+
+
+class MissingDefForIncomingFeatureType(FMEException):
+    """The def line could not be resolved."""
+
+    def __init__(self, log_prefix: str, feature_type: str):
+        """
+        :param log_prefix: The prefix for the exception's message.
+            e.g. ``[format name] [direction]``.
+        :param feature_type: Feature type for the DEF line.
+        """
+        message = tr(
+            "{prefix}: No DEF line could be found for feature type '{feature_type}'. If you are using dynamic schemas, ensure that the fme_feature_type attribute exists on the incoming feature and corresponds to a valid feature type definition"
+        )
+
+        super().__init__(message.format(prefix=log_prefix, feature_type=feature_type))
 
 
 class FMESimplifiedReader(FMEReader):
@@ -56,6 +86,9 @@ class FMESimplifiedReader(FMEReader):
     :ivar list[str] _feature_types: Ordered list of feature type names.
     :ivar bool _list_feature_types: True if the reader was launched to produce
         a list of feature types.
+    :ivar dict[str, FeatureTypeInfo] _feature_type_info: Dict of feature type names
+        to corresponding def line information (user attributes and parameters).
+    :ivar Directives _directives: Directive values populated using the mapping file.
     :ivar _readSchema_generator:
         Use this member to store any generator used for :meth:`readSchema`.
        Doing so means it'll be explicitly closed for you in :meth:`close`.
@@ -66,6 +99,13 @@ class FMESimplifiedReader(FMEReader):
         This means :meth:`read` can just check this member for `None` to determine
         whether it needs to re-instantiate its generator to honour new settings.
     """
+
+    #: ``Set[str]`` The names of feature type parameters.
+    #: Values for these parameters can be found in :attr:`_directives[<feature_type>].parameters`.
+    FEATURE_TYPE_PARAMETERS = {"fme_attribute_reading"}
+
+    #: :class:`fmetools.parsers.Directives` the metafile directive configuration for the format.
+    DIRECTIVES = Directives(set())
 
     def __init__(self, reader_type_name, reader_keyword, mapping_file):
         # super() is intentionally not called. Base class disallows it.
@@ -84,6 +124,9 @@ class FMESimplifiedReader(FMEReader):
 
         self._list_feature_types = False
 
+        self._feature_type_info = {}
+        self._directives = {}
+
         self._readSchema_generator, self._read_generator = None, None
 
     @property
@@ -95,7 +138,7 @@ class FMESimplifiedReader(FMEReader):
         return self._log
 
     @property
-    def debug(self):
+    def debug(self) -> bool:
         return self._debug
 
     @debug.setter
@@ -107,38 +150,37 @@ class FMESimplifiedReader(FMEReader):
             self._debug = new_debug
             self._log = get_configured_logger(self.__class__.__name__, self._debug)
 
-    def hasSupportFor(self, support_type) -> bool:
+    def hasSupportFor(self, support_type: int) -> bool:
         """
         Return whether this reader supports a certain type. Currently,
-        the only supported type is fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM.
+        the only supported type is :const:`fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM`.
 
-        When a reader supports fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM,
+        When a reader supports :const:`fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM`,
         a feature table object will be created from features produced by this reader.
         This will allow for significant performance gains if the reader will output
         a large number of features which share the same schema.
-        To declare feature table shim support, the reader's metafile SOURCE_SETTINGS
-        must also contain the line 'DEFAULT_VALUE CREATE_FEATURE_TABLES_FROM_DATA Yes'.
+        To declare feature table shim support, the reader's metafile ``SOURCE_SETTINGS``
+        must also contain the line ``DEFAULT_VALUE CREATE_FEATURE_TABLES_FROM_DATA Yes``.
 
-        :param int support_type: support type passed in by Workbench infrastructure
+        :param support_type: support type passed in by Workbench infrastructure
         :returns: True if the passed in support type is supported.
-        :rtype: bool
         """
         return False
 
-    def open(self, dataset_name, parameters) -> None:
+    def open(self, dataset_name: str, parameters: List[str]) -> None:
         """Open the dataset for reading.
 
         Does these things for you:
 
         * Parses the open() parameters.
         * Checks for the debug flag in open() parameters.
-        * Calls :meth:`enhancedOpen`.
+        * Calls :meth:`enhanced_open`.
 
-        If setConstraints() wasn't called earlier, then this method also:
-        * Sets `_feature_types` using the mapping file and/or open parameters.
+        If :meth:`setConstraints()` wasn't called earlier, then this method also:
+        * Sets :attr:`_feature_types` using the mapping file and/or open parameters.
 
-        :param str dataset_name: Name of the dataset.
-        :param list[str] parameters: List of parameters.
+        :param dataset_name: Name of the dataset.
+        :param parameters: List of parameters.
         """
 
         # If not using setConstraints(), then get some basics from the mapping file.
@@ -154,21 +196,62 @@ class FMESimplifiedReader(FMEReader):
             "RETRIEVE_ALL_TABLE_NAMES"
         )
 
-        return self.enhancedOpen(open_parameters)
+        self._feature_type_info = self._mapping_file.parse_def_lines(
+            self.__class__.FEATURE_TYPE_PARAMETERS
+        )
+        self._directives = self._mapping_file.get_directives(
+            copy.copy(self.__class__.DIRECTIVES)
+        )
 
-    def enhancedOpen(self, open_parameters) -> None:
+        return self.enhanced_open(open_parameters)
+
+    def enhanced_open(self, open_parameters: OpenParameters) -> None:
         """
         Implementations shall override this method instead of :meth:`open`.
 
-        :param OpenParameters open_parameters: Parameters for the reader.
+        :param open_parameters: Parameters for the reader.
         """
         pass
 
-    def setConstraints(self, feature) -> None:
+    @property
+    def supported_constraints(self) -> ConstraintsProperties:
         """
-        Reset any existing feature generator that represents the state for :meth:`read`.
+        Returns the spatial and attribute constraints which are supported by this reader.
+        """
+        return ConstraintsProperties()
 
-        :param FMEFeature feature: The constraint feature.
+    def spatialEnabled(self) -> bool:
+        """
+        Indicates whether this reader supports spatial constraints.
+
+        If this reader supports spatial constraints, they should be defined
+        by overriding :attr:`supported_constraints`.
+        """
+        return self.supported_constraints.constraints_supported
+
+    def getProperties(self, property_category: str) -> Optional[str]:
+        """
+        Return the constraint primitives supported by this reader for the property category.
+        If the property was not recognized, returns ``None``.
+
+        Properties shall be defined by overriding :attr:`supported_constraints`.
+        """
+        if not self.spatialEnabled():
+            # if spatial constraints are not enabled, do not return anything
+            return None
+
+        # return an even-length flat list of property category to constraint primitive pairs
+        return self.supported_constraints.get_property_list(property_category)
+
+    def setConstraints(self, feature: FMEFeature) -> None:
+        """
+        Specifies the spatial and attribute constraints to be used when reading the data.
+
+        The method is only called when :attr:`supported_constraints` declares search
+        types to support. Implementations shall override :meth:`set_constraints` instead
+        of this method.
+
+        :param feature: a constraint feature which contains the spatial and attribute query
         """
         assert isinstance(feature, FMEFeature)
         self._using_constraints = True
@@ -178,7 +261,43 @@ class FMESimplifiedReader(FMEReader):
             self._read_generator.close()
             self._read_generator = None
 
-    def _feature_types_generator(self) -> Generator[FMEFeature]:
+        search_type = feature.getAttribute(kFMERead_SearchType)
+
+        primitives = self.supported_constraints.get_constraint_primitives(search_type)
+        primitive_values = {}
+
+        for primitive_name in primitives:
+            primitive_value = feature.getAttribute(primitive_name)
+            if primitive_name == "fme_feature_type" and not primitive_value:
+                primitive_value = []
+            elif primitive_name == "fme_where" and primitive_value is None:
+                # fme_where must be defined
+                continue
+            elif primitive_name == "fme_type" and not isinstance(primitive_value, list):
+                # fme_type values only used if the value is a list
+                continue
+            primitive_values[primitive_name] = primitive_value
+
+        self.set_constraints(feature, search_type, primitive_values)
+
+    def set_constraints(self, feature, search_type: str, constraint_primitives: Dict):
+        """
+        Specifies the spatial and attribute constraints to be used when reading the data.
+
+        This method only needs to be implemented when :attr:`supported_constraints`
+        declares search types to support.
+
+        This can be called at any time after the reader is created.
+        If any read is in progress then it is terminated and the next read will reflect the new constraints.
+
+        Some constraint primitives are pre-processed:
+        - ``fme_feature_type`` defaults to an empty list
+        - ``fme_where`` is only included if it has a valid WHERE clause
+        - ``fme_type`` is only included if it was provided as a list attribute
+        """
+        pass
+
+    def feature_types_generator(self) -> Generator[FMEFeature, None, None]:
         """
         A generator which produces features for each potential feature type from
         the reader's dataset.
@@ -190,15 +309,15 @@ class FMESimplifiedReader(FMEReader):
         """
         pass
 
-    def _schema_features_generator(self) -> Generator[FMEFeature]:
+    def schema_features_generator(self) -> Generator[FMEFeature, None, None]:
         """
         A generator which produces schema features for all requested feature types.
 
-        When `self._feature_types` is empty, schema features for all possible
+        When :attr:`_feature_types` is empty, schema features for all possible
         feature types should be generated. Otherwise, a single schema feature
-        should be generated for each feature type in `self._feature_types`.
+        should be generated for each feature type in :attr:`_feature_types`.
 
-        The function :meth:`features.build_feature` should be used to create schema features.
+        The function :meth:`fmetools.features.build_schema_feature` should be used to create schema features.
         Schema features must contain the feature type, all possible geometry
         types for the feature type, and exposed attributes for the feature.
         The attribute value for a schema attribute should be set to the expected
@@ -210,21 +329,21 @@ class FMESimplifiedReader(FMEReader):
         """
         Creates schema features.
 
-        Implementations should override :meth:`_feature_types_generator`
-        and :meth:`_schema_features_generator` instead of this method.
+        Implementations should override :meth:`feature_types_generator`
+        and :meth:`schema_features_generator` instead of this method.
         """
         # pylint: disable=invalid-name
         if not self._readSchema_generator:
             if self._list_feature_types:
-                self._readSchema_generator = self._feature_types_generator()
+                self._readSchema_generator = self.feature_types_generator()
             else:
-                self._readSchema_generator = self._schema_features_generator()
+                self._readSchema_generator = self.schema_features_generator()
         try:
             return next(self._readSchema_generator)
         except StopIteration:
             return None
 
-    def readSchemaGenerator(self) -> Generator[FMEFeature]:
+    def readSchemaGenerator(self) -> Generator[FMEFeature, None, None]:
         """
         Generator form of :meth:`readSchema`.
 
@@ -238,11 +357,62 @@ class FMESimplifiedReader(FMEReader):
             else:
                 break
 
-    def _read_features_generator(self) -> Generator[FMEFeature]:
+    def read_features_generator(self) -> Generator[FMEFeature, None, None]:
         """
         Generator which yields data features for all requested feature types.
 
+        When overriding, it is recommended to implement general read setup
+        in this method, call ``super().read_features_generator()``,
+        and generate data features using :meth:`data_features_for_feature_type_generator`
+        """
+        if not self._using_constraints and len(self._feature_types) == 0:
+            # reader was called without explicit feature types (e.g. FeatureReader, DI)
+            # in setConstraints() mode, read() can also be called without def lines,
+            # but the format implementation is responsible for handling this case
+            # (DB readers should proceed as-is, non-DB readers should assume all feature types
+            # were requested)
+            self._feature_types = [
+                feature.getFeatureType() for feature in self.feature_types_generator()
+            ]
+
+        for feature_type in self._feature_types:
+            # when the format parameter `ATTRIBUTE_READING` has the value `DEFLINE` in the metafile
+            # and `fme_attribute_reading` is set to `defined`, the format should only set
+            # format attributes and user attributes specified on the defline
+            feature_type_info = self._feature_type_info.get(
+                feature_type, FeatureTypeInfo(feature_type)
+            )
+            fme_attribute_reading = feature_type_info.parameters.get(
+                "fme_attribute_reading", "defined"
+            )
+
+            # an exception occurs in the FeatureReader/Data Inspector case, where user attributes are not
+            # explicitly specified
+            def_line_only = (
+                fme_attribute_reading == "defined" and feature_type_info.user_attributes
+            )
+
+            yield from self.data_features_for_feature_type_generator(
+                feature_type_info,
+                def_line_only,
+            )
+
+    def data_features_for_feature_type_generator(
+        self,
+        feature_type_info: FeatureTypeInfo,
+        def_line_only: bool,
+        **kwargs,
+    ) -> Generator[FMEFeature, None, None]:
+        """
+        Generator which yields all data features for the requested feature type.
+
         The function :meth:`features.build_feature` should be used to create data features.
+
+        The ``def_line_only`` parameter should only be honoured if
+        the metafile contains the line ``FORMAT_PARAMETER ATTRIBUTE_READING DEFLINE``.
+
+        :param feature_type_info: name, user attributes, and parameters for the feature type
+        :param def_line_only: True if only the output attributes on the user schema should be set on the output feature
         """
         pass
 
@@ -250,24 +420,24 @@ class FMESimplifiedReader(FMEReader):
         """
         Creates features for a feature type.
 
-        Implementations should override :meth:`_read_features_generator`
+        Implementations should override :meth:`read_features_generator`
         instead of this method.
         """
         # pylint: disable=invalid-name
         if not self._read_generator:
-            self._read_generator = self._read_features_generator()
+            self._read_generator = self.read_features_generator()
 
         try:
             return next(self._read_generator)
         except StopIteration:
             return None
 
-    def readGenerator(self) -> Generator[FMEFeature]:
+    def readGenerator(self) -> Generator[FMEFeature, None, None]:
         """
         Generator form of :meth:`read`.
 
         Simplifies some logic in tests by eliminating the need to
-        check whether the return value is `None`.
+        check whether the return value is ``None``.
         """
         while True:
             feature = self.read()
@@ -316,7 +486,17 @@ class FMESimplifiedWriter(FMEWriter):
     :ivar bool debug: Toggle for debug mode.
     :ivar bool _aborted: True if :meth:`abort` was called.
     :ivar list[str] _feature_types: Ordered list of feature types.
+    :ivar dict[str, FeatureTypeInfo] _feature_type_info: Dict of feature type names
+        to corresponding def line information (user attributes and parameters).
+    :ivar Directives _directives: Directive values populated using the mapping file.
     """
+
+    #: ``Set[str]`` The names of feature type parameters.
+    #: Values for these parameters can be found in :attr:`_directives[<feature_type>].parameters`.
+    FEATURE_TYPE_PARAMETERS = {"fme_attribute_reading"}
+
+    #: :class:`fmetools.parsers.Directives` the metafile directive configuration for the format.
+    DIRECTIVES = Directives(set())
 
     def __init__(self, writer_type_name, writer_keyword, mapping_file):
         # super() is intentionally not called. Base class disallows it.
@@ -332,10 +512,13 @@ class FMESimplifiedWriter(FMEWriter):
         self._aborted = False
         self._feature_types = []
 
+        self._feature_type_info = {}
+        self._directives = {}
+
     @property
-    def log(self):
+    def log(self) -> logging.LoggerAdapter:
         """
-        Provides access to the FME log
+        Provides access to the FME log.
         """
         if not self._log:
             # Instantiate a logger with the appropriate debug mode.
@@ -343,7 +526,7 @@ class FMESimplifiedWriter(FMEWriter):
         return self._log
 
     @property
-    def debug(self):
+    def debug(self) -> bool:
         return self._debug
 
     @debug.setter
@@ -355,19 +538,19 @@ class FMESimplifiedWriter(FMEWriter):
             self._debug = new_debug
             self._log = get_configured_logger(self.__class__.__name__, self._debug)
 
-    def open(self, dataset, parameters):
+    def open(self, dataset: str, parameters: List[str]) -> None:
         """Open the dataset for writing.
 
         Does these things for you:
 
-        * Sets `_feature_types` using the mapping file and/or open parameters.
+        * Sets :attr:`_feature_types` using the mapping file and/or open parameters.
         * Parses the open() parameters.
         * Checks for the debug flag in open() parameters,
-          switching `_logger` to debug mode if present.
-        * Calls :meth:`enhancedOpen`.
+          switching :attr:`log` to debug mode if present.
+        * Calls :meth:`enhanced_open`.
 
-        :param str dataset: Dataset value, such as a file path or URL.
-        :param list[str] parameters: List of parameters.
+        :param dataset: Dataset value, such as a file path or URL.
+        :param parameters: List of parameters.
         """
 
         self._feature_types = self._mapping_file.get_feature_types(parameters)
@@ -377,20 +560,70 @@ class FMESimplifiedWriter(FMEWriter):
         if open_parameters.get("FME_DEBUG"):
             self.debug = True
 
-        return self.enhancedOpen(open_parameters)
+        self._feature_type_info = self._mapping_file.parse_def_lines(
+            self.__class__.FEATURE_TYPE_PARAMETERS
+        )
+        self._directives = self._mapping_file.get_directives(
+            copy.copy(self.__class__.DIRECTIVES)
+        )
 
-    def enhancedOpen(self, open_parameters):
+        return self.enhanced_open(open_parameters)
+
+    def enhanced_open(self, open_parameters: OpenParameters) -> None:
         """
         Implementations shall override this method instead of :meth:`open`.
 
-        :param OpenParameters open_parameters: Parameters for the writer.
+        :param open_parameters: Parameters for the writer.
         """
         pass
 
-    def abort(self):
+    def write(self, feature: FMEFeature) -> None:
+        """
+        Write the input feature to the output dataset.
+
+        If overriding, it is recommended to implement feature type-specific setup
+        in this method, call `super().write()`, then implement feature serialization
+        using :meth:`write_feature`.
+
+        There is no guarantee that this method will be called with all the features
+        for one feature type before moving onto a different feature type.
+        """
+
+        feature_type = feature.getFeatureType()
+
+        # get the user attributes and parameters for the feature
+        # under certain circumstances (e.g. feature fanout mode),
+        # the feature type declared on the DEF line will not match the
+        # feature type actually found on the feature
+        try:
+            feature_type_info = self._feature_type_info[feature_type]
+        except KeyError as e:
+            def_feature_type = get_template_feature_type(feature)
+            if def_feature_type not in self._feature_type_info:
+                raise MissingDefForIncomingFeatureType(
+                    self.log.name, feature_type
+                ) from e
+            def_line_info = self._feature_type_info[def_feature_type]
+            feature_type_info = FeatureTypeInfo(
+                feature.getFeatureType(),
+                def_line_info.user_attributes,
+                def_line_info.parameters,
+            )
+
+        self.write_feature(feature, feature_type_info)
+
+    def write_feature(
+        self, feature: FMEFeature, feature_type_info: FeatureTypeInfo, **kwargs
+    ) -> None:
+        """
+        Write a feature to the output data set.
+        """
+        pass
+
+    def abort(self) -> None:
         self._aborted = True
 
-    def close(self):
+    def close(self) -> None:
         """
         This default implementation does nothing.
 

@@ -23,6 +23,12 @@ class MockReader(FMESimplifiedReader):
 def test_reader():
     """Sanity check for reader instantiation and various lifecycle calls."""
     with patch("pluginbuilder.FMEMappingFile") as mf, MockReader("T", "K", mf) as rdr:
+
+        def startIteration():
+            mf.nextLineWithFilter.side_effect = [["foo", "bar"], None]
+
+        mf.startIteration.side_effect = startIteration
+
         rdr.open("foobar", [])
         rdr.setConstraints(FMEFeature())
         rdr.open("foobar", [])
@@ -45,6 +51,12 @@ class MockWriter(FMESimplifiedWriter):
 def test_writer():
     """Sanity check for writer instantiation and various lifecycle calls."""
     with patch("pluginbuilder.FMEMappingFile") as mf, MockWriter("T", "K", mf) as wtr:
+
+        def startIteration():
+            mf.nextLineWithFilter.side_effect = [["foo", "bar"], None]
+
+        mf.startIteration.side_effect = startIteration
+
         wtr.open("foobar", [])
         wtr.write(FMEFeature())
         wtr.abort()

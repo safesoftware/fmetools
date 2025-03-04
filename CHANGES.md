@@ -1,9 +1,12 @@
 # fmetools changes
 
+## 0.11.0
+
+* Update base classes for `fmetools.plugins.FMESimplifiedReader`, `fmetools.plugins.FMESimplifiedWriter`, and `fmetools.parsers.MappingFile`.
+
 ## 0.10.3
 
 * Updated docstring references to `fmetools._deprecated.FMEBaseTransformer.*` to link to new `fme.BaseTransformer` documentation.
-
 
 ## 0.10.2
 
