@@ -1,8 +1,8 @@
 # fmetools changes
 
-## 0.10.4
+## 0.11.0
 
-* <Placeholder>: Reader Writer Improvements
+* Update base classes for `fmetools.plugins.FMESimplifiedReader`, `fmetools.plugins.FMESimplifiedWriter`, and `fmetools.parsers.MappingFile`.
 
 ## 0.10.3
 
