@@ -49,7 +49,7 @@ def _parse_raw_attr_type(raw_attr_type: str) -> "UserAttributeInfo":
     match = re.match(attr_pattern, raw_attr_type)
     if match is None:
         # couldn't parse (this shouldn't happen), return the entire type as the base attribute type
-        return UserAttributeInfo(raw_attr_type, None, None, None)
+        return UserAttributeInfo(raw_attr_type)
 
     width = match.group("width")
     if width is not None:
