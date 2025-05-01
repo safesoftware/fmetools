@@ -48,8 +48,8 @@ def _parse_raw_attr_type(raw_attr_type: str) -> "UserAttributeInfo":
     attr_pattern = r"(?P<attr_type>\w+)(\((?P<width>\d+)(,(?P<precision>\d+))?\))?(,(?P<attr_index>\w+))?"
     match = re.match(attr_pattern, raw_attr_type)
     if match is None:
-        # couldn't parse (this shouldn't happen), return the entire type the base attribute type
-        return UserAttributeInfo(raw_attr_type)
+        # couldn't parse (this shouldn't happen), return the entire type as the base attribute type
+        return UserAttributeInfo(raw_attr_type, None, None, None)
 
     width = match.group("width")
     if width is not None:
@@ -170,7 +170,7 @@ def get_feature_operation(
         # an fme_db_operation value exists on the feature, but it does not agree
         # with the feature operation set on the writer
         # the def line is overspecified
-        self._log.warning(
+        log.warning(
             tr(
                 "The fme_db_operation attribute value '{db_op_val}' on feature "
                 "conflicts with Feature Operation '{param_val}'"
