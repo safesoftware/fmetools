@@ -86,6 +86,7 @@ class SystemCertStoreAdapter(HTTPAdapter):
 
     def init_poolmanager(self, *args, **kwargs):
         import ssl
+
         ctx = ssl.create_default_context()
         ctx.load_default_certs()
         kwargs["ssl_context"] = ctx

@@ -259,9 +259,9 @@ SearchEnvelope = namedtuple("SearchEnvelope", "min_x min_y max_x max_y coordsys"
 @dataclass
 class UserAttributeInfo:
     attr_type: str
-    attr_width: Optional[int]
-    attr_precision: Optional[int]
-    attr_index: Optional[str]
+    attr_width: Optional[int] = None
+    attr_precision: Optional[int] = None
+    attr_index: Optional[str] = None
 
 
 @dataclass

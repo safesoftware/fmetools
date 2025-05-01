@@ -279,15 +279,18 @@ def test_ssl_fail_reraise(no_proxy_requests_session):
             no_proxy_requests_session.get("http://example.org")
 
 
-@pytest.mark.parametrize("url,verify,expected_exc", [
-    ("http://google.ca", True, None),
-    ("https://google.ca", True, None),
-    ("https://google.ca", "", None),
-    ("https://google.ca", False, None),
-    ("https://self-signed.badssl.com/", True, SSLError),
-    ("https://self-signed.badssl.com/", False, None),
-    ("https://untrusted-root.badssl.com/", False, None),
-])
+@pytest.mark.parametrize(
+    "url,verify,expected_exc",
+    [
+        ("http://google.ca", True, None),
+        ("https://google.ca", True, None),
+        ("https://google.ca", "", None),
+        ("https://google.ca", False, None),
+        ("https://self-signed.badssl.com/", True, SSLError),
+        ("https://self-signed.badssl.com/", False, None),
+        ("https://untrusted-root.badssl.com/", False, None),
+    ],
+)
 def test_SystemCertStoreAdapter(url, verify, expected_exc):
     """
     Verify that SystemCertStoreAdapter works with a variety of URLs and verify settings.
