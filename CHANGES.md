@@ -1,5 +1,9 @@
 # fmetools changes
 
+## 0.11.1
+
+* Improve DEF line parameter parsing.
+
 ## 0.11.0
 
 * Update base classes for `fmetools.plugins.FMESimplifiedReader`, `fmetools.plugins.FMESimplifiedWriter`, and `fmetools.parsers.MappingFile`.

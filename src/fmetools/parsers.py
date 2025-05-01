@@ -48,7 +48,7 @@ def _parse_raw_attr_type(raw_attr_type: str) -> "UserAttributeInfo":
     attr_pattern = r"(?P<attr_type>\w+)(\((?P<width>\d+)(,(?P<precision>\d+))?\))?(,(?P<attr_index>\w+))?"
     match = re.match(attr_pattern, raw_attr_type)
     if match is None:
-        # couldn't parse (this shouldn't happen), return the entire type the base attribute type
+        # couldn't parse (this shouldn't happen), return the entire type as the base attribute type
         return UserAttributeInfo(raw_attr_type)
 
     width = match.group("width")
@@ -170,7 +170,7 @@ def get_feature_operation(
         # an fme_db_operation value exists on the feature, but it does not agree
         # with the feature operation set on the writer
         # the def line is overspecified
-        self._log.warning(
+        log.warning(
             tr(
                 "The fme_db_operation attribute value '{db_op_val}' on feature "
                 "conflicts with Feature Operation '{param_val}'"
@@ -259,9 +259,9 @@ SearchEnvelope = namedtuple("SearchEnvelope", "min_x min_y max_x max_y coordsys"
 @dataclass
 class UserAttributeInfo:
     attr_type: str
-    attr_width: Optional[int]
-    attr_precision: Optional[int]
-    attr_index: Optional[str]
+    attr_width: Optional[int] = None
+    attr_precision: Optional[int] = None
+    attr_index: Optional[str] = None
 
 
 @dataclass
