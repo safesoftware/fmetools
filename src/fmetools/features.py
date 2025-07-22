@@ -116,12 +116,14 @@ def get_attributes_with_prefix(
     :param default: If the attribute isn't present, then use this value.
     :param pop: Whether the attributes are to be deleted from feature.
     """
-    return get_attributes(
+    attrs = get_attributes(
         feature,
         filter(lambda x: x.startswith(prefix), feature.getAllAttributeNames()),
-        default=default,
-        pop=pop,
+        default=default
     )
+    if pop:
+        feature.removeAttrsWithPrefix(prefix)
+    return attrs
 
 
 def build_feature(

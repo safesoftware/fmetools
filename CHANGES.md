@@ -1,5 +1,9 @@
 # fmetools changes
 
+## dev
+
+* Improve performance of `fmetools.features.get_attributes_with_prefix()`.
+
 ## 0.11.1
 
 * Improve DEF line parameter parsing.
