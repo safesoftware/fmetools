@@ -61,6 +61,13 @@ class TransformerParameterParser:
        values of parameters that change between features, if any.
     """
 
+    xformer: FMETransformer
+    """Instance for parameter value parsing."""
+    transformer_name: str
+    """Unqualified name of the transformer."""
+    transformer_fpkg: Optional[str]
+    """Empty for non-packaged transformers."""
+
     def __init__(
         self,
         transformer_name: str,
@@ -77,10 +84,6 @@ class TransformerParameterParser:
             If not provided, then the latest version is loaded.
         :raises ValueError: If FME cannot find the specified transformer.
         """
-        self.xformer: FMETransformer
-        self.transformer_name: str
-        self.transformer_fpkg: Optional[str]
-
         # If the given name is foo.bar.baz, then first try using foo.bar as
         # the fmePackageName argument, for better performance.
         # Fully-qualified package name is still required.
