@@ -28,10 +28,13 @@ def test_system_transformer(creator):
     assert t["NUM"] == 1  # INTEGER type gives int
     assert t["CRE_ATTR"] == "_creation_instance"
     assert t.is_required("NUM")
-    assert not t.is_required("COORDSYS")
+
+    assert not t.is_required("COORDSYS")  # Enabled but optional
+    assert t["COORDSYS"] == ""  # Default value is empty string
     # Set and get a param
     t.set("COORDSYS", "LL84")
     assert t["COORDSYS"] == "LL84"
+
     # Set and get a param that doesn't exist
     t.set("foo", "bar")
     with pytest.raises(KeyError):
@@ -42,29 +45,47 @@ def test_system_transformer(creator):
 
     # Invalid type for name
     with pytest.raises(TypeError):
-        t.set(1, 1)
+        t.set(1, 1)  # noqa
 
     # This doesn't clear default values
     assert t.set_all({})
     assert t["NUM"] == 1
+
+    # Unparsed value being an int is okay if the param type is also int
+    for val in [2, "2"]:
+        t["NUM"] = val
+        assert t["NUM"] == 2
+
+    # This doesn't clear set values either, so set_all() with empty dict is a no-op
+    assert t.set_all({})
+    assert t["NUM"] == 2
 
     # Value not parsable as int
     assert t.set("NUM", "not an int")
     with pytest.raises(ValueError):
         assert t["NUM"]
 
-    # Test dependent parameters behaviour:
+    # Test dependent parameters behaviour (conditionally enabled/disabled):
     # GEOMTYPE is ACTIVECHOICE involving GEOM and COORDS.
     # Check default values, then change GEOMTYPE and see its
     # dependent parameters get enabled/disabled with values.
     assert t["GEOMTYPE"] == "Geometry Object"
+    assert t.is_required("GEOM")
     assert t["GEOM"].startswith("<?xml")  # FME-decoded too
+    assert not t.is_required("COORDS")
     assert not t["COORDS"]  # Exists but disabled so no KeyError
+
     t.set("GEOMTYPE", "2D Coordinate List")
-    assert not t["GEOM"]  # Now disabled
+    assert not t.is_required("GEOM")  # Now disabled
+    assert not t["GEOM"]
+    assert t.is_required("COORDS")  # Now enabled
+
     t.set("GEOMTYPE", "invalid")
     assert t["GEOMTYPE"] == "invalid"  # Allowed
-    assert t["GEOM"]  # Enabled again
+    assert t.is_required("GEOM")  # Enabled again
+    assert t["GEOM"]
+
+    # TODO: Add test for conditionally hidden fields, which are possible in FMXJ
 
 
 @pytest.mark.xfail(fmeobjects.FME_BUILD_NUM < 25158, reason="FMEFORM-32592")

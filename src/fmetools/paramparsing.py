@@ -14,14 +14,33 @@ the recommended way to access transformer parameter values.
 
 from __future__ import annotations
 
+import itertools
 from typing import Any, Iterable, Optional, Union
 
-from fmetools.features import get_attributes, get_attributes_with_prefix
+from functools import lru_cache
+
+from fmetools.features import get_attribute
 
 try:
     from fmeobjects import FMEException, FMEFeature, FMETransformer
 except ModuleNotFoundError as e:
     raise ModuleNotFoundError(str(e) + " (introduced in FME 2023 b23224)")
+
+
+class _ParameterValuesCache:
+    def __init__(self, xformer: FMETransformer):
+        self._xformer = xformer
+        self._cache = lru_cache(typed=True)(self._get)
+
+    def _get(self, name: str, unparsed_value: Any) -> Any:
+        # name and str form the key for lru_cache;
+        # method body doesn't need to use unparsed_value.
+        if unparsed_value is None:
+            return None
+        return self._xformer.getParsedParamValue(name)
+
+    def get(self, name: str, unparsed_value: Any) -> Any:
+        return self._cache(name, unparsed_value)
 
 
 class TransformerParameterParser:
@@ -37,28 +56,90 @@ class TransformerParameterParser:
     signify that they are internal attributes.
     The values of these attributes are string serializations that need to be deserialized before use.
 
-    This class works by loading a transformer definition from FME,
-    passing it serialized parameter values from an input feature or other source,
+    This parser works by loading a transformer definition from FME,
+    passing it serialized parameter values from an input feature,
     and then requesting deserialized values back.
     FME uses the transformer definition to determine how to deserialize the values.
 
-    A typical workflow with this class involves:
+    A typical workflow using this parser:
 
-    1. Instantiate this class as an instance member of the class that implements
-       the transformer.
-    2. When the transformer receives its first input feature:
+    1. **Set the parameters as attributes on input features.**
+       This is done in the transformer definition's Execution Instructions.
+       The recommended way to do this is to use ``$(FME_PARM_VAL_LIST)`` in the TeeFactory preceding the PythonFactory:
 
-       - If the caller needs a particular transformer version,
-         it may call :meth:`change_version`.
-       - :meth:`set_all` is called to provide all initial
-         serialized parameter values from the input feature.
-       - :meth:`get` is called to get the deserialized values
-         for the parameters of interest.
-         If these parameter values don't change between features,
-         the caller caches them to avoid unnecessary work.
-    3. For subsequent input features, :meth:`set`
-       and :meth:`get` are called as necessary to handle the
-       values of parameters that change between features, if any.
+        .. code-block:: text
+
+            FACTORY_DEF {*} TeeFactory
+            FACTORY_NAME { $(XFORMER_NAME)_CATCHER }
+            $(INPUT_LINES)
+            OUTPUT { FEATURE_TYPE $(XFORMER_NAME)_READY
+                $(FME_PARM_VAL_LIST)
+            }
+
+       This sets all visible parameters of the transformer as attributes on every input feature.
+
+    2. **Instantiate this parser as an instance member** of the class that implements the transformer.
+       If a version isn't specified, then the latest version of the transformer definition is loaded.
+    3. **Load a specific transformer version if needed.**
+       If the transformer has multiple versions defined,
+       and the latest version is incompatible with parameters from older versions,
+       then change to the desired version of the transformer.
+
+       If the transformer implementation needs to be aware of the version of the transformer definition,
+       then supply the version number as an internal attribute on the input feature.
+       This can be done by opening the transformer version's Execution Instructions and
+       editing the TeeFactory to add the internal attribute:
+
+        .. code-block:: text
+
+            FACTORY_DEF {*} TeeFactory
+            FACTORY_NAME { $(XFORMER_NAME)_CATCHER }
+            $(INPUT_LINES)
+            OUTPUT { FEATURE_TYPE $(XFORMER_NAME)_READY
+                @SupplyAttributes(___XF_VERSION, 1)
+                $(FME_PARM_VAL_LIST)
+            }
+
+       Then load the desired transformer version by calling :meth:`change_version`.
+       Since this would only happen upon receiving the first input feature,
+       implement this in :meth:`fmetools.plugins.FMEEnhancedTransformer.setup`.
+       For instance:
+
+        .. code-block:: python
+
+            def setup(self, feature: FMEFeature):
+                super().setup(feature)
+                self.parser.change_version(feature.getAttribute("___XF_VERSION"))
+
+    4. **Do a one-time gathering of fixed parameter values from the input feature.**
+       For parameters that are known to be constant for the lifetime of the transformer,
+       parse them once and cache their values. For instance:
+
+        .. code-block:: python
+
+            def setup(self, feature: FMEFeature):
+                super().setup(feature)
+                self.parser.set_all(feature)  # Collects all ___XF_ prefixed attributes by default
+                self.sender = self.parser.get("SENDER")  # Assumes ___XF_ prefix by default
+                self.mail_server = self.parser.get("MAIL_SERVER")
+
+    5. **Get variable parameter values from every input feature.**
+       For every input feature, call :meth:`set_all` to update the parameter values
+       before calling :meth:`get` to get their parsed values.
+
+       .. code-block:: python
+
+            def receive_feature(self, feature: FMEFeature):
+                super().receive_feature(feature)
+                self.parser.set_all(feature)  # Collects all ___XF_ prefixed attributes by default
+
+                send_email(
+                    server=self.mail_server, from=self.sender,
+                    to=self.parser.get("RECIPIENT"),  # Assumes ___XF_ prefix by default
+                    subject=self.parser.get("SUBJECT"),
+                    body=self.parser.get("BODY"),
+                )
+                self.pyoutput(feature)
     """
 
     xformer: FMETransformer
@@ -67,6 +148,14 @@ class TransformerParameterParser:
     """Unqualified name of the transformer."""
     transformer_fpkg: Optional[str]
     """Empty for non-packaged transformers."""
+    _current_feature: Optional[FMEFeature]
+    """The latest feature that was passed to :meth:`set_all`."""
+    _last_seen_value: dict[str, Any]
+    """param name -> most recently seen unparsed value. :meth:`set_all` updates this to reflect the latest feature."""
+    _is_required_cache: dict[str, bool]
+    """param name -> whether the parameter is required or enabled."""
+    _parsed_values_cache: _ParameterValuesCache
+    """Cache of parsed parameter values."""
 
     def __init__(
         self,
@@ -105,11 +194,24 @@ class TransformerParameterParser:
                 self.xformer = FMETransformer(name, pkg, version)
             except FMEException as ex:
                 if i == len(resolve) - 1:
-                    raise ValueError(f"Could not resolve {transformer_name}") from ex
+                    raise ValueError(
+                        f"Could not resolve transformer '{transformer_name}' version {version}"
+                    ) from ex
                 continue
             self.transformer_name = name
             self.transformer_fpkg = pkg
             break
+
+        self.reset()
+
+    def reset(self):
+        """
+        Reset all cached state.
+        """
+        self._current_feature = None
+        self._last_seen_value = {}
+        self._is_required_cache = {}
+        self._parsed_values_cache = _ParameterValuesCache(self.xformer)
 
     def change_version(self, version: Optional[int] = None):
         """
@@ -125,15 +227,18 @@ class TransformerParameterParser:
         self.xformer = FMETransformer(
             self.transformer_name, self.transformer_fpkg, version
         )
+        self.reset()
 
     def is_required(self, name: str) -> bool:
         """
         :param name: Parameter name.
-        :returns: Whether the parameter is required according to the
-            transformer definition.
-            If the parameter is disabled, this returns ``False``.
+        :returns: Whether the parameter is required or enabled.
+            Returns ``False`` if the parameter is optional or disabled.
         """
-        return self.xformer.isRequired(name)
+        if (cached := self._is_required_cache.get(name)) is None:
+            cached = self.xformer.isRequired(name)
+            self._is_required_cache[name] = cached
+        return cached
 
     def set(self, name: str, value: Any) -> bool:
         """
@@ -143,43 +248,81 @@ class TransformerParameterParser:
         :param name: Parameter name to set.
         :param value: Parameter value to set.
         """
+        self._is_required_cache.clear()  # Any changed parameter value could alter state of any other parameter.
         return self.xformer.setParameterValue(name, value)
 
     def set_all(
         self,
         src: Union[FMEFeature, dict[str, Any]],
         *,
-        param_attr_prefix: str = "___XF_",
+        param_attr_prefix: Optional[str] = "___XF_",
         param_attr_names: Optional[Iterable[str]] = None,
     ) -> bool:
         """
         Supply all serialized parameter values.
-        This is the typical way to input parameter values before calling :meth:`get`
-        to obtain their deserialized values.
+        This is the typical way to input parameter values before calling :meth:`get` for deserialized values.
 
         It is important to set all parameter values before calling :meth:`get`, because
         of dependent parameters that may change or disable the requested parameter.
+
+        Only the parameters that are present in ``src`` and have changed since
+        the previous call to this method are used to update the current state.
+        Any missing parameters may keep their previous values.
+
+        Transformers that process many features should consider these performance optimizations:
+
+        - Don't rely on attribute prefixing.
+          Instead, set ``param_attr_prefix=None`` and
+          provide ``param_attr_names`` with a list of all dynamic parameter attribute names.
+          Getting attributes by prefix involves an expensive scan of all attribute names present on each feature.
+        - If only a small number of parameters change per feature,
+          handle them individually using :meth:`set` and :meth:`get`.
+        - Avoid unnecessary calls.
+          For instance, if parameter B is disabled when parameter A is set to No,
+          then check whether parameter A is set to Yes before trying to get parameter B.
 
         :param src: Source of the serialized transformer parameter values.
 
             - :class:`fmeobjects.FMEFeature`: Use the attributes on this feature.
             - :class:`dict`: A mapping of parameter names to serialized values.
+              This is intended for testing purposes.
         :param param_attr_prefix:
             Prefix for the internal attributes of transformer parameters.
             The default is the prefix used by the FME SDK Guide examples.
-            Only used when ``src`` is a feature.
+            When ``src`` is a feature, all attributes on the feature that start with this prefix
+            are collected as transformer parameters.
+            Ignored when ``src`` is not a feature. Set to ``None`` to disable prefixing.
         :param param_attr_names:
             Internal attribute names of transformer parameters.
             Only used when ``src`` is a feature.
             If provided, then these attributes are obtained from the feature and
             added to the set of attributes obtained by prefix.
         """
-        if isinstance(src, FMEFeature):
-            attrs = get_attributes_with_prefix(src, param_attr_prefix)
-            if param_attr_names:
-                attrs.update(get_attributes(src, param_attr_names))
-            src = attrs
-        return self.xformer.setParameterValues(src)
+        if isinstance(src, dict):
+            self._current_feature = None
+            self._is_required_cache.clear()
+            return self.xformer.setParameterValues(src)
+
+        self._current_feature = src
+        prefixed_names = ()
+        if param_attr_prefix:
+            prefixed_names = (
+                name
+                for name in src.getAllAttributeNames()
+                if name.startswith(param_attr_prefix)
+            )
+
+        # Only set values that have changed since the previous feature
+        changes = {}
+        for name in itertools.chain(prefixed_names, param_attr_names or ()):
+            value = get_attribute(src, name)
+            if self._last_seen_value.get(name, object) != value:
+                self._last_seen_value[name] = value
+                changes[name] = value
+        if changes:
+            self._is_required_cache.clear()  # Any changed parameter value could alter state of any other parameter.
+            return self.xformer.setParameterValues(changes)
+        return True  # No-op: return like setParameterValues({})
 
     def get(self, name: str, prefix: Optional[str] = "___XF_") -> Any:
         """
@@ -198,14 +341,38 @@ class TransformerParameterParser:
         :raises TypeError: When the parameter value type is not supported.
         :raises KeyError: When the parameter name is not recognized.
         """
+        # It's valid to call get() without set() or set_all().
+        # It just returns the default values from the transformer definition.
         if prefix:
             name = prefix + name
-        return self.xformer.getParsedParamValue(name)
+
+        if not (feature := self._current_feature):
+            # No performance optimization for feature-less case.
+            return self.xformer.getParsedParamValue(name)
+
+        # Get the unparsed value from set_all()'s cache.
+        try:
+            unparsed_value = self._last_seen_value[name]
+        except KeyError:
+            # This may be a non-parameter attribute,
+            # or a hidden parameter that's never been made visible so far.
+            # Possible error by caller, but proceed gracefully.
+            unparsed_value = get_attribute(feature, name)
+
+        return self._parsed_values_cache.get(name, unparsed_value)
 
     def __getitem__(self, key):
+        """
+        Like :meth:`get`, but assumes no prefix.
+        """
         return self.get(key, prefix=None)
 
     def __setitem__(self, key, value):
+        """
+        Like :meth:`set`, but raises an exception if the value cannot be set.
+
+        :raises ValueError: If the value cannot be set.
+        """
         if not self.set(key, value):
             raise ValueError("Could not set item")
 
