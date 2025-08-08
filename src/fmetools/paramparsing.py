@@ -304,6 +304,12 @@ class TransformerParameterParser:
             return self.xformer.setParameterValues(src)
 
         self._current_feature = src
+        # The parameter attributes present can vary per feature.
+        # Hidden+Disabled parameters have no corresponding attribute.
+        # Visible+Disabled parameters have an <Unused> attribute value: a sentinel value that should not be checked.
+        # Empty optional parameters have an attribute with empty string value.
+        # FUTURE: FMETransformer can return the full list of parameter names,
+        # which we'll cache and reuse instead of scanning all attributes by prefix.
         prefixed_names = ()
         if param_attr_prefix:
             prefixed_names = (
@@ -311,6 +317,10 @@ class TransformerParameterParser:
                 for name in src.getAllAttributeNames()
                 if name.startswith(param_attr_prefix)
             )
+
+        # FUTURE: FMETransformer can return the names of constant parameters,
+        # which means we can get their values off the first feature and
+        # then skip getting their values on later features.
 
         # Only set values that have changed since the previous feature
         changes = {}
@@ -329,7 +339,14 @@ class TransformerParameterParser:
         Get a parsed (deserialized) parameter value.
         For convenience, this assumes a prefix for the given parameter name.
         If the parameter value was not set on the transformer,
-        then the default value is returned, if any.
+        then the default value from the transformer definition is returned, if any.
+
+        .. tip::
+            Avoid calling this method for disabled parameters.
+            Instead, check the value of the dependent parameter's dependency parameter,
+            and only get the value of the dependent parameter if the dependency is satisfied,
+            i.e. the dependent parameter is enabled.
+            This is recommended for performance, and to avoid potentially undefined return values.
 
         :param name: Name of the parameter.
         :param prefix: Prefix of the parameter.
