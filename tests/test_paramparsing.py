@@ -35,14 +35,6 @@ def test_system_transformer(creator):
     t.set("COORDSYS", "LL84")
     assert t["COORDSYS"] == "LL84"
 
-    # Set and get a param that doesn't exist
-    t.set("foo", "bar")
-    with pytest.raises(KeyError):
-        t.get("foo", prefix=None)
-
-    with pytest.raises(KeyError):
-        t.get("NUM")  # ___XF_NUM doesn't exist
-
     # Invalid type for name
     with pytest.raises(TypeError):
         t.set(1, 1)  # noqa
@@ -60,40 +52,85 @@ def test_system_transformer(creator):
     assert t.set_all({})
     assert t["NUM"] == 2
 
-    # Value not parsable as int
-    assert t.set("NUM", "not an int")
-    with pytest.raises(ValueError):
-        assert t["NUM"]
+    # TODO: Add test for conditionally hidden fields, which are possible in FMXJ
 
+
+def test_simple_dependent_params(creator):
     # Test dependent parameters behaviour (conditionally enabled/disabled):
     # GEOMTYPE is ACTIVECHOICE involving GEOM and COORDS.
     # Check default values, then change GEOMTYPE and see its
     # dependent parameters get enabled/disabled with values.
+    t = creator
+    # When GEOMTYPE is "Geometry Object", GEOM is enabled and COORDS is disabled.
     assert t["GEOMTYPE"] == "Geometry Object"
     assert t.is_required("GEOM")
     assert t["GEOM"].startswith("<?xml")  # FME-decoded too
     assert not t.is_required("COORDS")
     assert not t["COORDS"]  # Exists but disabled so no KeyError
 
+    # Change GEOMTYPE to "2D Coordinate List". GEOM is disabled, COORDS enabled.
     t.set("GEOMTYPE", "2D Coordinate List")
     assert not t.is_required("GEOM")  # Now disabled
     assert not t["GEOM"]
     assert t.is_required("COORDS")  # Now enabled
+    t["COORDS"] = "LL84"
+    assert t["COORDS"] == "LL84"
 
+    # When dependency is set to a bad value, both dependents are enabled.
     t.set("GEOMTYPE", "invalid")
     assert t["GEOMTYPE"] == "invalid"  # Allowed
     assert t.is_required("GEOM")  # Enabled again
-    assert t["GEOM"]
+    assert t["GEOM"].startswith("<?xml")  # Its default value is retrievable
+    assert t.is_required("COORDS")  # Enabled again
+    assert (
+        t["COORDS"] == "LL84"
+    )  # And it kept the value set before the bad dependency state
 
-    # TODO: Add test for conditionally hidden fields, which are possible in FMXJ
+
+def test_nonexistent_param(creator):
+    """Get and set a non-existent parameter."""
+    # Set a non-existent parameter, should not raise an error
+    assert creator.set("NON_EXISTENT", "value")
+    # But trying to get it back will raise.
+    with pytest.raises(KeyError):
+        creator.get("NON_EXISTENT", prefix=None)
+
+    with pytest.raises(KeyError):
+        creator.get("NUM")  # ___XF_NUM doesn't exist
+
+
+def test_unparseable_as_int(creator):
+    """Set a parameter to a value that cannot be parsed as an int, and try to get its parsed value."""
+    # Set NUM to a string that cannot be parsed as an int
+    assert creator.set("NUM", "not an int")
+    with pytest.raises(ValueError):
+        assert creator["NUM"]
 
 
 @pytest.mark.xfail(fmeobjects.FME_BUILD_NUM < 25158, reason="FMEFORM-32592")
 def test_empty_optional_int():
     t = TransformerParameterParser("VertexCreator", version=5)
+    # FIXME: Ideally, empty optional int returns None.
+    # Test initial state, then state after explicitly setting it to empty string,
+    # which is how an empty default is represented on the feature.
     assert t["ZVAL"] == ""  #  OPTIONAL FLOAT_OR_ATTR, empty default
+    t["ZVAL"] = ""
+    assert t["ZVAL"] == ""
     # Before b25158:
     # ValueError: parameter value does not match the parameter type
+
+
+@pytest.mark.xfail(
+    reason="API incorrectly returns size 1 list with unparsed input string"
+)
+def test_listbox_or_multichoice():
+    f = TransformerParameterParser("GoogleDriveConnector")
+    assert f["_UPLOAD_FME_ATTRIBUTES_TO_ADD"]  # default isn't empty
+    assert f["_UPLOAD_FME_ATTRIBUTES_TO_ADD"] == [
+        "_sharable_link",
+        "_direct_download_link",
+        "_id",
+    ]
 
 
 def test_params_from_feature(creator):
