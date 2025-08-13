@@ -33,7 +33,7 @@ class _ParameterValuesCache:
         self._cache = lru_cache(typed=True)(self._get)
 
     def _get(self, name: str, unparsed_value: Any) -> Any:
-        # name and str form the key for lru_cache;
+        # Method args form the key for lru_cache;
         # method body doesn't need to use unparsed_value.
         if unparsed_value is None:
             return None

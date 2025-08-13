@@ -110,7 +110,7 @@ def test_unparseable_as_int(creator):
 @pytest.mark.xfail(fmeobjects.FME_BUILD_NUM < 25158, reason="FMEFORM-32592")
 def test_empty_optional_int():
     t = TransformerParameterParser("VertexCreator", version=5)
-    # FIXME: Ideally, empty optional int returns None.
+    # FIXME: Ideally, empty optional int returns None. (FMEENGINE-34561)
     # Test initial state, then state after explicitly setting it to empty string,
     # which is how an empty default is represented on the feature.
     assert t["ZVAL"] == ""  #  OPTIONAL FLOAT_OR_ATTR, empty default
@@ -121,7 +121,7 @@ def test_empty_optional_int():
 
 
 @pytest.mark.xfail(
-    reason="API incorrectly returns size 1 list with unparsed input string"
+    reason="FMEFORM-34573: API incorrectly returns size 1 list with unparsed input string"
 )
 def test_listbox_or_multichoice():
     f = TransformerParameterParser("GoogleDriveConnector")
