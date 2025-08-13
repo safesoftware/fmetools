@@ -7,8 +7,8 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "fmetools"
-copyright = "2023, Safe Software Inc."
-author = "Safe Software Inc."
+copyright = "2025, Safe Software Inc"
+author = "Safe Software Inc"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
