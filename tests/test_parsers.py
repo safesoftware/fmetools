@@ -142,5 +142,11 @@ def test_constraint_properties(property_names, constraint_primitives):
             )
             assert properties.get_property_list(property_name) is None
 
+    if "fme_search_type" not in constraints_kwargs:
+        # fme_search_type property is autopopulated during init if not provided as a kwarg
+        prop_list = properties.get_property_list("fme_search_type")
+        if prop_list:
+            expected_all_properties_len += len(prop_list)
+
     # validate all properties request
     assert len(properties.get_property_list("*")) == expected_all_properties_len
