@@ -1,6 +1,6 @@
 # fmetools changes
 
-## dev
+## 0.12.0
 
 * Improve performance of `fmetools.features.get_attributes_with_prefix()`.
 * Improve documentation and performance of `fmetools.paramparsing.TransformerParameterParser`.
