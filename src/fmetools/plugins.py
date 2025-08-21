@@ -541,7 +541,7 @@ class FMESimplifiedWriter(FMEWriter):
     def open(self, dataset: str, parameters: List[str]) -> None:
         """Open the dataset for writing.
 
-        Does these things for you:
+        Performs these operations:
 
         * Sets :attr:`_feature_types` using the mapping file and/or open parameters.
         * Parses the open() parameters.
@@ -641,8 +641,14 @@ class FMESimplifiedWriter(FMEWriter):
 
 class FMETransformer(FMEBaseTransformer):
     """
-    In FME versions prior to 2024.2, this will subclass :class:`fmetools._deprecated.FMEBaseTransformer`
-    instead.
+    .. deprecated:: 2024.2
+        Use :class:`fme.BaseTransformer` instead.
+
+    .. versionchanged:: 2024.2
+        Subclasses :class:`fme.BaseTransformer` instead of :class:`fmetools._deprecated.FMEBaseTransformer`
+
+    .. warning::
+        Do not confuse this with :class:`fmeobjects.FMETransformer`.
     """
 
     def __init__(self):
@@ -686,7 +692,7 @@ class FMEEnhancedTransformer(FMEBaseTransformer):
         - :meth:`receive_feature` or :meth:`receive_feature_from` to process each input feature.
         - :meth:`finish` to delete any temporary files or close any connections.
 
-    .. note::
+    .. important::
 
         This class overrides :meth:`has_support_for` to return ``True`` for Bulk Mode support.
         This means that the transformer cannot cache or copy features for later use,

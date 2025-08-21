@@ -8,7 +8,8 @@ from fmeobjects import FMEFeature
 
 class FMEBaseTransformer:
     """
-    In FME 2024.2, this base class was deprecated and replaced with :class:`fme.BaseTransformer`.
+    .. deprecated:: 2024.2
+       Replaced by :class:`fme.BaseTransformer`.
 
     Base class that represents the interface expected by the FME
     infrastructure for Python-based transformer implementations.
@@ -48,7 +49,7 @@ class FMEBaseTransformer:
         This is the ``FACTORY_NAME`` parameter of the PythonFactory_ that instantiated this class.
         Defaults to the name of this class.
 
-        .. note::
+        .. important::
             Do not modify this property. FME sets the value at runtime.
 
         .. _PythonFactory: https://docs.safe.com/fme/html/FME_FactFunc/doc_pages/pythonfactory.txt
@@ -78,11 +79,13 @@ class FMEBaseTransformer:
 
     def input_from(self, feature: FMEFeature, input_tag: str) -> None:
         """
+        .. versionadded:: 2024.0
+
         Receive a feature from input_tag.
 
         This method is used instead of :meth:`input` if the transformer has defined input tags
         listed in the transformer's INPUT_TAGS parameter and the PythonFactory's
-        PY_INPUT_TAGS clause. Introduced in FME 2024.0.
+        PY_INPUT_TAGS clause.
 
         Example of a ``PythonFactory`` definition with two input tags::
 
@@ -131,19 +134,22 @@ class FMEBaseTransformer:
         Output a feature from the transformer to an output tag. If an output tag is specified and does not exist on
         the PythonFactory, an error will be raised.
 
-        .. note::
+        .. important::
             Do not implement this method. FME injects the implementation at runtime.
 
         :param feature: The feature to output.
-        :param output_tag: The output tag to direct feature to. If multiple output tags exist but this argument is not
-            specified, ``PYOUTPUT`` will be used as a fallback value. If the PythonFactory definition has a single
-            output tag, this tag will be the default. Introduced in FME 2024.0.
+        :param output_tag: The output tag to direct feature to.
+            If multiple output tags exist but this argument is not specified,
+            ``PYOUTPUT`` will be used as a fallback value.
+            If the PythonFactory definition has a single output tag, this tag will be the default.
+
+            .. versionadded:: 2024.0
         """
         # Stub. Implementation is injected at runtime.
 
     def total_features_passed_along(self) -> int:
         """
-        .. note::
+        .. important::
             Do not implement this method. FME injects the implementation at runtime.
 
         :returns: A count of features that have been processed to date, in all groups.
@@ -173,13 +179,14 @@ class FMEBaseTransformer:
         **How to support Bulk Mode**
 
         * Features received by :meth:`input` must not be copied or cached for later use.
-        * Features received by :meth:`input` must not be read or modified after being passed to :meth:`pyoutput`.
+        * Features received by :meth:`input` must not be accessed after being passed to :meth:`pyoutput`.
         * :meth:`pyoutput` should not be given new :class:`FMEFeature` instances.
           Doing so will automatically downgrade feature processing to individual mode.
         * Override this method. When ``support_type`` is :data:`fmeobjects.FME_SUPPORT_FEATURE_TABLE_SHIM`,
           return ``True``.
 
-        Violating these requirements may result in undefined behavior.
+        .. important::
+            Violating these rules will result in crashes and undefined behavior.
 
         **Illegal Examples**
 
