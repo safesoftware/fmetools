@@ -27,6 +27,9 @@ except ModuleNotFoundError as e:
     raise ModuleNotFoundError(str(e) + " (introduced in FME 2023 b23224)")
 
 
+_MISSING = object()
+
+
 class _ParameterValuesCache:
     def __init__(self, xformer: FMETransformer):
         self._xformer = xformer
@@ -325,7 +328,9 @@ class TransformerParameterParser:
         # Only set values that have changed since the previous feature
         changes = {}
         for name in itertools.chain(prefixed_names, param_attr_names or ()):
-            value = get_attribute(src, name)
+            value = get_attribute(src, name, default=_MISSING)
+            if value is _MISSING:
+                continue
             if self._last_seen_value.get(name, object) != value:
                 self._last_seen_value[name] = value
                 changes[name] = value
@@ -371,10 +376,12 @@ class TransformerParameterParser:
         try:
             unparsed_value = self._last_seen_value[name]
         except KeyError:
-            # This may be a non-parameter attribute,
-            # or a hidden parameter that's never been made visible so far.
-            # Possible error by caller, but proceed gracefully.
-            unparsed_value = get_attribute(feature, name)
+            # One of the following:
+            # a) non-parameter attribute (caller error)
+            # b) parameter that was never set (want transformer definition default)
+            # c) hidden+disabled parameter that's never been made visible so far.
+            # (b) is possible in unit tests that supply a subset of parameter attributes for convenience
+            unparsed_value = get_attribute(feature, name, default=_MISSING)
 
         return self._parsed_values_cache.get(name, unparsed_value)
 
