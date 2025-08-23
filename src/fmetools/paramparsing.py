@@ -353,6 +353,14 @@ class TransformerParameterParser:
             i.e. the dependent parameter is enabled.
             This is recommended for performance, and to avoid potentially undefined return values.
 
+        .. caution::
+            Multi-choice parameters return an incorrect value.
+            Instead of returning a list where each element is a selection,
+            it returns a list containing one element: the unparsed parameter value string.
+
+        .. caution::
+            - Table parameters are not supported. Getting the value of a table parameter will raise ValueError.
+
         :param name: Name of the parameter.
         :param prefix: Prefix of the parameter.
             Specify ``None`` for unprefixed attributes or if the given name
@@ -382,8 +390,15 @@ class TransformerParameterParser:
             # c) hidden+disabled parameter that's never been made visible so far.
             # (b) is possible in unit tests that supply a subset of parameter attributes for convenience
             unparsed_value = get_attribute(feature, name, default=_MISSING)
-
-        return self._parsed_values_cache.get(name, unparsed_value)
+        try:
+            return self._parsed_values_cache.get(name, unparsed_value)
+        except TypeError as ex:
+            # Clarify error message for unsupported parameter types.
+            if "parameter value does not match a supported type" in str(ex):
+                raise TypeError(
+                    f"Parsing of '{name}' not yet implemented. It may be table parameter"
+                ) from ex
+            raise
 
     def __getitem__(self, key):
         """
