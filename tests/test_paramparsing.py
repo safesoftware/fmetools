@@ -36,8 +36,9 @@ def test_system_transformer(creator):
     assert t["COORDSYS"] == "LL84"
 
     # Invalid type for name
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError) as e:
         t.set(1, 1)  # noqa
+    assert "must be str, failed to get string value" in str(e.value)
 
     # This doesn't clear default values
     assert t.set_all({})
@@ -97,6 +98,50 @@ def test_nonexistent_param(creator):
 
     with pytest.raises(KeyError):
         creator.get("NUM")  # ___XF_NUM doesn't exist
+
+
+@pytest.mark.parametrize(
+    "set_all_kwargs",
+    [
+        {"param_attr_names": ["NUM"]},
+        {"param_attr_names": ["NUM", "CRE_ATTR"]},
+        {"param_attr_names": ["NUM"], "param_attr_prefix": "CRE_"},
+    ],
+)
+def test_partial_params_on_feature(creator, set_all_kwargs):
+    """Set parameters from a feature that only has some of them."""
+    f = build_feature(
+        "foo",
+        {
+            "NUM": "10",  # str intentional
+            # CRE_ATTR not provided, should get default
+        },
+    )
+    assert creator.set_all(f, **set_all_kwargs)
+    assert creator["NUM"] == 10  # Deserialized to int
+    assert creator["CRE_ATTR"] == "_creation_instance"  # Default value
+
+
+def test_partial_params_cache_staleness(creator):
+    """
+    Start with a feature that's missing a parameter attribute.
+    Getting it returns the default from the transformer definition.
+    Then supply a feature that has a value for the parameter attribute.
+    Getting it returns the expected new value.
+    Then supply a feature that's missing the parameter attribute again.
+    Getting it should return the previously seen value, not the default again.
+    """
+    previous = "_creation_instance"
+    for attrs in [
+        {"NUM": "10"},
+        {"NUM": "20", "CRE_ATTR": "_custom_creation_attr"},
+        {"NUM": "30"},
+    ]:
+        f = build_feature("foo", attrs)
+        assert creator.set_all(f, param_attr_names=["NUM", "CRE_ATTR"])
+        assert creator["NUM"] == int(attrs["NUM"])
+        previous = attrs.get("CRE_ATTR", previous)
+        assert creator["CRE_ATTR"] == previous
 
 
 def test_unparseable_as_int(creator):

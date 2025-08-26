@@ -1,5 +1,10 @@
 # fmetools changes
 
+## 0.12.1
+
+* Fix regression around unit testing scenarios in `fmetools.paramparsing.TransformerParameterParser`.
+* Improve TypeError message when getting parsed value of unsupported parameter types, such as table.
+
 ## 0.12.0
 
 * Improve performance of `fmetools.features.get_attributes_with_prefix()`.

@@ -27,6 +27,9 @@ except ModuleNotFoundError as e:
     raise ModuleNotFoundError(str(e) + " (introduced in FME 2023 b23224)")
 
 
+_MISSING = object()
+
+
 class _ParameterValuesCache:
     def __init__(self, xformer: FMETransformer):
         self._xformer = xformer
@@ -325,7 +328,9 @@ class TransformerParameterParser:
         # Only set values that have changed since the previous feature
         changes = {}
         for name in itertools.chain(prefixed_names, param_attr_names or ()):
-            value = get_attribute(src, name)
+            value = get_attribute(src, name, default=_MISSING)
+            if value is _MISSING:
+                continue
             if self._last_seen_value.get(name, object) != value:
                 self._last_seen_value[name] = value
                 changes[name] = value
@@ -347,6 +352,14 @@ class TransformerParameterParser:
             and only get the value of the dependent parameter if the dependency is satisfied,
             i.e. the dependent parameter is enabled.
             This is recommended for performance, and to avoid potentially undefined return values.
+
+        .. caution::
+            Multi-choice parameters return an incorrect value.
+            Instead of returning a list where each element is a selection,
+            it returns a list containing one element: the unparsed parameter value string.
+
+        .. caution::
+            - Table parameters are not supported. Getting the value of a table parameter will raise ValueError.
 
         :param name: Name of the parameter.
         :param prefix: Prefix of the parameter.
@@ -371,12 +384,21 @@ class TransformerParameterParser:
         try:
             unparsed_value = self._last_seen_value[name]
         except KeyError:
-            # This may be a non-parameter attribute,
-            # or a hidden parameter that's never been made visible so far.
-            # Possible error by caller, but proceed gracefully.
-            unparsed_value = get_attribute(feature, name)
-
-        return self._parsed_values_cache.get(name, unparsed_value)
+            # One of the following:
+            # a) non-parameter attribute (caller error)
+            # b) parameter that was never set (want transformer definition default)
+            # c) hidden+disabled parameter that's never been made visible so far.
+            # (b) is possible in unit tests that supply a subset of parameter attributes for convenience
+            unparsed_value = get_attribute(feature, name, default=_MISSING)
+        try:
+            return self._parsed_values_cache.get(name, unparsed_value)
+        except TypeError as ex:
+            # Clarify error message for unsupported parameter types.
+            if "parameter value does not match a supported type" in str(ex):
+                raise TypeError(
+                    f"Parsing of '{name}' not yet implemented. It may be table parameter"
+                ) from ex
+            raise
 
     def __getitem__(self, key):
         """
