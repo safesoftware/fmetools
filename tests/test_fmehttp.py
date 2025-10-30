@@ -22,12 +22,8 @@ from fmetools.http import (
 )
 from requests.exceptions import SSLError
 
-from six.moves.urllib.parse import urlparse
-
-try:
-    from unittest.mock import patch
-except ImportError:
-    from mock import patch  # PY2 backport library
+from urllib.parse import urlparse
+from unittest.mock import patch
 
 
 REQUEST_DEFAULT_TIMEOUT = 60  # Assumed from fmehttp
