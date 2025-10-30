@@ -588,9 +588,9 @@ class FMECustomProxyMapHandler:
             # urllib doesn't make it easy to ask it to assemble a URL with credentials.
             creds = ""
             if user:
-                creds = quote(user)
+                creds = quote(user, safe="")
                 if password:
-                    creds += ":" + quote(password)
+                    creds += ":" + quote(password, safe="")
                 creds += "@"
             proxy_url_with_creds = "{}://{}{}".format(
                 parsed_proxy.scheme, creds, netloc
