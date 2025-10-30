@@ -1,5 +1,10 @@
 # fmetools changes
 
+## 0.12.2
+
+* Fix handling of special characters in Custom Proxy Map credentials.
+* Update documentation of `fmetools.paramparsing.TransformerParameterParser` with changes in FME 2025.2+.
+
 ## 0.12.1
 
 * Fix regression around unit testing scenarios in `fmetools.paramparsing.TransformerParameterParser`.
