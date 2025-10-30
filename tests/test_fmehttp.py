@@ -18,6 +18,7 @@ from fmetools.http import (
     proxy_url_without_credentials,
     get_auth_object,
     _configure_proxy_exceptions,
+    FMECustomProxyMap,
 )
 from requests.exceptions import SSLError
 
@@ -79,26 +80,66 @@ def get_custom_proxy_map(proxy_info):
     )
 
 
-def test_parse_simple():
-    proxy_info = "proxy-url,http:<solidus><solidus>0.0.0.0<solidus>whatever,proxy-port,88,requires-authentication,yes,user,a,password,b,authentication-method,basic"
+@pytest.mark.parametrize(
+    "proxy_info,expected_map",
+    [
+        pytest.param(
+            "proxy-url,http:<solidus><solidus>0.0.0.0<solidus>whatever,proxy-port,88,requires-authentication,yes,user,a,password,b,authentication-method,basic",
+            FMECustomProxyMap(
+                "http://example.com/",
+                "http://a:b@0.0.0.0:88",
+                "http://0.0.0.0:88",
+                True,
+                "a",
+                "b",
+                "basic",
+            ),
+            id="simple_basic_auth",
+        ),
+        pytest.param(
+            "proxy-url,http:<solidus><solidus>0.0.0.0<solidus>whatever,proxy-port,88,requires-authentication,no,user,a,password,b,authentication-method,basic",
+            FMECustomProxyMap(
+                "http://example.com/",
+                "http://0.0.0.0:88",
+                "http://0.0.0.0:88",
+                False,
+                "a",
+                "b",
+                "basic",
+            ),
+            id="have_creds_but_auth_off",
+        ),
+        pytest.param(
+            "proxy-url,http:<solidus><solidus>0.0.0.0<solidus>whatever,proxy-port,88,requires-authentication,yes,user,a<at>a,password,b<at>b,authentication-method,basic",
+            FMECustomProxyMap(
+                "http://example.com/",
+                "http://a%40a:b%40b@0.0.0.0:88",
+                "http://0.0.0.0:88",
+                True,
+                "a@a",
+                "b@b",
+                "basic",
+            ),
+            id="special_chars",
+        ),
+        pytest.param(
+            "proxy-url,,proxy-port,88,requires-authentication,yes,user,a,password,b,authentication-method,basic",
+            FMECustomProxyMap(
+                "http://example.com/",
+                "",
+                "",
+                False,
+                "",
+                "",
+                "",
+            ),
+            id="empty",  # This is a valid configuration, meaning to not use a proxy for the given URL.
+        ),
+    ],
+)
+def test_parse_custom_proxy_map(proxy_info, expected_map):
     mapping = get_custom_proxy_map(proxy_info)
-    assert "http://example.com/" == mapping.url
-    assert "http://a:b@0.0.0.0:88" == mapping.proxy_url
-    assert "http://0.0.0.0:88" == mapping.sanitized_proxy_url
-    assert "basic" == mapping.auth_method
-
-
-def test_have_credentials_but_not_require_auth():
-    proxy_info = "proxy-url,http:<solidus><solidus>0.0.0.0<solidus>whatever,proxy-port,80,requires-authentication,no,user,a,password,b,authentication-method,basic"
-    mapping = get_custom_proxy_map(proxy_info)
-    assert "http://0.0.0.0:80" == mapping.proxy_url
-    assert "http://0.0.0.0:80" == mapping.sanitized_proxy_url
-
-
-def test_credentials_special_chars():
-    proxy_info = "proxy-url,http:<solidus><solidus>0.0.0.0<solidus>whatever,proxy-port,80,requires-authentication,yes,user,a<at>a,password,b<at>b,authentication-method,basic"
-    mapping = get_custom_proxy_map(proxy_info)
-    assert "http://a%40a:b%40b@0.0.0.0:80" == mapping.proxy_url
+    assert mapping == expected_map
 
 
 def test_parse_and_lookup():
@@ -120,12 +161,6 @@ def test_reject_unsupported_auth_method_in_custom_proxy_map():
     reqSession = FMERequestsSession(fme_session=mockSession)
     with pytest.raises(UnsupportedProxyAuthenticationMethod):
         reqSession.get("http://google.ca/foo")
-
-
-def test_empty_proxy_url():
-    # This is a valid configuration, meaning to not use a proxy for the given URL.
-    proxy_info = "proxy-url,,proxy-port,88,requires-authentication,yes,user,a,password,b,authentication-method,basic"
-    assert get_custom_proxy_map(proxy_info).proxy_url == ""
 
 
 # General proxy config tests
