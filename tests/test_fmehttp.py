@@ -110,14 +110,14 @@ def get_custom_proxy_map(proxy_info):
             id="have_creds_but_auth_off",
         ),
         pytest.param(
-            "proxy-url,http:<solidus><solidus>0.0.0.0<solidus>whatever,proxy-port,88,requires-authentication,yes,user,a<at>a,password,b<at>b,authentication-method,basic",
+            "proxy-url,http:<solidus><solidus>0.0.0.0<solidus>whatever,proxy-port,88,requires-authentication,yes,user,Aa0<apos><openbracket><semicolon>!g*<dollar>`<solidus><space>+X,password,Aa0<apos><openbracket><semicolon>!g*<dollar>`<solidus><space>+X,authentication-method,basic",
             FMECustomProxyMap(
                 "http://example.com/",
-                "http://a%40a:b%40b@0.0.0.0:88",
+                "http://Aa0%27%5B%3B%21g%2A%24%60%2F%20%2BX:Aa0%27%5B%3B%21g%2A%24%60%2F%20%2BX@0.0.0.0:88",
                 "http://0.0.0.0:88",
                 True,
-                "a@a",
-                "b@b",
+                "Aa0'[;!g*$`/ +X",
+                "Aa0'[;!g*$`/ +X",
                 "basic",
             ),
             id="special_chars",
