@@ -546,17 +546,17 @@ class FMECustomProxyMapHandler:
 
     @staticmethod
     def parse_custom_proxy_map(
-        fme_session: FMESession, url: str, proxy_info: str
+        fme_session: FMESession, applicable_url: str, proxy_info: str
     ) -> FMECustomProxyMap:
         """
         Parse a serialized custom proxy map configuration entry from FME.
 
         :param fme_session: For decoding FME-encoded strings.
-        :param url: FME-encoded URL for the custom proxy map.
+        :param applicable_url: URL that this proxy map applies to. FME-encoded.
         :param proxy_info: FME-encoded and comma-delimited proxy configuration for
             the custom proxy map.
         """
-        url = fme_session.decodeFromFMEParsableText(url).lower()
+        applicable_url = fme_session.decodeFromFMEParsableText(applicable_url).lower()
 
         proxy_map_info = stringarray_to_dict(proxy_info.split(","))
         proxy_url = fme_session.decodeFromFMEParsableText(
@@ -564,7 +564,7 @@ class FMECustomProxyMapHandler:
         ).strip()
         if not proxy_url:
             # A proxy mapping that means 'do not use proxy for this URL'.
-            return FMECustomProxyMap(url, "", "", False, "", "", "")
+            return FMECustomProxyMap(applicable_url, "", "", False, "", "", "")
         elif not proxy_url.lower().startswith("http://"):
             # FME Server gives proxy hostname only. Assume a scheme.
             proxy_url = "http://{}".format(proxy_url)
@@ -588,16 +588,16 @@ class FMECustomProxyMapHandler:
             # urllib doesn't make it easy to ask it to assemble a URL with credentials.
             creds = ""
             if user:
-                creds = quote(user)
+                creds = quote(user, safe="")
                 if password:
-                    creds += ":" + quote(password)
+                    creds += ":" + quote(password, safe="")
                 creds += "@"
             proxy_url_with_creds = "{}://{}{}".format(
                 parsed_proxy.scheme, creds, netloc
             )
 
         return FMECustomProxyMap(
-            url,
+            applicable_url,
             proxy_url_with_creds,
             sanitized_proxy_url,
             requires_authentication,

@@ -67,7 +67,13 @@ def test_simple_dependent_params(creator):
     assert t.is_required("GEOM")
     assert t["GEOM"].startswith("<?xml")  # FME-decoded too
     assert not t.is_required("COORDS")
-    assert not t["COORDS"]  # Exists but disabled so no KeyError
+    if fmeobjects.FME_BUILD_NUM >= 25759:  # FMEFORM-34668 (see comments)
+        with pytest.raises(ValueError) as exc:
+            assert not t["COORDS"]
+        # TODO: Message to be improved by FOUNDATION-8506.
+        assert "parameter value does not match the parameter type" in str(exc.value)
+    else:
+        assert not t["COORDS"]  # Exists but disabled so no KeyError
 
     # Change GEOMTYPE to "2D Coordinate List". GEOM is disabled, COORDS enabled.
     t.set("GEOMTYPE", "2D Coordinate List")
@@ -166,7 +172,8 @@ def test_empty_optional_int():
 
 
 @pytest.mark.xfail(
-    reason="FMEFORM-34573: API incorrectly returns size 1 list with unparsed input string"
+    condition=fmeobjects.FME_BUILD_NUM < 25754,
+    reason="FMEFORM-34573: API incorrectly returns size 1 list with unparsed input string",
 )
 def test_listbox_or_multichoice():
     f = TransformerParameterParser("GoogleDriveConnector")

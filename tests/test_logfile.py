@@ -4,11 +4,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import logging
 
-try:
-    from unittest.mock import patch, MagicMock
-except ImportError:
-    from mock import patch, MagicMock  # PY2 backport library
-
+from unittest.mock import patch, MagicMock
 
 import fmeobjects
 from fmeobjects import FMEFeature

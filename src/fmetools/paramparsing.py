@@ -309,7 +309,8 @@ class TransformerParameterParser:
         self._current_feature = src
         # The parameter attributes present can vary per feature.
         # Hidden+Disabled parameters have no corresponding attribute.
-        # Visible+Disabled parameters have an <Unused> attribute value: a sentinel value that should not be checked.
+        # Visible+Disabled parameters raise ValueError.
+        #   <b25759: have an <Unused> attribute value: a sentinel value that should not be checked.
         # Empty optional parameters have an attribute with empty string value.
         # FUTURE: FMETransformer can return the full list of parameter names,
         # which we'll cache and reuse instead of scanning all attributes by prefix.
@@ -346,15 +347,13 @@ class TransformerParameterParser:
         If the parameter value was not set on the transformer,
         then the default value from the transformer definition is returned, if any.
 
-        .. tip::
-            Avoid calling this method for disabled parameters.
-            Instead, check the value of the dependent parameter's dependency parameter,
-            and only get the value of the dependent parameter if the dependency is satisfied,
-            i.e. the dependent parameter is enabled.
-            This is recommended for performance, and to avoid potentially undefined return values.
+        Do not call this for disabled parameters.
+        Instead, check the value of the dependent parameter's dependency parameter,
+        and only get the value of the dependent parameter if the dependency is satisfied,
+        i.e. the dependent parameter is enabled.
 
         .. caution::
-            Multi-choice parameters return an incorrect value.
+            Prior to FME 2025.2, multi-choice parameters returned an incorrect value.
             Instead of returning a list where each element is a selection,
             it returns a list containing one element: the unparsed parameter value string.
 
@@ -366,8 +365,10 @@ class TransformerParameterParser:
             Specify ``None`` for unprefixed attributes or if the given name
             already includes the prefix.
             The default is the prefix used by the FME SDK Guide examples.
-        :raises ValueError: When the value of the parameter cannot be deserialized
-            according to the type expected by the transformer definition.
+        :raises ValueError:
+            - If the parameter is disabled. (FME 2025.2+)
+            - When the value of the parameter cannot be deserialized
+              according to the type expected by the transformer definition.
         :raises TypeError: When the parameter value type is not supported.
         :raises KeyError: When the parameter name is not recognized.
         """
