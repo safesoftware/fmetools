@@ -4,6 +4,8 @@ This module contains parsers to support FME reader/writer development.
 It is not intended for general use.
 """
 
+from __future__ import annotations
+
 import dataclasses
 import re
 from collections import OrderedDict, namedtuple

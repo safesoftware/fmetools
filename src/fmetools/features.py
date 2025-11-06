@@ -119,7 +119,7 @@ def get_attributes_with_prefix(
     attrs = get_attributes(
         feature,
         filter(lambda x: x.startswith(prefix), feature.getAllAttributeNames()),
-        default=default
+        default=default,
     )
     if pop:
         feature.removeAttrsWithPrefix(prefix)
