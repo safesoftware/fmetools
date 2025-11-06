@@ -28,6 +28,7 @@ except ModuleNotFoundError as e:
 
 
 _MISSING = object()
+_FME_NULL_VALUE = "FME_NULL_VALUE"
 
 
 class _ParameterValuesCache:
@@ -252,6 +253,8 @@ class TransformerParameterParser:
         :param value: Parameter value to set.
         """
         self._is_required_cache.clear()  # Any changed parameter value could alter state of any other parameter.
+        if value == _FME_NULL_VALUE:
+            value = None
         return self.xformer.setParameterValue(name, value)
 
     def set_all(
@@ -332,6 +335,8 @@ class TransformerParameterParser:
             value = get_attribute(src, name, default=_MISSING)
             if value is _MISSING:
                 continue
+            if value == _FME_NULL_VALUE:
+                value = None
             if self._last_seen_value.get(name, object) != value:
                 self._last_seen_value[name] = value
                 changes[name] = value
@@ -391,6 +396,10 @@ class TransformerParameterParser:
             # c) hidden+disabled parameter that's never been made visible so far.
             # (b) is possible in unit tests that supply a subset of parameter attributes for convenience
             unparsed_value = get_attribute(feature, name, default=_MISSING)
+
+        if unparsed_value == _FME_NULL_VALUE:
+            return None  # This is always None, so no need to parse.
+
         try:
             return self._parsed_values_cache.get(name, unparsed_value)
         except TypeError as ex:

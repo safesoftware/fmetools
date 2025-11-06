@@ -7,7 +7,7 @@ from fmetools.features import build_feature
 
 # Allow this test to skip gracefully with pytestmark, if import fails.
 try:
-    from fmetools.paramparsing import TransformerParameterParser
+    from fmetools.paramparsing import TransformerParameterParser, _FME_NULL_VALUE
 except ModuleNotFoundError:
     pass
 
@@ -160,6 +160,24 @@ def test_unparseable_as_int(creator):
     assert creator.set("NUM", "not an int")
     with pytest.raises(ValueError):
         assert creator["NUM"]
+
+
+@pytest.mark.parametrize(
+    "transformer_info,param",
+    [
+        ("Creator 6", "NUM"),  # INTEGER
+        (
+            "StringReplacer 5",
+            "REPLACE_NO_MATCH",
+        ),  # OPTIONAL NULLABLE NO_OP STRING_ENCODED_OR_ATTR
+    ],
+)
+def test_null_value(transformer_info, param):
+    """Set and get a parameter with the "FME_NULL_VALUE" string. Verify that's returned as None."""
+    name, version = transformer_info.split()
+    xformer = TransformerParameterParser(name, version=int(version))
+    assert xformer.set(param, _FME_NULL_VALUE)
+    assert xformer[param] is None
 
 
 @pytest.mark.xfail(fmeobjects.FME_BUILD_NUM < 25158, reason="FMEFORM-32592")
