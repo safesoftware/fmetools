@@ -7,7 +7,7 @@ import fme
 import pytest
 
 from fmeobjects import FMESession
-from hypothesis import given, assume
+from hypothesis import given, assume, settings
 from hypothesis.strategies import none, text, one_of
 
 from fmetools.http import (
@@ -350,6 +350,7 @@ def test_SystemCertStoreAdapter_verify_not_persistent():
     "auth_type", ["none", "BaSiC", "digest", "ntlm", "kerberos", "foo"]
 )
 @given(user=one_of(text(max_size=1), none()), password=one_of(text(max_size=1), none()))
+@settings(deadline=1000)  # often exceeds default 200ms on tox
 def test_get_auth_object(auth_type, user, password):
     if auth_type == "foo":
         with pytest.raises(ValueError):
