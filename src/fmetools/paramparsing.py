@@ -253,8 +253,8 @@ class TransformerParameterParser:
         :param value: Parameter value to set.
         """
         self._is_required_cache.clear()  # Any changed parameter value could alter state of any other parameter.
-        if value == _FME_NULL_VALUE:
-            value = None
+        # "FME_NULL_VALUE" passed as-is to signify None.
+        # Actual None cannot be supplied as a parameter value by FMEFeature under normal operation.
         return self.xformer.setParameterValue(name, value)
 
     def set_all(
@@ -335,8 +335,6 @@ class TransformerParameterParser:
             value = get_attribute(src, name, default=_MISSING)
             if value is _MISSING:
                 continue
-            if value == _FME_NULL_VALUE:
-                value = None
             if self._last_seen_value.get(name, object) != value:
                 self._last_seen_value[name] = value
                 changes[name] = value

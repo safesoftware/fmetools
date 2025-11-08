@@ -187,7 +187,8 @@ def test_fmetransformer_null_value(null_value):
 
     - "FME_NULL_VALUE" is handled like any other string literal. It's not a sentinel value for null.
     - `None` is intercepted by `fmeobjects.FMETransformer` to ensure round-trip `None` behaviour.
-    - `TransformerParameterParser` setters and getters convert "FME_NULL_VALUE" to None.
+    - `TransformerParameterParser` setters intentionally don't convert `None` or "FME_NULL_VALUE".
+    - `TransformerParameterParser` getters intercept "FME_NULL_VALUE" to return `None` without asking `FMETransformer`.
     """
     xformer = fmeobjects.FMETransformer("StringReplacer", "", 6)
     assert xformer.getParsedParamValue("NO_MATCH") == "_FME_NO_OP_"  # default value
