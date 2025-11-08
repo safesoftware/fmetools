@@ -168,7 +168,7 @@ def test_unparseable_as_int(creator):
         ("Creator 6", "NUM"),  # INTEGER
         (
             "StringReplacer 5",
-            "REPLACE_NO_MATCH",
+            "NO_MATCH",
         ),  # OPTIONAL NULLABLE NO_OP STRING_ENCODED_OR_ATTR
     ],
 )
@@ -178,6 +178,23 @@ def test_null_value(transformer_info, param):
     xformer = TransformerParameterParser(name, version=int(version))
     assert xformer.set(param, _FME_NULL_VALUE)
     assert xformer[param] is None
+
+
+@pytest.mark.parametrize("null_value", [_FME_NULL_VALUE, None])
+def test_fmetransformer_null_value(null_value):
+    """
+    Test `fmeobjects.FMETransformer` behaviour around set/get of null values.
+
+    - "FME_NULL_VALUE" is handled like any other string literal. It's not a sentinel value for null.
+    - `None` is intercepted by `fmeobjects.FMETransformer` to ensure round-trip `None` behaviour.
+    - `TransformerParameterParser` setters and getters convert "FME_NULL_VALUE" to None.
+    """
+    xformer = fmeobjects.FMETransformer("StringReplacer", "", 6)
+    assert xformer.getParsedParamValue("NO_MATCH") == "_FME_NO_OP_"  # default value
+    assert xformer.setParameterValue("NO_MATCH", null_value)
+    assert xformer.getParsedParamValue("NO_MATCH") == null_value
+    assert xformer.setParameterValues({"NO_MATCH": null_value})
+    assert xformer.getParsedParamValue("NO_MATCH") == null_value
 
 
 @pytest.mark.xfail(fmeobjects.FME_BUILD_NUM < 25158, reason="FMEFORM-32592")
