@@ -223,6 +223,8 @@ def test_listbox_or_multichoice():
         "_direct_download_link",
         "_id",
     ]
+    f.set("_UPLOAD_FME_ATTRIBUTES_TO_ADD", "")
+    assert f["_UPLOAD_FME_ATTRIBUTES_TO_ADD"] == []
 
 
 def test_params_from_feature(creator):
