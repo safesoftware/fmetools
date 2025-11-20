@@ -1,3 +1,6 @@
+import inspect
+from enum import Enum
+
 import fmeobjects
 import hypothesis.strategies as st
 import pytest
@@ -7,7 +10,7 @@ from fmetools.features import build_feature
 
 # Allow this test to skip gracefully with pytestmark, if import fails.
 try:
-    from fmetools.paramparsing import TransformerParameterParser, _FME_NULL_VALUE
+    from fmetools.paramparsing import TransformerParameterParser, ParameterState
 except ModuleNotFoundError:
     pass
 
@@ -17,6 +20,270 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+MISSING = "MISSING"
+SAME = "SAME"
+
+
+# For the test cases below:
+# - MISSING means to set no value, i.e. get the default from the transformer definition.
+# - SAME means to copy the test parameter value from the left. This is to reduce duplication.
+@pytest.mark.parametrize(
+    "target,input_value,expected_value,expected_from_fmeobjects",
+    [
+        pytest.param("Creator 6 NUM", MISSING, 1, SAME, id="default int"),
+        pytest.param("Creator 6 NUM", 2, SAME, SAME, id="set int, get int"),
+        pytest.param("Creator 6 NUM", "2", 2, SAME, id="set str int, get int"),
+        pytest.param("Creator 6 NUM", "FOO", ValueError, SAME, id="unparseable as int"),
+        pytest.param(
+            "Creator 6 CRE_ATTR", MISSING, "_creation_instance", SAME, id="default str"
+        ),
+        pytest.param(
+            "Creator 6 COORDSYS", MISSING, "", SAME, id="default empty optional str"
+        ),
+        pytest.param("Creator 6 COORDSYS", "LL84", SAME, SAME, id="str"),
+        pytest.param(
+            "Creator 6 NONEXISTENT",
+            "foo",
+            KeyError,
+            SAME,
+            id="nonexistent param",
+        ),
+        pytest.param(
+            "VertexCreator 6 ZVAL",
+            MISSING,
+            ValueError,
+            SAME,
+            id="default empty optional int < b25158",
+            marks=pytest.mark.skipif(
+                fmeobjects.FME_BUILD_NUM >= 25158,
+                reason="changed by FMEFORM-32592",
+            ),
+        ),
+        pytest.param(
+            "VertexCreator 6 ZVAL",
+            "",
+            ValueError,
+            SAME,
+            id="empty optional int < b25158",
+            marks=pytest.mark.skipif(
+                fmeobjects.FME_BUILD_NUM >= 25158,
+                reason="changed by FMEFORM-32592",
+            ),
+        ),
+        pytest.param(
+            "VertexCreator 6 ZVAL",
+            MISSING,
+            "",
+            "",
+            id="default empty optional int < b25795",
+            marks=pytest.mark.skipif(
+                25795 <= fmeobjects.FME_BUILD_NUM < 26000
+                or 26016 <= fmeobjects.FME_BUILD_NUM,
+                reason="changed by FOUNDATION-8502",
+            ),
+        ),
+        pytest.param(
+            "VertexCreator 6 ZVAL",
+            "",
+            "",
+            "",
+            id="empty optional int < b25795",
+            marks=pytest.mark.skipif(
+                25795 <= fmeobjects.FME_BUILD_NUM < 26000
+                or 26016 <= fmeobjects.FME_BUILD_NUM,
+                reason="changed by FOUNDATION-8502",
+            ),
+        ),
+        pytest.param(
+            "VertexCreator 6 ZVAL",
+            MISSING,
+            None,
+            None,
+            id="default empty optional int >= b25795",
+            marks=pytest.mark.skipif(
+                fmeobjects.FME_BUILD_NUM < 25795
+                or 26000 <= fmeobjects.FME_BUILD_NUM < 26016,
+                reason="returns empty str before FOUNDATION-8502",
+            ),
+        ),
+        pytest.param(
+            "VertexCreator 6 ZVAL",
+            "",
+            None,
+            None,
+            id="empty optional int < b25795",
+            marks=pytest.mark.skipif(
+                fmeobjects.FME_BUILD_NUM < 25795
+                or 26000 <= fmeobjects.FME_BUILD_NUM < 26016,
+                reason="returns empty str before FOUNDATION-8502",
+            ),
+        ),
+        pytest.param(
+            "GoogleDriveConnector 3 _UPLOAD_FME_ATTRIBUTES_TO_ADD",
+            MISSING,
+            ["_sharable_link", "_direct_download_link", "_id"],
+            SAME,
+            id="default list",
+            marks=pytest.mark.skipif(
+                condition=fmeobjects.FME_BUILD_NUM < 25754,
+                reason="FMEFORM-34573: API incorrectly returns size 1 list with unparsed input string",
+            ),
+        ),
+        pytest.param(
+            "GoogleDriveConnector 3 _UPLOAD_FME_ATTRIBUTES_TO_ADD",
+            MISSING,
+            ["_sharable_link _direct_download_link _id"],
+            SAME,
+            id="default list < b25754",
+            marks=pytest.mark.skipif(
+                condition=fmeobjects.FME_BUILD_NUM >= 25754,
+                reason="FMEFORM-34573: API incorrectly returns size 1 list with unparsed input string",
+            ),
+        ),
+        pytest.param(
+            "GoogleDriveConnector 3 _UPLOAD_FME_ATTRIBUTES_TO_ADD",
+            "",
+            [],
+            SAME,
+            id="empty list",
+            marks=pytest.mark.skipif(
+                condition=fmeobjects.FME_BUILD_NUM < 25754,
+                reason="FMEFORM-34573: API incorrectly returns size 1 list with unparsed input string",
+            ),
+        ),
+        pytest.param(
+            "GoogleDriveConnector 3 _UPLOAD_FME_ATTRIBUTES_TO_ADD",
+            "",
+            [""],
+            SAME,
+            id="empty list < b25754",
+            marks=pytest.mark.skipif(
+                condition=fmeobjects.FME_BUILD_NUM >= 25754,
+                reason="FMEFORM-34573: API incorrectly returns size 1 list with unparsed input string",
+            ),
+        ),
+        pytest.param(
+            "StringReplacer 6 NO_MATCH",
+            MISSING,
+            ParameterState.NO_OP,
+            "_FME_NO_OP_",
+            id="default no-op",
+        ),
+        pytest.param(
+            "StringReplacer 6 NO_MATCH",
+            "_FME_NO_OP_",
+            ParameterState.NO_OP,
+            "_FME_NO_OP_",
+            id="no-op",
+        ),
+        pytest.param(
+            "StringReplacer 6 NO_MATCH",
+            "FME_NULL_VALUE",
+            ParameterState.NULL,
+            "FME_NULL_VALUE",
+            id="null on nullable",
+        ),
+        pytest.param(
+            "Creator 6 NUM",
+            "FME_NULL_VALUE",
+            ParameterState.NULL,
+            ValueError,
+            id="null on not nullable int",
+        ),
+        pytest.param(
+            "KMLStyler 3 FILL_OPACITY",
+            "FME_NULL_VALUE",
+            ParameterState.NULL,
+            ValueError,
+            id="null on not nullable optional int",
+        ),
+        pytest.param(
+            "Creator 6 CRE_ATTR",
+            ParameterState.NULL,
+            ParameterState.NULL,
+            "FME_NULL_VALUE",
+            id="null on not nullable optional str",
+        ),
+        pytest.param(
+            "GoogleDriveConnector 3 _UPLOAD_FME_ATTRIBUTES_TO_ADD",
+            "FME_NULL_VALUE",
+            ParameterState.NULL,
+            ["FME_NULL_VALUE"],
+            id="null on not nullable list",
+        ),
+        pytest.param(
+            "ExpressionEvaluator 3 NULL_ATTR_VALUE",
+            "FME_NULL_VALUE",
+            ParameterState.NULL,
+            ValueError,  # FOUNDATION-8710 would change this to "FME_NULL_VALUE"
+            id="null on nullable integer",
+        ),
+        pytest.param(
+            "Creator 6 NUM", None, SAME, SAME, id="None round-trip on not nullable int"
+        ),
+        pytest.param(
+            "Creator 6 CRE_ATTR",
+            None,
+            SAME,
+            SAME,
+            id="None round-trip on not nullable str",
+        ),
+        pytest.param(
+            "StringReplacer 6 NO_MATCH",
+            None,
+            SAME,
+            SAME,
+            id="None round-trip on nullable str",
+        ),
+    ],
+)
+def test_single_param(
+    target: str, input_value, expected_value, expected_from_fmeobjects
+):
+    """
+    Test setting and getting single parameters via TransformerParameterParser and fmeobjects.FMETransformer.
+
+    Values from both don't always agree, as TransformerParameterParser
+    detects sentinel values and skips calling FMETransformer for them.
+    However, depending on the parameter type, FMETransformer may not return sentinel values as-is.
+    """
+    transformer_name, version, param_name = target.split()
+    parser = TransformerParameterParser(transformer_name, version=int(version))
+
+    # One-off case: test attr is a conditional parameter that needs to be enabled.
+    if transformer_name == "ExpressionEvaluator" and param_name == "NULL_ATTR_VALUE":
+        parser["NULL_ATTR_MODE"] = "OTHER_NULL_VALUE_2"
+        assert parser[param_name] == 0  # default value after enabling
+
+    if input_value is not MISSING:
+        assert parser.set(param_name, input_value)
+
+    if expected_value is SAME:
+        expected_value = input_value
+    if inspect.isclass(expected_value) and issubclass(expected_value, Exception):
+        with pytest.raises(expected_value):
+            return parser[param_name]
+    else:
+        assert parser[param_name] == expected_value
+        if isinstance(expected_value, ParameterState):
+            # Ensure expected enum is actually an enum instance, not just the string.
+            # Only applies to TransformerParameterParser's return value.
+            assert isinstance(parser[param_name], Enum)
+
+    if expected_from_fmeobjects is SAME:
+        expected_from_fmeobjects = expected_value
+    if inspect.isclass(expected_from_fmeobjects) and issubclass(
+        expected_from_fmeobjects, Exception
+    ):
+        with pytest.raises(expected_from_fmeobjects):
+            return parser.xformer.getParsedParamValue(param_name)
+    else:
+        assert (
+            parser.xformer.getParsedParamValue(param_name) == expected_from_fmeobjects
+        )
+    return None
+
+
 @pytest.fixture
 def creator():
     return TransformerParameterParser("Creator", version=6)
@@ -24,16 +291,8 @@ def creator():
 
 def test_system_transformer(creator):
     t = creator
-    # Get params with defaults from transformer def
-    assert t["NUM"] == 1  # INTEGER type gives int
-    assert t["CRE_ATTR"] == "_creation_instance"
     assert t.is_required("NUM")
-
     assert not t.is_required("COORDSYS")  # Enabled but optional
-    assert t["COORDSYS"] == ""  # Default value is empty string
-    # Set and get a param
-    t.set("COORDSYS", "LL84")
-    assert t["COORDSYS"] == "LL84"
 
     # Invalid type for name
     with pytest.raises(TypeError) as e:
@@ -43,15 +302,6 @@ def test_system_transformer(creator):
     # This doesn't clear default values
     assert t.set_all({})
     assert t["NUM"] == 1
-
-    # Unparsed value being an int is okay if the param type is also int
-    for val in [2, "2"]:
-        t["NUM"] = val
-        assert t["NUM"] == 2
-
-    # This doesn't clear set values either, so set_all() with empty dict is a no-op
-    assert t.set_all({})
-    assert t["NUM"] == 2
 
     # TODO: Add test for conditionally hidden fields, which are possible in FMXJ
 
@@ -98,18 +348,6 @@ def test_simple_dependent_params(creator):
     )  # And it kept the value set before the bad dependency state
 
 
-def test_nonexistent_param(creator):
-    """Get and set a non-existent parameter."""
-    # Set a non-existent parameter, should not raise an error
-    assert creator.set("NON_EXISTENT", "value")
-    # But trying to get it back will raise.
-    with pytest.raises(KeyError):
-        creator.get("NON_EXISTENT", prefix=None)
-
-    with pytest.raises(KeyError):
-        creator.get("NUM")  # ___XF_NUM doesn't exist
-
-
 @pytest.mark.parametrize(
     "set_all_kwargs",
     [
@@ -152,79 +390,6 @@ def test_partial_params_cache_staleness(creator):
         assert creator["NUM"] == int(attrs["NUM"])
         previous = attrs.get("CRE_ATTR", previous)
         assert creator["CRE_ATTR"] == previous
-
-
-def test_unparseable_as_int(creator):
-    """Set a parameter to a value that cannot be parsed as an int, and try to get its parsed value."""
-    # Set NUM to a string that cannot be parsed as an int
-    assert creator.set("NUM", "not an int")
-    with pytest.raises(ValueError):
-        assert creator["NUM"]
-
-
-@pytest.mark.parametrize(
-    "transformer_info,param",
-    [
-        ("Creator 6", "NUM"),  # INTEGER
-        (
-            "StringReplacer 5",
-            "NO_MATCH",
-        ),  # OPTIONAL NULLABLE NO_OP STRING_ENCODED_OR_ATTR
-    ],
-)
-def test_null_value(transformer_info, param):
-    """Set and get a parameter with the "FME_NULL_VALUE" string. Verify that's returned as None."""
-    name, version = transformer_info.split()
-    xformer = TransformerParameterParser(name, version=int(version))
-    assert xformer.set(param, _FME_NULL_VALUE)
-    assert xformer[param] is None
-
-
-@pytest.mark.parametrize("null_value", [_FME_NULL_VALUE, None])
-def test_fmetransformer_null_value(null_value):
-    """
-    Test `fmeobjects.FMETransformer` behaviour around set/get of null values.
-
-    - "FME_NULL_VALUE" is handled like any other string literal. It's not a sentinel value for null.
-    - `None` is intercepted by `fmeobjects.FMETransformer` to ensure round-trip `None` behaviour.
-    - `TransformerParameterParser` setters intentionally don't convert `None` or "FME_NULL_VALUE".
-    - `TransformerParameterParser` getters intercept "FME_NULL_VALUE" to return `None` without asking `FMETransformer`.
-    """
-    xformer = fmeobjects.FMETransformer("StringReplacer", "", 6)
-    assert xformer.getParsedParamValue("NO_MATCH") == "_FME_NO_OP_"  # default value
-    assert xformer.setParameterValue("NO_MATCH", null_value)
-    assert xformer.getParsedParamValue("NO_MATCH") == null_value
-    assert xformer.setParameterValues({"NO_MATCH": null_value})
-    assert xformer.getParsedParamValue("NO_MATCH") == null_value
-
-
-@pytest.mark.xfail(fmeobjects.FME_BUILD_NUM < 25158, reason="FMEFORM-32592")
-def test_empty_optional_int():
-    t = TransformerParameterParser("VertexCreator", version=5)
-    # FIXME: Ideally, empty optional int returns None. (FMEENGINE-34561)
-    # Test initial state, then state after explicitly setting it to empty string,
-    # which is how an empty default is represented on the feature.
-    assert t["ZVAL"] == ""  #  OPTIONAL FLOAT_OR_ATTR, empty default
-    t["ZVAL"] = ""
-    assert t["ZVAL"] == ""
-    # Before b25158:
-    # ValueError: parameter value does not match the parameter type
-
-
-@pytest.mark.xfail(
-    condition=fmeobjects.FME_BUILD_NUM < 25754,
-    reason="FMEFORM-34573: API incorrectly returns size 1 list with unparsed input string",
-)
-def test_listbox_or_multichoice():
-    f = TransformerParameterParser("GoogleDriveConnector")
-    assert f["_UPLOAD_FME_ATTRIBUTES_TO_ADD"]  # default isn't empty
-    assert f["_UPLOAD_FME_ATTRIBUTES_TO_ADD"] == [
-        "_sharable_link",
-        "_direct_download_link",
-        "_id",
-    ]
-    f.set("_UPLOAD_FME_ATTRIBUTES_TO_ADD", "")
-    assert f["_UPLOAD_FME_ATTRIBUTES_TO_ADD"] == []
 
 
 def test_params_from_feature(creator):
