@@ -15,6 +15,7 @@ the recommended way to access transformer parameter values.
 from __future__ import annotations
 
 import itertools
+from enum import Enum
 from typing import Any, Iterable, Optional, Union
 
 from functools import lru_cache
@@ -28,7 +29,25 @@ except ModuleNotFoundError as e:
 
 
 _MISSING = object()
-_FME_NULL_VALUE = "FME_NULL_VALUE"
+
+
+class ParameterState(str, Enum):
+    """Special sentinel values for transformer parameters."""
+
+    NULL = "FME_NULL_VALUE"
+    """
+    The parameter value is null. Only valid for parameters configured to allow nulls.
+
+    .. tip::
+        This is different from Python's ``None``.
+        Parameter attributes set by FME on input features always have string values.
+    """
+    NO_OP = "_FME_NO_OP_"
+    """The parameter value is 'no-op'. Only valid for parameters configured to allow this value."""
+
+
+ParsedParameterType = Union[str, int, float, list, bool, ParameterState, None]
+"""All possible types for parsed transformer parameter values."""
 
 
 class _ParameterValuesCache:
@@ -36,14 +55,14 @@ class _ParameterValuesCache:
         self._xformer = xformer
         self._cache = lru_cache(typed=True)(self._get)
 
-    def _get(self, name: str, unparsed_value: Any) -> Any:
+    def _get(self, name: str, unparsed_value: Any) -> ParsedParameterType:
         # Method args form the key for lru_cache;
         # method body doesn't need to use unparsed_value.
         if unparsed_value is None:
             return None
         return self._xformer.getParsedParamValue(name)
 
-    def get(self, name: str, unparsed_value: Any) -> Any:
+    def get(self, name: str, unparsed_value: Any) -> ParsedParameterType:
         return self._cache(name, unparsed_value)
 
 
@@ -152,8 +171,6 @@ class TransformerParameterParser:
     """Unqualified name of the transformer."""
     transformer_fpkg: Optional[str]
     """Empty for non-packaged transformers."""
-    _current_feature: Optional[FMEFeature]
-    """The latest feature that was passed to :meth:`set_all`."""
     _last_seen_value: dict[str, Any]
     """param name -> most recently seen unparsed value. :meth:`set_all` updates this to reflect the latest feature."""
     _is_required_cache: dict[str, bool]
@@ -212,7 +229,6 @@ class TransformerParameterParser:
         """
         Reset all cached state.
         """
-        self._current_feature = None
         self._last_seen_value = {}
         self._is_required_cache = {}
         self._parsed_values_cache = _ParameterValuesCache(self.xformer)
@@ -251,10 +267,12 @@ class TransformerParameterParser:
 
         :param name: Parameter name to set.
         :param value: Parameter value to set.
+            To indicate a null value, use the keyword ``"FME_NULL_VALUE"``.
         """
         self._is_required_cache.clear()  # Any changed parameter value could alter state of any other parameter.
         # "FME_NULL_VALUE" passed as-is to signify None.
         # Actual None cannot be supplied as a parameter value by FMEFeature under normal operation.
+        self._last_seen_value[name] = value
         return self.xformer.setParameterValue(name, value)
 
     def set_all(
@@ -305,11 +323,10 @@ class TransformerParameterParser:
             added to the set of attributes obtained by prefix.
         """
         if isinstance(src, dict):
-            self._current_feature = None
+            self._last_seen_value.update(src)
             self._is_required_cache.clear()
             return self.xformer.setParameterValues(src)
 
-        self._current_feature = src
         # The parameter attributes present can vary per feature.
         # Hidden+Disabled parameters have no corresponding attribute.
         # Visible+Disabled parameters raise ValueError.
@@ -343,7 +360,7 @@ class TransformerParameterParser:
             return self.xformer.setParameterValues(changes)
         return True  # No-op: return like setParameterValues({})
 
-    def get(self, name: str, prefix: Optional[str] = "___XF_") -> Any:
+    def get(self, name: str, prefix: Optional[str] = "___XF_") -> ParsedParameterType:
         """
         Get a parsed (deserialized) parameter value.
         For convenience, this assumes a prefix for the given parameter name.
@@ -374,17 +391,23 @@ class TransformerParameterParser:
               according to the type expected by the transformer definition.
         :raises TypeError: When the parameter value type is not supported.
         :raises KeyError: When the parameter name is not recognized.
+        :returns: The deserialized parameter value, with special cases:
+
+            - :attr:`ParameterState.NULL` if the parameter value is null.
+            - :attr:`ParameterState.NO_OP` if the parameter value is no-op.
+            - If the parameter is optional and has no value set (i.e. empty or unspecified),
+              then the return value depends on the parameter type:
+
+                - ``None`` for numeric types.
+                - ``[]`` for multi-choice types.
+                - ``""`` for all other types.
         """
         # It's valid to call get() without set() or set_all().
         # It just returns the default values from the transformer definition.
         if prefix:
             name = prefix + name
 
-        if not (feature := self._current_feature):
-            # No performance optimization for feature-less case.
-            return self.xformer.getParsedParamValue(name)
-
-        # Get the unparsed value from set_all()'s cache.
+        # Get the unparsed value from cache.
         try:
             unparsed_value = self._last_seen_value[name]
         except KeyError:
@@ -393,13 +416,23 @@ class TransformerParameterParser:
             # b) parameter that was never set (want transformer definition default)
             # c) hidden+disabled parameter that's never been made visible so far.
             # (b) is possible in unit tests that supply a subset of parameter attributes for convenience
-            unparsed_value = get_attribute(feature, name, default=_MISSING)
+            unparsed_value = _MISSING
 
-        if unparsed_value == _FME_NULL_VALUE:
-            return None  # This is always None, so no need to parse.
+        # Don't ask FMETransformer to parse sentinel values.
+        if unparsed_value in ParameterState:
+            return ParameterState(unparsed_value)
 
         try:
-            return self._parsed_values_cache.get(name, unparsed_value)
+            if unparsed_value == _MISSING:
+                # Value never supplied. Get default from transformer definition.
+                # Convert potential sentinel values.
+                parsed_value = self.xformer.getParsedParamValue(name)
+                if unparsed_value in ParameterState:
+                    return ParameterState(unparsed_value)
+            else:
+                parsed_value = self._parsed_values_cache.get(name, unparsed_value)
+                # Sentinel values impossible here since we handled them above.
+            return parsed_value
         except TypeError as ex:
             # Clarify error message for unsupported parameter types.
             if "parameter value does not match a supported type" in str(ex):
@@ -408,13 +441,13 @@ class TransformerParameterParser:
                 ) from ex
             raise
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> ParsedParameterType:
         """
         Like :meth:`get`, but assumes no prefix.
         """
         return self.get(key, prefix=None)
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: str):
         """
         Like :meth:`set`, but raises an exception if the value cannot be set.
 
