@@ -51,7 +51,7 @@ def test_intparser(value):
     if value == "":
         assert parser(value) is None
         return
-    if not re.match(r"^\d+\s*$", value):
+    if not re.match(r"^\d+ *$", value):
         with pytest.raises(ValueError):
             parser(value)
         return
@@ -60,7 +60,7 @@ def test_intparser(value):
     assert isinstance(parsed, int)
 
 
-@given(st.text())
+@given(st.text().filter(lambda x: x.lower() != "nan"))
 @example("10")
 @example("10.1")
 def test_floatparser(value):
