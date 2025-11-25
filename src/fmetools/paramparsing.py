@@ -46,6 +46,9 @@ class ParameterState(str, Enum):
     """The parameter value is 'no-op'. Only valid for parameters configured to allow this value."""
 
 
+_parameter_state_values = {
+    item.value for item in ParameterState
+}  # `x in ParameterState` needs PY>=3.12.
 ParsedParameterType = Union[str, int, float, list, bool, ParameterState, None]
 """All possible types for parsed transformer parameter values."""
 
@@ -419,10 +422,11 @@ class TransformerParameterParser:
             unparsed_value = _MISSING
 
         # Don't ask FMETransformer to parse sentinel values.
-        try:  # `x in ParameterState` needs PY>=3.12.
+        if (
+            isinstance(unparsed_value, str)
+            and unparsed_value in _parameter_state_values
+        ):
             return ParameterState(unparsed_value)
-        except ValueError:
-            pass
 
         try:
             if unparsed_value != _MISSING:
@@ -432,10 +436,12 @@ class TransformerParameterParser:
             # Value never supplied. Get default from transformer definition.
             # Convert potential sentinel values.
             parsed_value = self.xformer.getParsedParamValue(name)
-            try:  # `x in ParameterState` needs PY>=3.12.
+            if (
+                isinstance(parsed_value, str)
+                and parsed_value in _parameter_state_values
+            ):
                 return ParameterState(parsed_value)
-            except ValueError:
-                return parsed_value
+            return parsed_value
         except TypeError as ex:
             # Clarify error message for unsupported parameter types.
             if "parameter value does not match a supported type" in str(ex):
