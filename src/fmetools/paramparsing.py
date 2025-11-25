@@ -399,7 +399,7 @@ class TransformerParameterParser:
               then the return value depends on the parameter type:
 
                 - ``None`` for numeric types.
-                - ``[]`` for multi-choice types.
+                - ``[]`` for multiple selection types.
                 - ``""`` for all other types.
         """
         # It's valid to call get() without set() or set_all().
@@ -419,20 +419,23 @@ class TransformerParameterParser:
             unparsed_value = _MISSING
 
         # Don't ask FMETransformer to parse sentinel values.
-        if unparsed_value in ParameterState:
+        try:  # `x in ParameterState` needs PY>=3.12.
             return ParameterState(unparsed_value)
+        except ValueError:
+            pass
 
         try:
-            if unparsed_value == _MISSING:
-                # Value never supplied. Get default from transformer definition.
-                # Convert potential sentinel values.
-                parsed_value = self.xformer.getParsedParamValue(name)
-                if unparsed_value in ParameterState:
-                    return ParameterState(unparsed_value)
-            else:
-                parsed_value = self._parsed_values_cache.get(name, unparsed_value)
+            if unparsed_value != _MISSING:
+                return self._parsed_values_cache.get(name, unparsed_value)
                 # Sentinel values impossible here since we handled them above.
-            return parsed_value
+
+            # Value never supplied. Get default from transformer definition.
+            # Convert potential sentinel values.
+            parsed_value = self.xformer.getParsedParamValue(name)
+            try:  # `x in ParameterState` needs PY>=3.12.
+                return ParameterState(parsed_value)
+            except ValueError:
+                return parsed_value
         except TypeError as ex:
             # Clarify error message for unsupported parameter types.
             if "parameter value does not match a supported type" in str(ex):
