@@ -1,6 +1,8 @@
 # coding: utf-8
 """This module includes any classes that have been deprecated."""
 
+from __future__ import annotations
+
 from typing import Optional
 
 from fmeobjects import FMEFeature

@@ -1,9 +1,13 @@
 # fmetools changes
 
+## 0.13.0
+
+* `fmetools.paramparsing.TransformerParameterParser`: represent FME's null and no-op values as enums.
+
 ## 0.12.2
 
 * Fix handling of special characters in Custom Proxy Map credentials.
-* Update documentation of `fmetools.paramparsing.TransformerParameterParser` with changes in FME 2025.2+.
+* `fmetools.paramparsing.TransformerParameterParser`: Update documentation with changes in FME 2025.2+.
 
 ## 0.12.1
 
