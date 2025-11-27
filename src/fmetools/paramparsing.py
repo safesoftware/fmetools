@@ -273,7 +273,7 @@ class TransformerParameterParser:
             To indicate a null value, use the keyword ``"FME_NULL_VALUE"``.
         """
         self._is_required_cache.clear()  # Any changed parameter value could alter state of any other parameter.
-        # "FME_NULL_VALUE" passed as-is to signify None.
+        # "FME_NULL_VALUE" passed as-is to signify FME's null value.
         # Actual None cannot be supplied as a parameter value by FMEFeature under normal operation.
         self._last_seen_value[name] = value
         return self.xformer.setParameterValue(name, value)
