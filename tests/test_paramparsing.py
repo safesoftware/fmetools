@@ -187,14 +187,18 @@ SAME = "SAME"
             "Creator 6 NUM",
             "FME_NULL_VALUE",
             ParameterState.NULL,
-            ValueError,
+            ValueError
+            if fmeobjects.FME_BUILD_NUM < 26036
+            else "FME_NULL_VALUE",  # FOUNDATION-8710,
             id="null on not nullable int",
         ),
         pytest.param(
             "KMLStyler 3 FILL_OPACITY",
             "FME_NULL_VALUE",
             ParameterState.NULL,
-            ValueError,
+            ValueError
+            if fmeobjects.FME_BUILD_NUM < 26036
+            else "FME_NULL_VALUE",  # FOUNDATION-8710,
             id="null on not nullable optional int",
         ),
         pytest.param(
@@ -215,8 +219,10 @@ SAME = "SAME"
             "ExpressionEvaluator 3 NULL_ATTR_VALUE",
             "FME_NULL_VALUE",
             ParameterState.NULL,
-            ValueError,  # FOUNDATION-8710 would change this to "FME_NULL_VALUE"
-            id="null on nullable integer",
+            ValueError
+            if fmeobjects.FME_BUILD_NUM < 26036
+            else "FME_NULL_VALUE",  # FOUNDATION-8710
+            id="null on nullable int",
         ),
         pytest.param(
             "Creator 6 NUM", None, SAME, SAME, id="None round-trip on not nullable int"
