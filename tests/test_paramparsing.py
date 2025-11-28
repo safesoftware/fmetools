@@ -17,6 +17,9 @@ except ModuleNotFoundError:
 
 BUILD_NUM = fmeobjects.FME_BUILD_NUM
 pytestmark = pytest.mark.skipif(BUILD_NUM < 23224, reason="Requires FME >= b23224")
+FOUNDATION_8710 = (
+    26036  # null integers return "FME_NULL_VALUE" instead of raising ValueError
+)
 
 
 MISSING = "MISSING"
@@ -180,14 +183,14 @@ SAME = "SAME"
             "Creator 6 NUM",
             "FME_NULL_VALUE",
             ParameterState.NULL,
-            ValueError if BUILD_NUM < 26036 else "FME_NULL_VALUE",  # FOUNDATION-8710,
+            ValueError if BUILD_NUM < FOUNDATION_8710 else "FME_NULL_VALUE",
             id="null on not nullable int",
         ),
         pytest.param(
             "KMLStyler 3 FILL_OPACITY",
             "FME_NULL_VALUE",
             ParameterState.NULL,
-            ValueError if BUILD_NUM < 26036 else "FME_NULL_VALUE",  # FOUNDATION-8710,
+            ValueError if BUILD_NUM < FOUNDATION_8710 else "FME_NULL_VALUE",
             id="null on not nullable optional int",
         ),
         pytest.param(
@@ -208,7 +211,7 @@ SAME = "SAME"
             "ExpressionEvaluator 3 NULL_ATTR_VALUE",
             "FME_NULL_VALUE",
             ParameterState.NULL,
-            ValueError if BUILD_NUM < 26036 else "FME_NULL_VALUE",  # FOUNDATION-8710
+            ValueError if BUILD_NUM < FOUNDATION_8710 else "FME_NULL_VALUE",
             id="null on nullable int",
         ),
         pytest.param(
