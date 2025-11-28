@@ -15,9 +15,8 @@ except ModuleNotFoundError:
     pass
 
 
-pytestmark = pytest.mark.skipif(
-    fmeobjects.FME_BUILD_NUM < 23224, reason="Requires FME >= b23224"
-)
+BUILD_NUM = fmeobjects.FME_BUILD_NUM
+pytestmark = pytest.mark.skipif(BUILD_NUM < 23224, reason="Requires FME >= b23224")
 
 
 MISSING = "MISSING"
@@ -55,8 +54,7 @@ SAME = "SAME"
             SAME,
             id="default empty optional int < b25158",
             marks=pytest.mark.skipif(
-                fmeobjects.FME_BUILD_NUM >= 25158,
-                reason="changed by FMEFORM-32592",
+                BUILD_NUM >= 25158, reason="changed by FMEFORM-32592"
             ),
         ),
         pytest.param(
@@ -66,8 +64,7 @@ SAME = "SAME"
             SAME,
             id="empty optional int < b25158",
             marks=pytest.mark.skipif(
-                fmeobjects.FME_BUILD_NUM >= 25158,
-                reason="changed by FMEFORM-32592",
+                BUILD_NUM >= 25158, reason="changed by FMEFORM-32592"
             ),
         ),
         pytest.param(
@@ -77,8 +74,7 @@ SAME = "SAME"
             "",
             id="default empty optional int < b25795",
             marks=pytest.mark.skipif(
-                25795 <= fmeobjects.FME_BUILD_NUM < 26000
-                or 26016 <= fmeobjects.FME_BUILD_NUM,
+                25795 <= BUILD_NUM < 26000 or 26016 <= BUILD_NUM,
                 reason="changed by FOUNDATION-8502",
             ),
         ),
@@ -89,8 +85,7 @@ SAME = "SAME"
             "",
             id="empty optional int < b25795",
             marks=pytest.mark.skipif(
-                25795 <= fmeobjects.FME_BUILD_NUM < 26000
-                or 26016 <= fmeobjects.FME_BUILD_NUM,
+                25795 <= BUILD_NUM < 26000 or 26016 <= BUILD_NUM,
                 reason="changed by FOUNDATION-8502",
             ),
         ),
@@ -101,8 +96,7 @@ SAME = "SAME"
             None,
             id="default empty optional int >= b25795",
             marks=pytest.mark.skipif(
-                fmeobjects.FME_BUILD_NUM < 25795
-                or 26000 <= fmeobjects.FME_BUILD_NUM < 26016,
+                BUILD_NUM < 25795 or 26000 <= BUILD_NUM < 26016,
                 reason="returns empty str before FOUNDATION-8502",
             ),
         ),
@@ -113,8 +107,7 @@ SAME = "SAME"
             None,
             id="empty optional int < b25795",
             marks=pytest.mark.skipif(
-                fmeobjects.FME_BUILD_NUM < 25795
-                or 26000 <= fmeobjects.FME_BUILD_NUM < 26016,
+                BUILD_NUM < 25795 or 26000 <= BUILD_NUM < 26016,
                 reason="returns empty str before FOUNDATION-8502",
             ),
         ),
@@ -125,7 +118,7 @@ SAME = "SAME"
             SAME,
             id="default list",
             marks=pytest.mark.skipif(
-                condition=fmeobjects.FME_BUILD_NUM < 25754,
+                condition=BUILD_NUM < 25754,
                 reason="FMEFORM-34573: API incorrectly returns size 1 list with unparsed input string",
             ),
         ),
@@ -136,7 +129,7 @@ SAME = "SAME"
             SAME,
             id="default list < b25754",
             marks=pytest.mark.skipif(
-                condition=fmeobjects.FME_BUILD_NUM >= 25754,
+                condition=BUILD_NUM >= 25754,
                 reason="FMEFORM-34573: API incorrectly returns size 1 list with unparsed input string",
             ),
         ),
@@ -147,7 +140,7 @@ SAME = "SAME"
             SAME,
             id="empty list",
             marks=pytest.mark.skipif(
-                condition=fmeobjects.FME_BUILD_NUM < 25754,
+                condition=BUILD_NUM < 25754,
                 reason="FMEFORM-34573: API incorrectly returns size 1 list with unparsed input string",
             ),
         ),
@@ -158,7 +151,7 @@ SAME = "SAME"
             SAME,
             id="empty list < b25754",
             marks=pytest.mark.skipif(
-                condition=fmeobjects.FME_BUILD_NUM >= 25754,
+                condition=BUILD_NUM >= 25754,
                 reason="FMEFORM-34573: API incorrectly returns size 1 list with unparsed input string",
             ),
         ),
@@ -187,18 +180,14 @@ SAME = "SAME"
             "Creator 6 NUM",
             "FME_NULL_VALUE",
             ParameterState.NULL,
-            ValueError
-            if fmeobjects.FME_BUILD_NUM < 26036
-            else "FME_NULL_VALUE",  # FOUNDATION-8710,
+            ValueError if BUILD_NUM < 26036 else "FME_NULL_VALUE",  # FOUNDATION-8710,
             id="null on not nullable int",
         ),
         pytest.param(
             "KMLStyler 3 FILL_OPACITY",
             "FME_NULL_VALUE",
             ParameterState.NULL,
-            ValueError
-            if fmeobjects.FME_BUILD_NUM < 26036
-            else "FME_NULL_VALUE",  # FOUNDATION-8710,
+            ValueError if BUILD_NUM < 26036 else "FME_NULL_VALUE",  # FOUNDATION-8710,
             id="null on not nullable optional int",
         ),
         pytest.param(
@@ -219,9 +208,7 @@ SAME = "SAME"
             "ExpressionEvaluator 3 NULL_ATTR_VALUE",
             "FME_NULL_VALUE",
             ParameterState.NULL,
-            ValueError
-            if fmeobjects.FME_BUILD_NUM < 26036
-            else "FME_NULL_VALUE",  # FOUNDATION-8710
+            ValueError if BUILD_NUM < 26036 else "FME_NULL_VALUE",  # FOUNDATION-8710
             id="null on nullable int",
         ),
         pytest.param(
@@ -313,7 +300,7 @@ def test_system_transformer(creator):
 
 
 def check_disabled_param_access(xformer, param_name):
-    if fmeobjects.FME_BUILD_NUM >= 25759:  # FMEFORM-34668 (see comments)
+    if BUILD_NUM >= 25759:  # FMEFORM-34668 (see comments)
         with pytest.raises(ValueError) as exc:
             assert not xformer[param_name]
         # TODO: Message to be improved by FOUNDATION-8506.
