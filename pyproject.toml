@@ -4,6 +4,10 @@ addopts = "-s"
 testpaths = [
     "tests",
 ]
+filterwarnings = [
+    "ignore:Failed to import filter module 'urllib3':pytest.PytestConfigWarning",
+    "ignore::urllib3.exceptions.InsecureRequestWarning"
+]
 
 [tool.ruff]
 required-version = '>=0.5.1'
