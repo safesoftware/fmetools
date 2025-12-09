@@ -10,7 +10,7 @@ from fmetools.features import build_feature
 
 # Allow this test to skip gracefully with pytestmark, if import fails.
 try:
-    from fmetools.paramparsing import TransformerParameterParser, ParameterState
+    from fmetools.paramparsing import ParameterState, TransformerParameterParser
 except ModuleNotFoundError:
     pass
 
@@ -152,58 +152,86 @@ SAME = "SAME"
             "FME_NULL_VALUE",
             ParameterState.NULL,
             "FME_NULL_VALUE",
-            id="null on nullable",
+            id="FME_NULL_VALUE on nullable",
+        ),
+        pytest.param(
+            "StringReplacer 6 NO_MATCH",
+            None,
+            ParameterState.NULL,
+            None,
+            id="None on nullable",
         ),
         pytest.param(
             "Creator 6 NUM",
             "FME_NULL_VALUE",
             ParameterState.NULL,
             ValueError if BUILD_NUM < FOUNDATION_8710 else "FME_NULL_VALUE",
-            id="null on not nullable int",
+            id="FME_NULL_VALUE on not nullable int",
         ),
         pytest.param(
             "KMLStyler 3 FILL_OPACITY",
             "FME_NULL_VALUE",
             ParameterState.NULL,
             ValueError if BUILD_NUM < FOUNDATION_8710 else "FME_NULL_VALUE",
-            id="null on not nullable optional int",
+            id="FME_NULL_VALUE on not nullable optional int",
         ),
         pytest.param(
             "Creator 6 CRE_ATTR",
             ParameterState.NULL,
             ParameterState.NULL,
             "FME_NULL_VALUE",
-            id="null on not nullable optional str",
+            id="FME_NULL_VALUE on not nullable optional str",
         ),
         pytest.param(
             "GoogleDriveConnector 3 _UPLOAD_FME_ATTRIBUTES_TO_ADD",
             "FME_NULL_VALUE",
             ParameterState.NULL,
             ["FME_NULL_VALUE"],
-            id="null on not nullable list",
+            id="FME_NULL_VALUE on not nullable list",
         ),
         pytest.param(
             "ExpressionEvaluator 3 NULL_ATTR_VALUE",
             "FME_NULL_VALUE",
             ParameterState.NULL,
             ValueError if BUILD_NUM < FOUNDATION_8710 else "FME_NULL_VALUE",
-            id="null on nullable int",
+            id="FME_NULL_VALUE on nullable int",
         ),
         pytest.param(
-            "Creator 6 NUM", None, SAME, SAME, id="None round-trip on not nullable int"
+            "ExpressionEvaluator 3 NULL_ATTR_VALUE",
+            None,
+            ParameterState.NULL,
+            None,
+            id="None on nullable int",
+        ),
+        pytest.param(
+            "safe.test.NullTester 1 ___XF_NUMBER",
+            MISSING,
+            ParameterState.NULL,
+            "FME_NULL_VALUE",
+            id="default null int represented as FME_NULL_VALUE, not None",
+            marks=pytest.mark.skip(
+                "No shipped transformer with default null param value"
+            ),
+        ),
+        pytest.param(
+            "Creator 6 NUM",
+            None,
+            ParameterState.NULL,
+            None,
+            id="None round-trip on not nullable int",
         ),
         pytest.param(
             "Creator 6 CRE_ATTR",
             None,
-            SAME,
-            SAME,
+            ParameterState.NULL,
+            None,
             id="None round-trip on not nullable str",
         ),
         pytest.param(
             "StringReplacer 6 NO_MATCH",
             None,
-            SAME,
-            SAME,
+            ParameterState.NULL,
+            None,
             id="None round-trip on nullable str",
         ),
     ],
