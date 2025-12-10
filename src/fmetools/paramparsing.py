@@ -34,15 +34,9 @@ class ParameterState(str, Enum):
     """Special sentinel values for transformer parameters."""
 
     NULL = "FME_NULL_VALUE"
-    """
-    The parameter value is null. Only valid for parameters configured to allow nulls.
-
-    .. tip::
-        This is different from Python's ``None``.
-        Parameter attributes set by FME on input features always have string values.
-    """
+    """The parameter value is null."""
     NO_OP = "_FME_NO_OP_"
-    """The parameter value is 'no-op'. Only valid for parameters configured to allow this value."""
+    """The parameter value is 'no-op'."""
 
 
 _parameter_state_values = {

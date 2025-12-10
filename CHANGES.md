@@ -3,6 +3,8 @@
 ## 0.13.0
 
 * `fmetools.paramparsing.TransformerParameterParser`: represent FME's null and no-op values as enums.
+    * Code that handles parameters set to null, either directly or via an attribute, must be updated to check for
+      `fmetools.paramparsing.ParameterState.NULL`.
 
 ## 0.12.2
 
