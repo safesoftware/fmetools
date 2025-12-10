@@ -10,14 +10,19 @@ from fmetools.features import build_feature
 
 # Allow this test to skip gracefully with pytestmark, if import fails.
 try:
-    from fmetools.paramparsing import TransformerParameterParser, ParameterState
+    from fmetools.paramparsing import ParameterState, TransformerParameterParser
 except ModuleNotFoundError:
     pass
 
 
-pytestmark = pytest.mark.skipif(
-    fmeobjects.FME_BUILD_NUM < 23224, reason="Requires FME >= b23224"
-)
+BUILD_NUM = fmeobjects.FME_BUILD_NUM
+pytestmark = pytest.mark.skipif(BUILD_NUM < 23224, reason="Requires FME >= b23224")
+FOUNDATION_8710 = 26036
+"""Build where null integers return "FME_NULL_VALUE" instead of raising ValueError."""
+FMEFORM_34573 = 25754
+"""Build where list parameter parsing was fixed."""
+FMEFORM_32592 = 25158
+"""Build where empty optional int parameters return empty string instead of raising ValueError."""
 
 
 MISSING = "MISSING"
@@ -55,8 +60,7 @@ SAME = "SAME"
             SAME,
             id="default empty optional int < b25158",
             marks=pytest.mark.skipif(
-                fmeobjects.FME_BUILD_NUM >= 25158,
-                reason="changed by FMEFORM-32592",
+                BUILD_NUM >= FMEFORM_32592, reason="changed by FMEFORM-32592"
             ),
         ),
         pytest.param(
@@ -66,8 +70,7 @@ SAME = "SAME"
             SAME,
             id="empty optional int < b25158",
             marks=pytest.mark.skipif(
-                fmeobjects.FME_BUILD_NUM >= 25158,
-                reason="changed by FMEFORM-32592",
+                BUILD_NUM >= FMEFORM_32592, reason="changed by FMEFORM-32592"
             ),
         ),
         pytest.param(
@@ -77,8 +80,7 @@ SAME = "SAME"
             "",
             id="default empty optional int < b25795",
             marks=pytest.mark.skipif(
-                25795 <= fmeobjects.FME_BUILD_NUM < 26000
-                or 26016 <= fmeobjects.FME_BUILD_NUM,
+                25795 <= BUILD_NUM < 26000 or 26016 <= BUILD_NUM,
                 reason="changed by FOUNDATION-8502",
             ),
         ),
@@ -89,8 +91,7 @@ SAME = "SAME"
             "",
             id="empty optional int < b25795",
             marks=pytest.mark.skipif(
-                25795 <= fmeobjects.FME_BUILD_NUM < 26000
-                or 26016 <= fmeobjects.FME_BUILD_NUM,
+                25795 <= BUILD_NUM < 26000 or 26016 <= BUILD_NUM,
                 reason="changed by FOUNDATION-8502",
             ),
         ),
@@ -101,8 +102,7 @@ SAME = "SAME"
             None,
             id="default empty optional int >= b25795",
             marks=pytest.mark.skipif(
-                fmeobjects.FME_BUILD_NUM < 25795
-                or 26000 <= fmeobjects.FME_BUILD_NUM < 26016,
+                BUILD_NUM < 25795 or 26000 <= BUILD_NUM < 26016,
                 reason="returns empty str before FOUNDATION-8502",
             ),
         ),
@@ -113,54 +113,25 @@ SAME = "SAME"
             None,
             id="empty optional int < b25795",
             marks=pytest.mark.skipif(
-                fmeobjects.FME_BUILD_NUM < 25795
-                or 26000 <= fmeobjects.FME_BUILD_NUM < 26016,
+                BUILD_NUM < 25795 or 26000 <= BUILD_NUM < 26016,
                 reason="returns empty str before FOUNDATION-8502",
             ),
         ),
         pytest.param(
             "GoogleDriveConnector 3 _UPLOAD_FME_ATTRIBUTES_TO_ADD",
             MISSING,
-            ["_sharable_link", "_direct_download_link", "_id"],
+            ["_sharable_link _direct_download_link _id"]
+            if BUILD_NUM < FMEFORM_34573
+            else ["_sharable_link", "_direct_download_link", "_id"],
             SAME,
             id="default list",
-            marks=pytest.mark.skipif(
-                condition=fmeobjects.FME_BUILD_NUM < 25754,
-                reason="FMEFORM-34573: API incorrectly returns size 1 list with unparsed input string",
-            ),
-        ),
-        pytest.param(
-            "GoogleDriveConnector 3 _UPLOAD_FME_ATTRIBUTES_TO_ADD",
-            MISSING,
-            ["_sharable_link _direct_download_link _id"],
-            SAME,
-            id="default list < b25754",
-            marks=pytest.mark.skipif(
-                condition=fmeobjects.FME_BUILD_NUM >= 25754,
-                reason="FMEFORM-34573: API incorrectly returns size 1 list with unparsed input string",
-            ),
         ),
         pytest.param(
             "GoogleDriveConnector 3 _UPLOAD_FME_ATTRIBUTES_TO_ADD",
             "",
-            [],
+            [] if BUILD_NUM >= FMEFORM_34573 else [""],
             SAME,
             id="empty list",
-            marks=pytest.mark.skipif(
-                condition=fmeobjects.FME_BUILD_NUM < 25754,
-                reason="FMEFORM-34573: API incorrectly returns size 1 list with unparsed input string",
-            ),
-        ),
-        pytest.param(
-            "GoogleDriveConnector 3 _UPLOAD_FME_ATTRIBUTES_TO_ADD",
-            "",
-            [""],
-            SAME,
-            id="empty list < b25754",
-            marks=pytest.mark.skipif(
-                condition=fmeobjects.FME_BUILD_NUM >= 25754,
-                reason="FMEFORM-34573: API incorrectly returns size 1 list with unparsed input string",
-            ),
         ),
         pytest.param(
             "StringReplacer 6 NO_MATCH",
@@ -181,58 +152,86 @@ SAME = "SAME"
             "FME_NULL_VALUE",
             ParameterState.NULL,
             "FME_NULL_VALUE",
-            id="null on nullable",
+            id="FME_NULL_VALUE on nullable",
+        ),
+        pytest.param(
+            "StringReplacer 6 NO_MATCH",
+            None,
+            ParameterState.NULL,
+            None,
+            id="None on nullable",
         ),
         pytest.param(
             "Creator 6 NUM",
             "FME_NULL_VALUE",
             ParameterState.NULL,
-            ValueError,
-            id="null on not nullable int",
+            ValueError if BUILD_NUM < FOUNDATION_8710 else "FME_NULL_VALUE",
+            id="FME_NULL_VALUE on not nullable int",
         ),
         pytest.param(
             "KMLStyler 3 FILL_OPACITY",
             "FME_NULL_VALUE",
             ParameterState.NULL,
-            ValueError,
-            id="null on not nullable optional int",
+            ValueError if BUILD_NUM < FOUNDATION_8710 else "FME_NULL_VALUE",
+            id="FME_NULL_VALUE on not nullable optional int",
         ),
         pytest.param(
             "Creator 6 CRE_ATTR",
             ParameterState.NULL,
             ParameterState.NULL,
             "FME_NULL_VALUE",
-            id="null on not nullable optional str",
+            id="FME_NULL_VALUE on not nullable optional str",
         ),
         pytest.param(
             "GoogleDriveConnector 3 _UPLOAD_FME_ATTRIBUTES_TO_ADD",
             "FME_NULL_VALUE",
             ParameterState.NULL,
             ["FME_NULL_VALUE"],
-            id="null on not nullable list",
+            id="FME_NULL_VALUE on not nullable list",
         ),
         pytest.param(
             "ExpressionEvaluator 3 NULL_ATTR_VALUE",
             "FME_NULL_VALUE",
             ParameterState.NULL,
-            ValueError,  # FOUNDATION-8710 would change this to "FME_NULL_VALUE"
-            id="null on nullable integer",
+            ValueError if BUILD_NUM < FOUNDATION_8710 else "FME_NULL_VALUE",
+            id="FME_NULL_VALUE on nullable int",
         ),
         pytest.param(
-            "Creator 6 NUM", None, SAME, SAME, id="None round-trip on not nullable int"
+            "ExpressionEvaluator 3 NULL_ATTR_VALUE",
+            None,
+            ParameterState.NULL,
+            None,
+            id="None on nullable int",
+        ),
+        pytest.param(
+            "safe.test.NullTester 1 ___XF_NUMBER",
+            MISSING,
+            ParameterState.NULL,
+            "FME_NULL_VALUE",
+            id="default null int represented as FME_NULL_VALUE, not None",
+            marks=pytest.mark.skip(
+                "No shipped transformer with default null param value"
+            ),
+        ),
+        pytest.param(
+            "Creator 6 NUM",
+            None,
+            ParameterState.NULL,
+            None,
+            id="None round-trip on not nullable int",
         ),
         pytest.param(
             "Creator 6 CRE_ATTR",
             None,
-            SAME,
-            SAME,
+            ParameterState.NULL,
+            None,
             id="None round-trip on not nullable str",
         ),
         pytest.param(
             "StringReplacer 6 NO_MATCH",
             None,
-            SAME,
-            SAME,
+            ParameterState.NULL,
+            None,
             id="None round-trip on nullable str",
         ),
     ],
@@ -307,7 +306,7 @@ def test_system_transformer(creator):
 
 
 def check_disabled_param_access(xformer, param_name):
-    if fmeobjects.FME_BUILD_NUM >= 25759:  # FMEFORM-34668 (see comments)
+    if BUILD_NUM >= 25759:  # FMEFORM-34668 (see comments)
         with pytest.raises(ValueError) as exc:
             assert not xformer[param_name]
         # TODO: Message to be improved by FOUNDATION-8506.

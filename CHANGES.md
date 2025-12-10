@@ -1,8 +1,10 @@
 # fmetools changes
 
-## 0.13.0
+## 0.13.1
 
 * `fmetools.paramparsing.TransformerParameterParser`: represent FME's null and no-op values as enums.
+    * Code that handles parameters set to null, either directly or via an attribute, must be updated to check for
+      `fmetools.paramparsing.ParameterState.NULL`.
 
 ## 0.12.2
 
@@ -25,11 +27,13 @@
 
 ## 0.11.0
 
-* Update base classes for `fmetools.plugins.FMESimplifiedReader`, `fmetools.plugins.FMESimplifiedWriter`, and `fmetools.parsers.MappingFile`.
+* Update base classes for `fmetools.plugins.FMESimplifiedReader`, `fmetools.plugins.FMESimplifiedWriter`, and
+  `fmetools.parsers.MappingFile`.
 
 ## 0.10.3
 
-* Updated docstring references to `fmetools._deprecated.FMEBaseTransformer.*` to link to new `fme.BaseTransformer` documentation.
+* Updated docstring references to `fmetools._deprecated.FMEBaseTransformer.*` to link to new `fme.BaseTransformer`
+  documentation.
 
 ## 0.10.2
 

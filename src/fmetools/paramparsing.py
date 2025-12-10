@@ -16,9 +16,8 @@ from __future__ import annotations
 
 import itertools
 from enum import Enum
-from typing import Any, Iterable, Optional, Union
-
 from functools import lru_cache
+from typing import Any, Iterable, Optional, Union
 
 from fmetools.features import get_attribute
 
@@ -35,15 +34,9 @@ class ParameterState(str, Enum):
     """Special sentinel values for transformer parameters."""
 
     NULL = "FME_NULL_VALUE"
-    """
-    The parameter value is null. Only valid for parameters configured to allow nulls.
-
-    .. tip::
-        This is different from Python's ``None``.
-        Parameter attributes set by FME on input features always have string values.
-    """
+    """The parameter value is null."""
     NO_OP = "_FME_NO_OP_"
-    """The parameter value is 'no-op'. Only valid for parameters configured to allow this value."""
+    """The parameter value is 'no-op'."""
 
 
 _parameter_state_values = {
@@ -274,7 +267,7 @@ class TransformerParameterParser:
         """
         self._is_required_cache.clear()  # Any changed parameter value could alter state of any other parameter.
         # "FME_NULL_VALUE" passed as-is to signify FME's null value.
-        # Actual None cannot be supplied as a parameter value by FMEFeature under normal operation.
+        # Actual None may also be supplied, such as from @Value() and numeric parameters set to null.
         self._last_seen_value[name] = value
         return self.xformer.setParameterValue(name, value)
 
@@ -427,6 +420,11 @@ class TransformerParameterParser:
             and unparsed_value in _parameter_state_values
         ):
             return ParameterState(unparsed_value)
+        # Numeric parameters set to null are represented as true nulls.
+        # Any parameter set to get its value from a null-value attribute is also a true null.
+        # Represent these using the NULL enum for consistency.
+        if unparsed_value is None:
+            return ParameterState.NULL
 
         try:
             if unparsed_value != _MISSING:

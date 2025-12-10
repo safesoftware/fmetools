@@ -1,10 +1,56 @@
-# Import these modules just for parsing coverage.
-# Remove when these modules get imported elsewhere for tests.
-from fmetools import localize, scripted_selection, webservices  # noqa F401
+"""
+Run `pytest --fme-home=[PATH_TO_FME]` to run the tests against a specific FME installation.
+If not specified, the FME_HOME environment variable is used.
+Test initialization sets up access to fmeobjects before any tests are run,
+so it's not necessary for the Python environment to already be configured for FME.
+"""
 
 import json
+import os
+import sys
+from pathlib import Path
 
 import pytest
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--fme-home",
+        action="store",
+        default=os.environ.get("FME_HOME"),
+        help="Path to FME installation. Can also be set via FME_HOME environment variable.",
+    )
+
+
+def pytest_configure(config):
+    print(f"Python {sys.version}")
+    fme_home_str = config.getoption("--fme-home")
+    if not fme_home_str:
+        print(
+            "Warning: FME_HOME not set; assuming environment already configured for fmeobjects"
+        )
+        return
+
+    fme_home = Path(fme_home_str)
+    if not fme_home.is_dir():
+        raise ValueError(f"Invalid FME_HOME: {fme_home}")
+
+    # Add FME DLLs to the DLL search path
+    if os.name == "nt":
+        os.add_dll_directory(str(fme_home))
+        os.environ["PATH"] = f"{fme_home};{os.environ['PATH']}"
+
+    # Add FME Python modules to the Python path
+    for pth in (
+        fme_home / "python",
+        fme_home / "python" / f"python{sys.version_info.major}{sys.version_info.minor}",
+    ):
+        if str(pth) not in sys.path:
+            sys.path.append(str(pth))
+    print("Using FME_HOME:", fme_home)
+    import fmeobjects
+
+    print(f"{fmeobjects.FME_PRODUCT_NAME} {fmeobjects.FME_BUILD_STRING}")
 
 
 @pytest.fixture(scope="package")
