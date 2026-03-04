@@ -1,5 +1,9 @@
 # fmetools changes
 
+## 0.13.2
+
+* `fmetools.plugins.FMESimplifiedWriter`: Support writers which use spatial definition tables to define geometry support.
+
 ## 0.13.1
 
 * `fmetools.paramparsing.TransformerParameterParser`: represent FME's null and no-op values as enums.
