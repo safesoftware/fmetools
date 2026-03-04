@@ -577,6 +577,34 @@ class FMESimplifiedWriter(FMEWriter):
         """
         pass
 
+    def _get_feature_type_info(self, feature: FMEFeature) -> FeatureTypeInfo:
+        """
+        Get the feature type info corresponding to the feature.
+
+        :param feature: feature to retrieve feature type info for
+        :return: feature type info object containing the feature type name, user attributes, and feature type parameters for the feature
+        """
+        # get the user attributes and parameters for the feature
+        # under certain circumstances (e.g. feature fanout mode),
+        # the feature type declared on the DEF line will not match the
+        # feature type actually found on the feature
+        feature_type = feature.getFeatureType()
+
+        try:
+            return self._feature_type_info[feature_type]
+        except KeyError as e:
+            def_feature_type = get_template_feature_type(feature)
+            if def_feature_type not in self._feature_type_info:
+                raise MissingDefForIncomingFeatureType(
+                    self.log.name, feature_type
+                ) from e
+            def_line_info = self._feature_type_info[def_feature_type]
+            return FeatureTypeInfo(
+                feature_type,
+                def_line_info.user_attributes,
+                def_line_info.parameters,
+            )
+
     def write(self, feature: FMEFeature) -> None:
         """
         Write the input feature to the output dataset.
@@ -589,26 +617,17 @@ class FMESimplifiedWriter(FMEWriter):
         for one feature type before moving onto a different feature type.
         """
 
-        feature_type = feature.getFeatureType()
-
-        # get the user attributes and parameters for the feature
-        # under certain circumstances (e.g. feature fanout mode),
-        # the feature type declared on the DEF line will not match the
-        # feature type actually found on the feature
         try:
-            feature_type_info = self._feature_type_info[feature_type]
-        except KeyError as e:
-            def_feature_type = get_template_feature_type(feature)
-            if def_feature_type not in self._feature_type_info:
-                raise MissingDefForIncomingFeatureType(
-                    self.log.name, feature_type
-                ) from e
-            def_line_info = self._feature_type_info[def_feature_type]
-            feature_type_info = FeatureTypeInfo(
-                feature.getFeatureType(),
-                def_line_info.user_attributes,
-                def_line_info.parameters,
+            feature_type_info = self._get_feature_type_info(feature)
+        except MissingDefForIncomingFeatureType:
+            # Update the DEF lines and try to re-fetch the feature type info
+            # When a format has a spatial definition table and its geometry type is set to
+            # "From First Feature", DEF lines are not added until the first feature
+            # of a feature type is input
+            self._feature_type_info = self._mapping_file.parse_def_lines(
+                self.__class__.FEATURE_TYPE_PARAMETERS
             )
+            feature_type_info = self._get_feature_type_info(feature)
 
         self.write_feature(feature, feature_type_info)
 
