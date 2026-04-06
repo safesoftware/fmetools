@@ -4,17 +4,18 @@ from collections import Counter
 from itertools import zip_longest
 
 import pytest
+from hypothesis import assume, example, given, settings
+from hypothesis import strategies as st
+from hypothesis.strategies import integers, lists, sets, text
+
 from fmetools.parsers import (
-    stringarray_to_dict,
-    parse_def_line,
-    Directives,
     ConstraintSearchTypes,
     ConstraintsProperties,
+    Directives,
     _parse_raw_attr_type,
+    parse_def_line,
+    stringarray_to_dict,
 )
-from hypothesis import given, assume, example, settings
-from hypothesis import strategies as st
-from hypothesis.strategies import integers, text, lists, sets
 
 
 @given(lists(text(), max_size=6), integers(min_value=0, max_value=6))

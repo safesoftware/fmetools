@@ -3,19 +3,17 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import logging
-
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import fmeobjects
 from fmeobjects import FMEFeature
-
 from hypothesis import given, settings
-from hypothesis.strategies import sampled_from, booleans
+from hypothesis.strategies import booleans, sampled_from
 
 from fmetools.logfile import (
+    LEVEL_NUM_TO_FME,
     FMELogHandler,
     get_configured_logger,
-    LEVEL_NUM_TO_FME,
 )
 
 

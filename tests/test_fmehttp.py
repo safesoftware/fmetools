@@ -2,29 +2,26 @@
 
 import json
 import os
+from unittest.mock import patch
+from urllib.parse import urlparse
 
 import fme
 import pytest
-
 from fmeobjects import FMESession
-from hypothesis import given, assume, settings
-from hypothesis.strategies import none, text, one_of
+from hypothesis import assume, given, settings
+from hypothesis.strategies import none, one_of, text
+from requests.exceptions import SSLError
 
 from fmetools.http import (
+    FMECustomProxyMap,
     FMECustomProxyMapHandler,
     FMEGeneralProxyHandler,
     FMERequestsSession,
     UnsupportedProxyAuthenticationMethod,
-    proxy_url_without_credentials,
-    get_auth_object,
     _configure_proxy_exceptions,
-    FMECustomProxyMap,
+    get_auth_object,
+    proxy_url_without_credentials,
 )
-from requests.exceptions import SSLError
-
-from urllib.parse import urlparse
-from unittest.mock import patch
-
 
 REQUEST_DEFAULT_TIMEOUT = 60  # Assumed from fmehttp
 

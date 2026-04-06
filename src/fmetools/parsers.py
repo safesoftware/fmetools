@@ -11,11 +11,16 @@ import re
 from collections import OrderedDict, namedtuple
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Iterable, Union, Set, Dict, Optional, List, Generator
+from typing import Dict, Generator, Iterable, List, Optional, Set, Union
 
 import fme
 import six
-from fmeobjects import FMEFeature, FMESession, kFME_ReaderPropAll, kFMERead_SearchType  # noqa F401
+from fmeobjects import (  # noqa F401
+    FMEFeature,
+    FMESession,
+    kFME_ReaderPropAll,
+    kFMERead_SearchType,
+)
 from pluginbuilder import FMEMappingFile  # noqa F401
 from six import string_types
 

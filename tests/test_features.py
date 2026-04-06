@@ -5,30 +5,30 @@ import sys
 from collections import OrderedDict
 
 import pytest
-from fmeobjects import FMEFeature, FME_BUILD_NUM, FMEPoint, FMENull
+from fmeobjects import FME_BUILD_NUM, FMEFeature, FMENull, FMEPoint
 from hypothesis import given, settings
 from hypothesis.strategies import (
-    text,
-    one_of,
+    binary,
     booleans,
-    none,
+    characters,
+    dictionaries,
     floats,
     integers,
-    binary,
-    dictionaries,
     lists,
-    characters,
+    none,
+    one_of,
+    text,
 )
 
 from fmetools.features import (
-    set_attribute,
-    get_attribute,
-    set_attributes,
-    get_attributes,
-    get_attributes_with_prefix,
-    set_list_attribute_with_properties,
     build_feature,
     build_schema_feature,
+    get_attribute,
+    get_attributes,
+    get_attributes_with_prefix,
+    set_attribute,
+    set_attributes,
+    set_list_attribute_with_properties,
 )
 
 UTF8NAMES_SUPPORT = FME_BUILD_NUM >= 22000
