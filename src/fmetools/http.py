@@ -7,6 +7,7 @@ Use this class to make HTTP requests that automatically follow FME settings.
 """
 
 from __future__ import annotations
+
 import json
 import logging
 import os
@@ -17,13 +18,19 @@ from collections import namedtuple
 from typing import Optional, Union
 from urllib.parse import quote, urlparse
 
-import fme
 import requests
 import urllib3
-from fmeobjects import FME_ASSEMBLY_VERSION, FMEException, FMESession
 from pypac import PACSession
 from requests.adapters import HTTPAdapter
 from requests.auth import HTTPBasicAuth, HTTPDigestAuth, HTTPProxyAuth
+
+try:
+    import fme
+
+    _FME_MACROVALUES = fme.macroValues
+except ModuleNotFoundError:
+    _FME_MACROVALUES = {}
+from fmeobjects import FME_ASSEMBLY_VERSION, FMEException, FMESession
 
 from . import tr
 from .logfile import get_configured_logger
@@ -157,12 +164,9 @@ class FMERequestsSession(PACSession):
         )
 
         # FMEENGINE-68435: Set library debug logging based on workspace debug flags.
-        try:
-            _toggle_http_debug_logging(
-                "HTTP_DEBUG" in fme.macroValues.get("FME_DEBUG", "")
-            )
-        except AttributeError:
-            pass
+        _toggle_http_debug_logging(
+            "HTTP_DEBUG" in _FME_MACROVALUES.get("FME_DEBUG", "")
+        )
 
     def _load_proxy_settings(self, fme_session: FMESession):
         """
