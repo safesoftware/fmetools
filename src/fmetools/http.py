@@ -30,7 +30,15 @@ try:
     _FME_MACROVALUES = fme.macroValues
 except ModuleNotFoundError:
     _FME_MACROVALUES = {}
-from fmeobjects import FME_ASSEMBLY_VERSION, FMEException, FMESession
+
+try:
+    from fmeobjects import FME_ASSEMBLY_VERSION
+
+    _USER_AGENT = f"FME/{FME_ASSEMBLY_VERSION}"
+except ModuleNotFoundError:
+    _USER_AGENT = ""
+
+from fmeobjects import FMEException, FMESession
 
 from . import tr
 from .logfile import get_configured_logger
@@ -158,9 +166,8 @@ class FMERequestsSession(PACSession):
         self.request_count = 0
 
         # PR62339: Include FME version in User-Agent. Same format as FME core.
-        self.headers["User-Agent"] = "FME/%s %s" % (
-            FME_ASSEMBLY_VERSION,
-            self.headers.get("User-Agent"),
+        self.headers["User-Agent"] = (
+            f"{_USER_AGENT} {self.headers.get('User-Agent', '')}".strip()
         )
 
         # FMEENGINE-68435: Set library debug logging based on workspace debug flags.
