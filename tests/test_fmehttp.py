@@ -32,7 +32,7 @@ class MockFMESession(FMESession):
         super(MockFMESession, self).__init__()
         self.retval = retval
 
-    def getProperties(self, foo, bar):
+    def getProperties(self, propertyCategory, properties):
         return self.retval
 
 
@@ -379,10 +379,7 @@ def test_configure_proxy_exceptions(
         assert not _configure_proxy_exceptions()
         return
 
-    try:
-        import winreg
-    except ImportError:
-        import _winreg as winreg  # PY2.
+    import winreg
 
     def when_key_not_found(_, __):
         raise WindowsError()
