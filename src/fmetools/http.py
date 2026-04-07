@@ -22,7 +22,7 @@ import requests
 import urllib3
 from pypac import PACSession
 from requests.adapters import HTTPAdapter
-from requests.auth import HTTPBasicAuth, HTTPDigestAuth, HTTPProxyAuth
+from requests.auth import HTTPBasicAuth, HTTPDigestAuth, HTTPProxyAuth, AuthBase
 
 try:
     import fme
@@ -314,7 +314,7 @@ class KerberosUnsupportedException(FMEException):
         super().__init__(message)
 
 
-def get_kerberos_auth(caller_name: str) -> requests.auth.AuthBase:
+def get_kerberos_auth(caller_name: str) -> AuthBase:
     """
     Try to get a Kerberos authentication object to use with :mod:`requests`.
 
@@ -339,7 +339,7 @@ def get_kerberos_auth(caller_name: str) -> requests.auth.AuthBase:
 
 def get_auth_object(
     auth_type: str, user: str = "", password: str = "", caller_name: str = ""
-) -> Optional[requests.auth.AuthBase]:
+) -> Optional[AuthBase]:
     """
     Return a Requests auth object for the requested authentication type.
 
