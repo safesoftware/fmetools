@@ -32,13 +32,20 @@ except ModuleNotFoundError:
     _FME_MACROVALUES = {}
 
 try:
-    from fmeobjects import FME_ASSEMBLY_VERSION
+    from fmeobjects import FMEException, FME_ASSEMBLY_VERSION  # pyright: ignore[reportAssignmentType]
 
     _USER_AGENT = f"FME/{FME_ASSEMBLY_VERSION}"
 except ModuleNotFoundError:
     _USER_AGENT = ""
 
-from fmeobjects import FMEException, FMESession
+    class FMEException(Exception):  # type: ignore[assignment,no-redef]
+        """Fallback exception class when fmeobjects is not available."""
+
+        pass
+
+
+from fmeobjects import FMESession
+
 
 from . import tr
 from .logfile import get_configured_logger
