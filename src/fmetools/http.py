@@ -283,7 +283,7 @@ class FMEGeneralProxyHandler:
             return self.proxies[0].auth_method
         return None
 
-    def is_non_proxy_host(self, host: str) -> bool:
+    def is_non_proxy_host(self, host: Optional[str]) -> bool:
         """Return whether the hostname matches a configured no-proxy rule."""
         if not host:
             return False
@@ -527,12 +527,13 @@ class FMERequestsSession(PACSession):
         enforce_proxy_auth_method = (
             general_proxy_config.use_pac or general_proxy_config.proxies
         ) and general_proxy_config.user
-        if enforce_proxy_auth_method and not self._is_proxy_auth_method_supported(
-            general_proxy_config.auth_method
+        auth_method = general_proxy_config.auth_method
+        if (
+            enforce_proxy_auth_method
+            and auth_method
+            and not self._is_proxy_auth_method_supported(auth_method)
         ):
-            raise UnsupportedProxyAuthenticationMethod(
-                self._log_prefix, general_proxy_config.auth_method
-            )
+            raise UnsupportedProxyAuthenticationMethod(self._log_prefix, auth_method)
 
         # Configure PyPAC with proxy credentials, if any.
         if general_proxy_config.user:
@@ -555,13 +556,11 @@ class FMERequestsSession(PACSession):
         self._log.info(tr("Using proxy %s"), proxy_url_without_credentials(proxy_url))
 
     @staticmethod
-    def _is_proxy_auth_method_supported(auth_method: Optional[str]) -> bool:
+    def _is_proxy_auth_method_supported(auth_method: str) -> bool:
         """
-        Return whether the proxy authentication method is supported.
-
-        Other methods, like NTLM and Digest, are not supported.
+        Return whether the proxy authentication method is supported, i.e. Basic.
         """
-        return not auth_method or auth_method.lower() == "basic"
+        return auth_method.lower() == "basic"
 
     def request(self, method: str, url: str, **kwargs: Any) -> requests.Response:
         """
@@ -583,41 +582,49 @@ class FMERequestsSession(PACSession):
         # PR62730: Specify a default timeout, to prevent possibility of waiting forever.
         kwargs.setdefault("timeout", 60)
 
-        # FMEENGINE-63687: Non-proxy hosts.
-        if not kwargs.get("proxies"):
-            try:
-                if self._general_proxy_config.is_non_proxy_host(urlparse(url).hostname):
-                    self._log.debug(tr("Non-Proxy Hosts: Directly accessing '%s'"), url)
-                    kwargs["proxies"] = _REQUESTS_NO_PROXY_CONFIG
-            except ValueError:
-                pass  # Ignore malformed URLs.
+        # Proxy kwargs take precedence. If present, then skip further proxy lookups.
+        if kwargs.get("proxies"):
+            return super().request(method, url, **kwargs)
 
-        # PR70807: FME Custom Proxy Map.
-        # Only use custom proxy map if caller did not specify any proxies.
-        if not kwargs.get("proxies"):
-            custom_proxy = self._custom_proxy_map.custom_proxy_for_url(url)
-            if custom_proxy and not custom_proxy.proxy_url:
-                self._log.debug(tr("Custom Proxy Map: Directly accessing '%s'"), url)
-                kwargs["proxies"] = _REQUESTS_NO_PROXY_CONFIG
-            elif custom_proxy:
-                self._log.debug(
-                    tr(
-                        "Custom Proxy Map: Using proxy '{proxy_url}' for URL '{original_url}'"
-                    ).format(
-                        proxy_url=custom_proxy.sanitized_proxy_url, original_url=url
-                    )
-                )
-                if not self._is_proxy_auth_method_supported(custom_proxy.auth_method):
-                    raise UnsupportedProxyAuthenticationMethod(
-                        self._log_prefix, custom_proxy.auth_method
-                    )
-                kwargs["proxies"] = {
-                    "http": custom_proxy.proxy_url,
-                    "https": custom_proxy.proxy_url,
-                }
-                # Log about the custom proxy every time it changes to a different proxy.
-                if self._last_used_custom_proxy != custom_proxy.sanitized_proxy_url:
-                    self._last_used_custom_proxy = custom_proxy.sanitized_proxy_url
-                    self._log_proxy(custom_proxy.sanitized_proxy_url)
+        # If FME says this host bypasses proxies,
+        # then make the request while ignoring proxy env vars. (FMEENGINE-63687)
+        try:
+            bypass_proxy = self._general_proxy_config.is_non_proxy_host(
+                urlparse(url).hostname
+            )
+        except ValueError:
+            bypass_proxy = False  # Ignore malformed URLs.
+
+        if bypass_proxy:
+            self._log.debug(tr("Non-Proxy Hosts: Directly accessing '%s'"), url)
+            kwargs["proxies"] = _REQUESTS_NO_PROXY_CONFIG
+            return super().request(method, url, **kwargs)
+
+        # Look for config from FME Custom Proxy Map. (PR70807)
+        custom_proxy = self._custom_proxy_map.custom_proxy_for_url(url)
+        if not custom_proxy:
+            return super().request(method, url, **kwargs)
+
+        if not custom_proxy.proxy_url:
+            self._log.debug(tr("Custom Proxy Map: Directly accessing '%s'"), url)
+            kwargs["proxies"] = _REQUESTS_NO_PROXY_CONFIG
+            return super().request(method, url, **kwargs)
+
+        self._log.debug(
+            tr(
+                "Custom Proxy Map: Using proxy '{proxy_url}' for URL '{request_url}'"
+            ).format(proxy_url=custom_proxy.sanitized_proxy_url, request_url=url)
+        )
+        auth_method = custom_proxy.auth_method
+        if auth_method and not self._is_proxy_auth_method_supported(auth_method):
+            raise UnsupportedProxyAuthenticationMethod(self._log_prefix, auth_method)
+        kwargs["proxies"] = {
+            "http": custom_proxy.proxy_url,
+            "https": custom_proxy.proxy_url,
+        }
+        # Log about the custom proxy every time it changes to a different proxy.
+        if self._last_used_custom_proxy != custom_proxy.sanitized_proxy_url:
+            self._last_used_custom_proxy = custom_proxy.sanitized_proxy_url
+            self._log_proxy(custom_proxy.sanitized_proxy_url)
 
         return super().request(method, url, **kwargs)
