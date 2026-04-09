@@ -15,9 +15,20 @@ import re
 import sys
 import warnings
 from http import client as http_client
-from typing import Any, List, NamedTuple, Optional, Pattern, Tuple, Union
+from typing import (
+    Any,
+    List,
+    Literal,
+    NamedTuple,
+    Optional,
+    Pattern,
+    Protocol,
+    Tuple,
+    Union,
+)
 from urllib.parse import quote, urlparse
 
+from dataclasses import dataclass
 import requests
 import urllib3
 from pypac import PACSession
@@ -32,19 +43,17 @@ except ModuleNotFoundError:
     _FME_MACROVALUES = {}
 
 try:
-    from fmeobjects import FMEException, FME_ASSEMBLY_VERSION  # pyright: ignore[reportAssignmentType]
+    from fmeobjects import FMEException, FMESession, FME_ASSEMBLY_VERSION  # pyright: ignore[reportAssignmentType]
 
     _USER_AGENT = f"FME/{FME_ASSEMBLY_VERSION}"
 except ModuleNotFoundError:
     _USER_AGENT = ""
+    FMESession = None
 
     class FMEException(Exception):  # type: ignore[assignment,no-redef]
         """Fallback exception class when fmeobjects is not available."""
 
         pass
-
-
-from fmeobjects import FMESession
 
 
 from . import tr
@@ -196,6 +205,80 @@ def proxy_url_without_credentials(proxy_url: str) -> str:
     return proxy_url
 
 
+class _FMESessionLikeProxyConfigProvider(Protocol):
+    """The :cls:`~fmeobjects.FMESession` interface that provides FME proxy settings."""
+
+    def getProperties(
+        self,
+        propertyCategory: Literal[
+            "fme_session_prop_network_proxy", "fme_session_prop_network_proxy_settings"
+        ],
+        properties: Union[dict, List[str]],
+    ) -> List[str]: ...
+
+    def decodeFromFMEParsableText(self, parsableText: str) -> str: ...
+
+
+@dataclass
+class FMEProxyConfig(_FMESessionLikeProxyConfigProvider):
+    """
+    Holds all the proxy settings provided by FME.
+
+    When using :cls:`~fmeobjects.FMESession` is not available,
+    all applicable values must be provided in FME-decoded form.
+    """
+
+    general: List[str]
+    """Value of the ``fme_session_prop_network_proxy`` property."""
+    settings: List[str]
+    """Value of the ``fme_session_prop_network_proxy_settings`` property."""
+
+    def getProperties(
+        self,
+        propertyCategory: Literal[
+            "fme_session_prop_network_proxy", "fme_session_prop_network_proxy_settings"
+        ],
+        properties: Union[dict, List[str]],
+    ) -> List[str]:
+        if propertyCategory == FMESESSION_PROP_NETWORK_PROXY:
+            return self.general
+        if propertyCategory == FMESESSION_PROP_NETWORK_PROXY_SETTINGS:
+            return self.settings
+        raise ValueError(propertyCategory)
+
+    def decodeFromFMEParsableText(self, parsableText: str) -> str:
+        """
+        For decoding FME-encoded proxy config values.
+
+        Alias for :meth:`fmeobjects.FMESession.decodeFromFMEParsableText`, if available.
+        Otherwise returns the input string.
+        """
+        if FMESession:
+            return FMESession().decodeFromFMEParsableText(parsableText)
+        return parsableText
+
+    @classmethod
+    def from_fme_session(
+        cls, fme_session: Optional[_FMESessionLikeProxyConfigProvider] = None
+    ) -> FMEProxyConfig:
+        """
+        Load proxy settings from the given config provider or :cls:`fmeobjects.FMESession`.
+        """
+        if not fme_session:
+            if FMESession:
+                fme_session = FMESession()
+            else:
+                raise ValueError(
+                    "FMESession is not available, and no fme_session argument was provided"
+                )
+        return cls(
+            general=fme_session.getProperties(FMESESSION_PROP_NETWORK_PROXY, []),
+            settings=fme_session.getProperties(
+                FMESESSION_PROP_NETWORK_PROXY_SETTINGS, []
+            ),
+        )
+
+
 # For FMESession.getProperties(). For the result format, see fmesession.h getProxy().
 FMESESSION_PROP_NETWORK_PROXY = "fme_session_prop_network_proxy"
 FMESESSION_PROP_NETWORK_PROXY_SETTINGS = "fme_session_prop_network_proxy_settings"
@@ -228,7 +311,7 @@ class FMEGeneralProxyHandler:
         self.password = ""
         self._auth_method: Optional[str] = None
 
-    def configure(self, fme_session: FMESession) -> None:
+    def configure(self, fme_session: _FMESessionLikeProxyConfigProvider) -> None:
         """Load general proxy configuration from FME."""
         proxy_config = fme_session.getProperties(FMESESSION_PROP_NETWORK_PROXY, {})
         use_system_proxy = False
@@ -310,7 +393,7 @@ class FMECustomProxyMapHandler:
                 return proxy_map
         return None
 
-    def configure(self, fme_session: FMESession) -> None:
+    def configure(self, fme_session: _FMESessionLikeProxyConfigProvider) -> None:
         """Load custom proxy map configuration from FME."""
         proxy_config = fme_session.getProperties(FMESESSION_PROP_NETWORK_PROXY, {})
         i = 0
@@ -326,7 +409,9 @@ class FMECustomProxyMapHandler:
 
     @staticmethod
     def parse_custom_proxy_map(
-        fme_session: FMESession, applicable_url: str, proxy_info: str
+        fme_session: _FMESessionLikeProxyConfigProvider,
+        applicable_url: str,
+        proxy_info: str,
     ) -> FMECustomProxyMap:
         """
         Parse a serialized custom proxy map configuration entry from FME.
@@ -346,11 +431,9 @@ class FMECustomProxyMapHandler:
         elif not proxy_url.lower().startswith("http://"):
             # FME Server gives proxy hostname only. Assume a scheme.
             proxy_url = f"http://{proxy_url}"
-        parsed_proxy = urlparse(proxy_url)
+        parsed_proxy = urlparse(proxy_url)  # Never contains a port.
 
-        netloc = (
-            parsed_proxy.hostname + ":" + proxy_map_info["proxy-port"]
-        )  # Port never present in proxy-url.
+        netloc = f"{parsed_proxy.hostname}:{proxy_map_info['proxy-port']}"
         sanitized_proxy_url = (
             f"{parsed_proxy.scheme}://{netloc}"  # No credentials and no path.
         )
@@ -454,16 +537,15 @@ class FMERequestsSession(PACSession):
     def __init__(
         self,
         log: Union[logging.Logger, logging.LoggerAdapter, None] = None,
-        fme_session: Optional[FMESession] = None,
+        fme_session: Optional[_FMESessionLikeProxyConfigProvider] = None,
     ) -> None:
         """
         Initialize the session and load proxy settings from FME.
 
-        :param log: Python standard library logger to use. If ``None``, a
-            default logger is used.
-        :param fme_session: Session to load proxy configuration from.
-            Intended for testing purposes only.
-            Defaults to a new :class:`~fmeobjects.FMESession` instance.
+        :param log: Python standard library logger to use.
+            If ``None``, a default logger is used.
+        :param fme_session: Provider of FME proxy configuration.
+            If ``None``, the config is obtained from :class:`~fmeobjects.FMESession`.
         """
         super().__init__()
         if sys.platform == "win32":  # Use the system certificate store on Windows.
@@ -474,7 +556,7 @@ class FMERequestsSession(PACSession):
         self._log = log or get_configured_logger(self._log_prefix)
 
         self._general_proxy_config, self._custom_proxy_map = self._load_proxy_settings(
-            fme_session or FMESession()
+            fme_session or FMEProxyConfig.from_fme_session(fme_session)
         )
         self._last_used_custom_proxy = None
 
@@ -491,13 +573,12 @@ class FMERequestsSession(PACSession):
         )
 
     def _load_proxy_settings(
-        self, fme_session: FMESession
+        self, fme_session: _FMESessionLikeProxyConfigProvider
     ) -> Tuple[FMEGeneralProxyHandler, FMECustomProxyMapHandler]:
-        """Load proxy configuration from the FME session and environment.
+        """Load the given proxy configuration.
 
         If proxies are configured using environment variables, mention it in the log.
-        Proxy environment variables are honoured by Requests,
-        but this method does not set them.
+        Requests obeys proxy environment variables, but this method does not set them.
         Instead, this class expects them to be set in FME's fmesite.py startup script.
 
         :raises UnsupportedProxyAuthenticationMethod:
