@@ -44,11 +44,16 @@ except ModuleNotFoundError:
 
 try:
     from fmeobjects import FMEException, FMESession, FME_ASSEMBLY_VERSION  # pyright: ignore[reportAssignmentType]
+    from .logfile import get_configured_logger  # pyright: ignore[reportAssignmentType]
 
     _USER_AGENT = f"FME/{FME_ASSEMBLY_VERSION}"
 except ModuleNotFoundError:
     _USER_AGENT = ""
     FMESession = None
+
+    def get_configured_logger(log_prefix: str) -> logging.Logger:
+        """Fallback logger when fmeobjects is not available."""
+        return logging.getLogger(log_prefix)
 
     class FMEException(Exception):  # type: ignore[assignment,no-redef]
         """Fallback exception class when fmeobjects is not available."""
@@ -57,7 +62,6 @@ except ModuleNotFoundError:
 
 
 from . import tr
-from .logfile import get_configured_logger
 from .utils import choice_to_bool, stringarray_to_dict
 
 # These are relevant externally.
