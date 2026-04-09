@@ -553,6 +553,8 @@ class FMERequestsSession(PACSession):
             If ``None``, a default logger is used.
         :param fme_session: Provider of FME proxy configuration.
             If ``None``, the config is obtained from :class:`~fmeobjects.FMESession`.
+            If ``None`` and :class:`~fmeobjects.FMESession` is not available,
+            then this instance will not use any FME proxy configuration.
         """
         super().__init__()
         if sys.platform == "win32":  # Use the system certificate store on Windows.
@@ -562,8 +564,17 @@ class FMERequestsSession(PACSession):
         self._log_prefix = self.__class__.__name__
         self._log = log or get_configured_logger(self._log_prefix)
 
+        if fme_session is None:
+            try:
+                fme_session = FMEProxyConfig.from_fme_session()
+            except ValueError:
+                if FMESession is None:
+                    fme_session = FMEProxyConfig(general=[], settings=[])
+                else:
+                    raise
+
         self._general_proxy_config, self._custom_proxy_map = self._load_proxy_settings(
-            fme_session or FMEProxyConfig.from_fme_session(fme_session)
+            fme_session
         )
         self._last_used_custom_proxy = None
 
