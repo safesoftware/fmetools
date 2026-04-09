@@ -49,7 +49,10 @@ try:
     from .logfile import get_configured_logger  # pyright: ignore[reportAssignmentType]
 
     _USER_AGENT = f"FME/{FME_ASSEMBLY_VERSION}"
-except ModuleNotFoundError:
+except ModuleNotFoundError as e:
+    if e.name != "fmeobjects":
+        raise  # Only capture the expected missing module.
+
     _USER_AGENT = ""
     FMESession = None
 
