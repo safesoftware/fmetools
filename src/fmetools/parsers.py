@@ -19,14 +19,13 @@ from fmeobjects import (  # noqa F401
     FMEFeature,
     FMESession,
     kFME_ReaderPropAll,
-    kFMERead_SearchType,
 )
 from pluginbuilder import FMEMappingFile  # noqa F401
 from six import string_types
 
 from . import tr
 from .guiparams import parse_gui_type
-from .utils import string_to_bool
+from .utils import string_to_bool, stringarray_to_dict
 
 # Nothing here is intended for general use.
 __all__ = []
@@ -68,33 +67,6 @@ def _parse_raw_attr_type(raw_attr_type: str) -> "UserAttributeInfo":
     return UserAttributeInfo(
         match.group("attr_type"), width, precision, match.group("attr_index")
     )
-
-
-def stringarray_to_dict(stringarray, start=0):
-    """
-    Converts IFMEStringArray-like lists from the FMEObjects Python API
-    into a `dict` that's easier to work with.
-
-    Given a list `stringarray`,
-    convert elements `start+(2*n)` to keys, and `start+n` to values.
-    Duplicate keys cause the corresponding values to be collected into a list.
-
-    :param list stringarray: Must have an even number of elements starting from `start`
-    :param int start: Start index
-    :rtype: OrderedDict
-    """
-    assert (len(stringarray) - start) % 2 == 0
-    result = OrderedDict()
-    for index in range(start, len(stringarray), 2):
-        key = _system_to_unicode(stringarray[index])
-        value = _system_to_unicode(stringarray[index + 1])
-        if key in result:
-            if not isinstance(result[key], list):
-                result[key] = [result[key]]
-            result[key].append(value)
-        else:
-            result[key] = value
-    return result
 
 
 def parse_def_line(def_line, option_names):

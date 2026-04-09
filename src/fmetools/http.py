@@ -58,8 +58,7 @@ except ModuleNotFoundError:
 
 from . import tr
 from .logfile import get_configured_logger
-from .parsers import stringarray_to_dict
-from .utils import choice_to_bool
+from .utils import choice_to_bool, stringarray_to_dict
 
 # These are relevant externally.
 __all__ = [
