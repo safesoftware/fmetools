@@ -17,6 +17,7 @@ import warnings
 from http import client as http_client
 from typing import (
     Any,
+    Dict,
     List,
     Literal,
     NamedTuple,
@@ -25,6 +26,7 @@ from typing import (
     Protocol,
     Tuple,
     Union,
+    cast,
 )
 from urllib.parse import quote, urlparse
 
@@ -310,8 +312,8 @@ class FMEGeneralProxyHandler:
         self.proxies: List[FMEProxyDefinition] = []
         self.non_proxy_hosts: List[Pattern[str]] = []
         self.use_pac = True
-        self.user = ""
-        self.password = ""
+        self.user: str = ""
+        self.password: str = ""
         self._auth_method: Optional[str] = None
 
     def configure(self, fme_session: _FMESessionLikeProxyConfigProvider) -> None:
@@ -350,6 +352,7 @@ class FMEGeneralProxyHandler:
         proxy_network_config = stringarray_to_dict(
             fme_session.getProperties(FMESESSION_PROP_NETWORK_PROXY_SETTINGS, {})
         )
+        proxy_network_config = cast(Dict[str, str], proxy_network_config)
         self.user = proxy_network_config.get("system-proxy-user", self.user)
         self.password = proxy_network_config.get("system-proxy-password", self.password)
         self._auth_method = proxy_network_config.get(
@@ -425,6 +428,7 @@ class FMECustomProxyMapHandler:
         applicable_url = fme_session.decodeFromFMEParsableText(applicable_url).lower()
 
         proxy_map_info = stringarray_to_dict(proxy_info.split(","))
+        proxy_map_info = cast(Dict[str, str], proxy_map_info)
         proxy_url = fme_session.decodeFromFMEParsableText(
             proxy_map_info["proxy-url"]
         ).strip()
