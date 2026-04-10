@@ -1,9 +1,14 @@
 # coding: utf-8
 
 """
-This module provides :class:`FMERequestsSession`,
-a drop-in replacement for :class:`requests.Session`.
-Use this class to make HTTP requests that automatically follow FME settings.
+This module provides classes to make HTTP requests that follow FME settings.
+
+- :class:`FMERequestsSession` is a drop-in replacement for :class:`requests.Session`.
+- :class:`FMEProxyResolver` can be used to look up FME proxy settings for a given URL,
+    for use with any HTTP client, not just :mod:`requests`.
+
+This module is usable without :mod:`fmeobjects`.
+When :mod:`fmeobjects` is available, proxy configuration is loaded from :class:`~fmeobjects.FMESession` by default.
 """
 
 from __future__ import annotations
@@ -24,7 +29,6 @@ from typing import (
     Optional,
     Pattern,
     Protocol,
-    Tuple,
     Union,
     cast,
 )
@@ -522,6 +526,43 @@ def _configure_proxy_exceptions() -> bool:
     return True
 
 
+class FMEProxyResolver:
+    """
+    Resolve proxy settings for URLs based on FME configuration.
+    """
+
+    def __init__(
+        self, config: Optional[_FMESessionLikeProxyConfigProvider] = None
+    ) -> None:
+        if not config:
+            config = FMEProxyConfig(general=[], settings=[])
+        self.general = FMEGeneralProxyHandler()
+        self.general.configure(config)
+        self.proxy_map = FMECustomProxyMapHandler()
+        self.proxy_map.configure(config)
+
+    def get_proxy_config_for_url(
+        self, url: str
+    ) -> Union[None, FMECustomProxyMap, Literal["BYPASS"]]:
+        """
+        For a given URL, determine the proxy server settings to use according to FME settings.
+
+        Return values:
+
+        - `"BYPASS"` if the URL should be accessed without any proxy, according to
+          FME's general non-proxy host rules or a custom proxy map entry that specifies no proxy.
+        - :cls:`FMECustomProxyMap` if the URL matches an entry in the FME Custom Proxy Map.
+        - ``None`` if FME has no specific rules for the URL.
+          The caller should fall back to general proxy settings, PAC file, and/or environment variables.
+        """
+        try:
+            if self.general.is_non_proxy_host(urlparse(url).hostname):
+                return "BYPASS"
+        except ValueError:
+            pass
+        return self.proxy_map.custom_proxy_for_url(url)
+
+
 class FMERequestsSession(PACSession):
     """
     This class adds FME-specific functionality around HTTP requests,
@@ -567,18 +608,24 @@ class FMERequestsSession(PACSession):
         self._log_prefix = self.__class__.__name__
         self._log = log or get_configured_logger(self._log_prefix)
 
-        if fme_session is None:
-            try:
-                fme_session = FMEProxyConfig.from_fme_session()
-            except ValueError:
-                if FMESession is None:
-                    fme_session = FMEProxyConfig(general=[], settings=[])
-                else:
-                    raise
+        if fme_session is None and FMESession:
+            # No proxy config source given, but fmeobjects is available, so use FMESession.
+            fme_session = FMEProxyConfig.from_fme_session()
 
-        self._general_proxy_config, self._custom_proxy_map = self._load_proxy_settings(
-            fme_session
-        )
+        self._proxy_resolver = FMEProxyResolver(fme_session)
+        self._log_and_validate_proxy_config(self._proxy_resolver)
+
+        # Apply general proxy settings: PAC toggle and session-level proxy auth.
+        self.pac_enabled = self._proxy_resolver.general.use_pac
+        if self._proxy_resolver.general.user:
+            self.proxy_auth = HTTPProxyAuth(
+                self._proxy_resolver.general.user, self._proxy_resolver.general.password
+            )
+
+        # PR70705: Honour system proxy exceptions on Windows.
+        if self._proxy_resolver.general.proxies and os.name == "nt":
+            _configure_proxy_exceptions()
+
         self._last_used_custom_proxy = None
 
         self.request_count = 0
@@ -593,11 +640,19 @@ class FMERequestsSession(PACSession):
             "HTTP_DEBUG" in _FME_MACROVALUES.get("FME_DEBUG", "")
         )
 
-    def _load_proxy_settings(
-        self, fme_session: _FMESessionLikeProxyConfigProvider
-    ) -> Tuple[FMEGeneralProxyHandler, FMECustomProxyMapHandler]:
-        """Load the given proxy configuration.
+    def _log_proxy(self, proxy_url: str) -> None:
+        """Log about a proxy being used."""
+        self._log.info(tr("Using proxy %s"), proxy_url_without_credentials(proxy_url))
 
+    @staticmethod
+    def _is_proxy_auth_method_supported(auth_method: str) -> bool:
+        """
+        Return whether the proxy authentication method is supported, i.e. Basic.
+        """
+        return auth_method.lower() == "basic"
+
+    def _log_and_validate_proxy_config(self, proxy_resolver: FMEProxyResolver) -> None:
+        """
         If proxies are configured using environment variables, mention it in the log.
         Requests obeys proxy environment variables, but this method does not set them.
         Instead, this class expects them to be set in FME's fmesite.py startup script.
@@ -619,50 +674,19 @@ class FMERequestsSession(PACSession):
             if https_proxy:
                 self._log_proxy(https_proxy)
 
-        # Load the top-level proxy configuration.
-        general_proxy_config = FMEGeneralProxyHandler()
-        general_proxy_config.configure(fme_session)
-        self.pac_enabled = general_proxy_config.use_pac
-
         # If proxies are configured, or PAC is enabled, and a proxy username specified,
         # then ensure the proxy authentication method is supported.
-        enforce_proxy_auth_method = (
-            general_proxy_config.use_pac or general_proxy_config.proxies
-        ) and general_proxy_config.user
-        auth_method = general_proxy_config.auth_method
+        general_config = proxy_resolver.general
+        enforce_proxy_auth_method = general_config.user and (
+            general_config.use_pac or general_config.proxies
+        )
+        auth_method = general_config.auth_method
         if (
             enforce_proxy_auth_method
             and auth_method
             and not self._is_proxy_auth_method_supported(auth_method)
         ):
             raise UnsupportedProxyAuthenticationMethod(self._log_prefix, auth_method)
-
-        # Configure PyPAC with proxy credentials, if any.
-        if general_proxy_config.user:
-            self.proxy_auth = HTTPProxyAuth(
-                general_proxy_config.user, general_proxy_config.password
-            )
-
-        # PR70705: Honour system proxy exceptions on Windows.
-        if general_proxy_config.proxies and os.name == "nt":
-            _configure_proxy_exceptions()
-
-        # PR70807: FME Custom Proxy Map.
-        custom_proxy_map = FMECustomProxyMapHandler()
-        custom_proxy_map.configure(fme_session)
-
-        return general_proxy_config, custom_proxy_map
-
-    def _log_proxy(self, proxy_url: str) -> None:
-        """Log about a proxy being used."""
-        self._log.info(tr("Using proxy %s"), proxy_url_without_credentials(proxy_url))
-
-    @staticmethod
-    def _is_proxy_auth_method_supported(auth_method: str) -> bool:
-        """
-        Return whether the proxy authentication method is supported, i.e. Basic.
-        """
-        return auth_method.lower() == "basic"
 
     def request(self, method: str, url: str, **kwargs: Any) -> requests.Response:
         """
@@ -688,45 +712,39 @@ class FMERequestsSession(PACSession):
         if kwargs.get("proxies"):
             return super().request(method, url, **kwargs)
 
+        if not (proxy_config := self._proxy_resolver.get_proxy_config_for_url(url)):
+            # No proxy kwrags, and FME has no proxy rules for the URL.
+            # Defer to PAC and/or env vars.
+            return super().request(method, url, **kwargs)
+
         # If FME says this host bypasses proxies,
         # then make the request while ignoring proxy env vars. (FMEENGINE-63687)
-        try:
-            bypass_proxy = self._general_proxy_config.is_non_proxy_host(
-                urlparse(url).hostname
+        if proxy_config == "BYPASS" or not proxy_config.proxy_url:
+            cause = (
+                tr("Non-Proxy Host")
+                if proxy_config == "BYPASS"
+                else tr("Custom Proxy Map")
             )
-        except ValueError:
-            bypass_proxy = False  # Ignore malformed URLs.
-
-        if bypass_proxy:
-            self._log.debug(tr("Non-Proxy Hosts: Directly accessing '%s'"), url)
+            self._log.debug(tr("%s: Directly accessing '%s'"), cause, url)
             kwargs["proxies"] = _REQUESTS_NO_PROXY_CONFIG
             return super().request(method, url, **kwargs)
 
-        # Look for config from FME Custom Proxy Map. (PR70807)
-        custom_proxy = self._custom_proxy_map.custom_proxy_for_url(url)
-        if not custom_proxy:
-            return super().request(method, url, **kwargs)
-
-        if not custom_proxy.proxy_url:
-            self._log.debug(tr("Custom Proxy Map: Directly accessing '%s'"), url)
-            kwargs["proxies"] = _REQUESTS_NO_PROXY_CONFIG
-            return super().request(method, url, **kwargs)
-
+        # Custom Proxy Map provided a proxy for this URL. Use it.
         self._log.debug(
             tr(
                 "Custom Proxy Map: Using proxy '{proxy_url}' for URL '{request_url}'"
-            ).format(proxy_url=custom_proxy.sanitized_proxy_url, request_url=url)
+            ).format(proxy_url=proxy_config.sanitized_proxy_url, request_url=url)
         )
-        auth_method = custom_proxy.auth_method
+        auth_method = proxy_config.auth_method
         if auth_method and not self._is_proxy_auth_method_supported(auth_method):
             raise UnsupportedProxyAuthenticationMethod(self._log_prefix, auth_method)
         kwargs["proxies"] = {
-            "http": custom_proxy.proxy_url,
-            "https": custom_proxy.proxy_url,
+            "http": proxy_config.proxy_url,
+            "https": proxy_config.proxy_url,
         }
         # Log about the custom proxy every time it changes to a different proxy.
-        if self._last_used_custom_proxy != custom_proxy.sanitized_proxy_url:
-            self._last_used_custom_proxy = custom_proxy.sanitized_proxy_url
-            self._log_proxy(custom_proxy.sanitized_proxy_url)
+        if self._last_used_custom_proxy != proxy_config.sanitized_proxy_url:
+            self._last_used_custom_proxy = proxy_config.sanitized_proxy_url
+            self._log_proxy(proxy_config.sanitized_proxy_url)
 
         return super().request(method, url, **kwargs)
