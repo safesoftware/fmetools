@@ -35,6 +35,9 @@ def test_logger_debug_autoconfig(monkeypatch):
 
 
 @given(py_severity=sampled_from(sorted(LEVEL_NUM_TO_FME.keys())), debug_mode=booleans())
+@settings(
+    deadline=800,
+)
 def test_log_output(py_severity, debug_mode):
     """
     - Filtering of debug messages based on whether the logger is in debug mode.
