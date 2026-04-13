@@ -1,5 +1,10 @@
 # fmetools changes
 
+## 0.14.0
+
+* `fmetools.http`: Support usage without `fmeobjects`.
+* Migrate from setup.cfg to pyproject.toml.
+
 ## 0.13.2
 
 * `fmetools.plugins.FMESimplifiedWriter`: Support writers which use spatial definition tables to define geometry support.

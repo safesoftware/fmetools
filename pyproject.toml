@@ -7,7 +7,9 @@ name = "fmetools"
 dynamic = ["version"]
 description = "Tools for extending Safe Software's FME using Python."
 readme = "README.md"
-license = "BSD-2-Clause"
+license = { file = "LICENSE" }
+# Switch to below when using setuptools >= 77, after dropping PY 3.8 support.
+# license = "BSD-2-Clause"
 authors = [{ name = "Safe Software Inc." }]
 keywords = ["FME", "fmeobjects"]
 classifiers = [
