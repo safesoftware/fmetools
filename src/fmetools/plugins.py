@@ -12,7 +12,7 @@ from __future__ import annotations
 import copy
 import logging
 import warnings
-from typing import Optional, Generator, List, Dict
+from typing import Dict, Generator, List, Optional
 
 from . import tr
 
@@ -22,8 +22,8 @@ except ImportError:  # Support < FME 2024.2
     from ._deprecated import FMEBaseTransformer
 
 from fmeobjects import (
-    FMEFeature,
     FMEException,
+    FMEFeature,
     kFMERead_SearchType,
 )
 
@@ -36,12 +36,12 @@ from pluginbuilder import FMEReader, FMEWriter
 
 from .logfile import get_configured_logger
 from .parsers import (
-    OpenParameters,
-    MappingFile,
-    Directives,
-    get_template_feature_type,
-    FeatureTypeInfo,
     ConstraintsProperties,
+    Directives,
+    FeatureTypeInfo,
+    MappingFile,
+    OpenParameters,
+    get_template_feature_type,
 )
 
 # These are relevant externally.

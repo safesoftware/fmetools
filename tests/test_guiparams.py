@@ -51,7 +51,7 @@ def test_intparser(value):
     if value == "":
         assert parser(value) is None
         return
-    if not re.match(r"^\d+ *$", value):
+    if not re.match(r"^\s*\d+\s*$", value):
         with pytest.raises(ValueError):
             parser(value)
         return

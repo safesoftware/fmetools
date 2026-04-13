@@ -1,3 +1,4 @@
+# type: ignore [reportPossiblyUnboundVariable]
 import inspect
 from enum import Enum
 
@@ -134,28 +135,28 @@ SAME = "SAME"
             id="empty list",
         ),
         pytest.param(
-            "StringReplacer 6 NO_MATCH",
+            "StringReplacer 5 NO_MATCH",
             MISSING,
             ParameterState.NO_OP,
             "_FME_NO_OP_",
             id="default no-op",
         ),
         pytest.param(
-            "StringReplacer 6 NO_MATCH",
+            "StringReplacer 5 NO_MATCH",
             "_FME_NO_OP_",
             ParameterState.NO_OP,
             "_FME_NO_OP_",
             id="no-op",
         ),
         pytest.param(
-            "StringReplacer 6 NO_MATCH",
+            "StringReplacer 5 NO_MATCH",
             "FME_NULL_VALUE",
             ParameterState.NULL,
             "FME_NULL_VALUE",
             id="FME_NULL_VALUE on nullable",
         ),
         pytest.param(
-            "StringReplacer 6 NO_MATCH",
+            "StringReplacer 5 NO_MATCH",
             None,
             ParameterState.NULL,
             None,
@@ -228,7 +229,7 @@ SAME = "SAME"
             id="None round-trip on not nullable str",
         ),
         pytest.param(
-            "StringReplacer 6 NO_MATCH",
+            "StringReplacer 5 NO_MATCH",
             None,
             ParameterState.NULL,
             None,
@@ -310,7 +311,10 @@ def check_disabled_param_access(xformer, param_name):
         with pytest.raises(ValueError) as exc:
             assert not xformer[param_name]
         # TODO: Message to be improved by FOUNDATION-8506.
-        assert "parameter value does not match the parameter type" in str(exc.value)
+        expected_msg = "parameter is disabled"
+        if BUILD_NUM < 26066:  # FOUNDATION-8506 / FMEENGINE-92007
+            expected_msg = "parameter value does not match the parameter type"
+        assert expected_msg in str(exc.value)
     else:
         assert not xformer[param_name]  # Exists but disabled so no KeyError
 
@@ -438,7 +442,7 @@ def test_transformer_not_found(name, version):
 
 def test_versions():
     with pytest.raises(TypeError):
-        TransformerParameterParser("Creator", "non int version")  # noqa
+        TransformerParameterParser("Creator", "non int version")  # type: ignore
 
     t = TransformerParameterParser("Creator")
     # Version 2 added NUM. It's also the oldest defined version.
@@ -448,6 +452,7 @@ def test_versions():
     assert t.get("NUM", prefix=None) == 1
     # TransformerParameterParser init w/o version returns the latest version,
     # and latest version still has COORDSYS.
+    t.set("GEOMTYPE", "Geometry Object")  # Needed in v8 to enable COORDSYS
     assert t.set("COORDSYS", "LL84")
     assert t["COORDSYS"] == "LL84"
 

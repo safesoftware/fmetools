@@ -3,19 +3,17 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import logging
-
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import fmeobjects
 from fmeobjects import FMEFeature
-
 from hypothesis import given, settings
-from hypothesis.strategies import sampled_from, booleans
+from hypothesis.strategies import booleans, sampled_from
 
 from fmetools.logfile import (
+    LEVEL_NUM_TO_FME,
     FMELogHandler,
     get_configured_logger,
-    LEVEL_NUM_TO_FME,
 )
 
 
@@ -37,6 +35,9 @@ def test_logger_debug_autoconfig(monkeypatch):
 
 
 @given(py_severity=sampled_from(sorted(LEVEL_NUM_TO_FME.keys())), debug_mode=booleans())
+@settings(
+    deadline=800,
+)
 def test_log_output(py_severity, debug_mode):
     """
     - Filtering of debug messages based on whether the logger is in debug mode.

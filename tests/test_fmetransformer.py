@@ -9,7 +9,6 @@ from pathlib import Path
 import fmeobjects
 import pytest
 
-
 # Allow this test to skip gracefully with pytestmark, if import fails.
 FMETRANSFORMER_NOT_AVAILABLE = True
 try:

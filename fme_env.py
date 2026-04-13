@@ -2,11 +2,10 @@
 A CLI script to set up a virtualenv to work with FME.
 """
 
-import os
 import argparse
+import os
 import shutil
 import sys
-
 
 fme_home = os.environ.get("FME_HOME")
 

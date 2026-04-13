@@ -1,15 +1,15 @@
 # coding: utf-8
 
+from unittest.mock import patch
+
 import fme
 from fmeobjects import FMEFeature
 
 from fmetools.plugins import (
-    FMESimplifiedReader,
     FMEEnhancedTransformer,
+    FMESimplifiedReader,
     FMESimplifiedWriter,
 )
-
-from unittest.mock import patch
 
 
 class MockReader(FMESimplifiedReader):
