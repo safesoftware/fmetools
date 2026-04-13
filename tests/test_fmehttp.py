@@ -68,6 +68,16 @@ def import_http_module(
     fmeobjects_available: bool,
     fme_has_macrovalues: bool = True,
 ) -> HttpModule:
+    # In Python 3.9, mock.patch resolves targets via getattr(package, submodule)
+    # rather than sys.modules. Reimporting submodules updates the package attribute
+    # but monkeypatch.delitem only restores sys.modules, leaving a stale reference.
+    # Save and restore submodule attributes on the fmetools package explicitly.
+    import fmetools as _fmetools_pkg
+
+    for _attr in ("http", "logfile"):
+        if hasattr(_fmetools_pkg, _attr):
+            monkeypatch.setattr(_fmetools_pkg, _attr, getattr(_fmetools_pkg, _attr))
+
     monkeypatch.delitem(sys.modules, "fme", raising=False)
     monkeypatch.delitem(sys.modules, "fmeobjects", raising=False)
     monkeypatch.delitem(sys.modules, "fmetools.http", raising=False)
