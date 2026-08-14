@@ -279,9 +279,9 @@ def test_requests_session_without_explicit_fme_session_depends_on_fmeobjects(
     else:
         assert "python-requests/" in session.headers["User-Agent"]
         assert not session.headers["User-Agent"].startswith("FME/")
-        assert session._proxy_resolver.general.proxies == []
-        assert session._proxy_resolver.general.user == ""
-        assert session._proxy_resolver.general.password == ""
+        assert session._fme_proxy_resolver.general.proxies == []
+        assert session._fme_proxy_resolver.general.user == ""
+        assert session._fme_proxy_resolver.general.password == ""
 
 
 def test_requests_session_uses_empty_proxy_config_without_fmeobjects(
@@ -292,9 +292,9 @@ def test_requests_session_uses_empty_proxy_config_without_fmeobjects(
 
     session = http_import_state.module.FMERequestsSession()
 
-    assert session._proxy_resolver.general.proxies == []
-    assert session._proxy_resolver.general.user == ""
-    assert session._proxy_resolver.general.password == ""
+    assert session._fme_proxy_resolver.general.proxies == []
+    assert session._fme_proxy_resolver.general.user == ""
+    assert session._fme_proxy_resolver.general.password == ""
     assert session.pac_enabled is False
 
 
@@ -311,7 +311,7 @@ def test_requests_session_accepts_real_fmesession_when_fmeobjects_available(
     assert http_module.FMESession is not None
     assert isinstance(real_fme_session, http_module.FMESession)
     assert session.headers["User-Agent"].startswith(http_module._USER_AGENT)
-    assert session._proxy_resolver.general is not None
+    assert session._fme_proxy_resolver.general is not None
 
 
 def test_requests_session_accepts_proxy_config_when_fmesession_unavailable(
@@ -329,8 +329,8 @@ def test_requests_session_accepts_proxy_config_when_fmesession_unavailable(
 
     assert "python-requests/" in session.headers["User-Agent"]
     assert not session.headers["User-Agent"].startswith("FME/")
-    assert session._proxy_resolver.general.user == "proxy-user"
-    assert session._proxy_resolver.general.password == "proxy-pass"
+    assert session._fme_proxy_resolver.general.user == "proxy-user"
+    assert session._fme_proxy_resolver.general.password == "proxy-pass"
 
 
 def test_requests_session_accepts_empty_proxy_config(http_module):
@@ -338,9 +338,9 @@ def test_requests_session_accepts_empty_proxy_config(http_module):
         fme_session=http_module.FMEProxyConfig(general=[], settings=[])
     )
 
-    assert session._proxy_resolver.general.proxies == []
-    assert session._proxy_resolver.general.user == ""
-    assert session._proxy_resolver.general.password == ""
+    assert session._fme_proxy_resolver.general.proxies == []
+    assert session._fme_proxy_resolver.general.user == ""
+    assert session._fme_proxy_resolver.general.password == ""
     assert session.pac_enabled is False
 
 
@@ -525,6 +525,52 @@ def test_mock_request(no_proxy_requests_session):
         proxies=None,
         allow_redirects=True,
     )
+
+
+def test_mock_request_with_pac_enabled_but_no_pac_found(http_module):
+    """
+    PAC is enabled, but PAC discovery finds nothing.
+    """
+    session = http_module.FMERequestsSession(
+        fme_session=MockFMESession(["use-system-proxy", "yes"])
+    )
+    assert session.pac_enabled is True  # Use System Proxy with no general proxies.
+
+    with patch("pypac.api.get_pac", return_value=None) as get_pac:
+        with patch("requests.Session.request") as request:
+            session.get("http://example.org")
+    get_pac.assert_called_once()
+    assert_request_called_once_with(
+        request,
+        "GET",
+        "http://example.org",
+        timeout=REQUEST_DEFAULT_TIMEOUT,
+        proxies=None,
+        allow_redirects=True,
+    )
+    # PACSession's own resolver stays unset, since no PAC file was found.
+    assert session._proxy_resolver is None
+    assert isinstance(session._fme_proxy_resolver, http_module.FMEProxyResolver)
+
+
+def test_mock_request_with_pac_enabled_and_pac_found(http_module):
+    """
+    PAC is enabled and a PAC file is found, so ``PACSession`` populates its own
+    ``_proxy_resolver``. :class:`FMERequestsSession` must keep resolving FME proxy
+    rules from its own resolver on every request, including after PAC discovery.
+    """
+    from pypac.parser import PACFile
+
+    pac = PACFile("function FindProxyForURL(url, host) { return 'DIRECT'; }")
+    session = http_module.FMERequestsSession(
+        fme_session=MockFMESession(["use-system-proxy", "yes"])
+    )
+    with patch("pypac.api.get_pac", return_value=pac):
+        with patch("requests.Session.request"):
+            session.get("http://example.org")
+            session.get("http://example.org")  # PAC resolver now in place.
+    assert session.request_count == 2
+    assert isinstance(session._fme_proxy_resolver, http_module.FMEProxyResolver)
 
 
 @pytest.mark.vcr("test_live_request.yaml")
