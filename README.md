@@ -34,9 +34,8 @@ FME does not include fmetools, so packages that use it must include it themselve
 
 ## For maintainers of fmetools
 
-1. Start with a clean environment
-2. Install dev requirements using `pip install -r requirements.txt`
-3. Do a dev install using `pip install --editable .`
-4. Run tests using `pytest`
-5. Build wheel using `python -m build --wheel`
-6. To build docs: `sphinx-build -M html docs docs/_build`
+1. Install dependencies with `uv sync`.
+2. Set up access to fmeobjects using `uv run fme-packager config-env`.
+3. Run tests using `uv run pytest`. `tox.ini` contains more specific invocations.
+4. Build wheel with `uv build`.
+5. Build docs with `uv run sphinx-build docs _build`.

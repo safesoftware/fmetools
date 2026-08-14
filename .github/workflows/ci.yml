@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+
+jobs:
+  checks-external:
+    runs-on: ubuntu-slim
+    if: github.server_url == 'https://github.com'
+    steps:
+    - uses: actions/checkout@v7
+    - uses: astral-sh/setup-uv@v10.0.0
+    - name: Checks
+      run: uv run ruff check
+    - name: Check formatting
+      run: uv run ruff format --check
+    - name: Run tests and coverage
+      run: uv run pytest --cov -m ""
+  checks-internal:
+    runs-on: [self-hosted]
+    if: github.server_url != 'https://github.com'
+    steps:
+    - uses: actions/checkout@v4
+    - name: Checks
+      run: uv run ruff check
+    - name: Check formatting
+      run: uv run ruff format --check
+
+  build-external:
+    runs-on: ubuntu-slim
+    if: github.server_url == 'https://github.com'
+    steps:
+    - uses: actions/checkout@v7
+    - uses: astral-sh/setup-uv@v10.0.0
+    - id: build
+      run: |
+        rm -rf dist
+        uv build
+        echo "wheel=$(basename dist/*.whl)" >> "$GITHUB_OUTPUT"
+    - uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.build.outputs.wheel }}
+        path: dist/*.whl
+        if-no-files-found: error
+  build-internal:
+    runs-on: [self-hosted]
+    if: github.server_url != 'https://github.com'
+    steps:
+    - uses: actions/checkout@v4
+    - id: build
+      run: |
+        rm -rf dist
+        uv build
+        echo "wheel=$(basename dist/*.whl)" >> "$GITHUB_OUTPUT"
+    - uses: actions/upload-artifact@v3
+      with:
+        name: ${{ steps.build.outputs.wheel }}
+        path: dist/*.whl
+        if-no-files-found: error

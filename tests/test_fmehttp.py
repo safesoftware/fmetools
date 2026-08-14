@@ -55,6 +55,23 @@ def decode_fme_parsable_text(value: str) -> str:
     return value
 
 
+def assert_request_called_once_with(mock_request, method, url, **expected_kwargs):
+    """
+    Assert that the patched ``requests.Session.request`` was called once with the
+    given method, URL, and (at least) the expected keyword arguments.
+
+    Extra keyword arguments are tolerated so the assertion stays robust against
+    upstream libraries (e.g. ``pypac``) adding pass-through kwargs like ``params``.
+    """
+    mock_request.assert_called_once()
+    call = mock_request.call_args
+    assert call.args == (method, url)
+    for key, value in expected_kwargs.items():
+        assert call.kwargs[key] == value, (
+            f"kwarg {key!r}: expected {value!r}, got {call.kwargs.get(key)!r}"
+        )
+
+
 def make_fake_fme_module(*, has_macrovalues: bool = True) -> types.ModuleType:
     module = types.ModuleType("fme")
     if has_macrovalues:
@@ -500,7 +517,8 @@ def test_proxy_url_without_credentials(http_module, expected, proxy_url):
 def test_mock_request(no_proxy_requests_session):
     with patch("requests.Session.request") as request:
         no_proxy_requests_session.get("http://example.org")
-    request.assert_called_once_with(
+    assert_request_called_once_with(
+        request,
         "GET",
         "http://example.org",
         timeout=REQUEST_DEFAULT_TIMEOUT,
@@ -544,7 +562,8 @@ def test_mock_request_with_proxy_map(http_module):
     session.pac_enabled = False  # Don't go looking for a PAC file.
     with patch("requests.Session.request") as request:
         session.get("http://google.ca/blah")
-    request.assert_called_once_with(
+    assert_request_called_once_with(
+        request,
         "GET",
         "http://google.ca/blah",
         timeout=REQUEST_DEFAULT_TIMEOUT,
@@ -553,7 +572,8 @@ def test_mock_request_with_proxy_map(http_module):
     )
     with patch("requests.Session.request") as request:
         session.get("http://example.org")
-    request.assert_called_once_with(
+    assert_request_called_once_with(
+        request,
         "GET",
         "http://example.org",
         timeout=REQUEST_DEFAULT_TIMEOUT,

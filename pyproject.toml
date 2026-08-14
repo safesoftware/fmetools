@@ -16,7 +16,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Intended Audience :: Developers",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = []
 
 [project.urls]
@@ -33,6 +33,15 @@ dev = [
     "ruff>=0.14.4",
     "fme-packager>=1.14.0",
 ]
+docs = [
+    "pypac>=0.19.0",
+    "sphinx>=7.4.7",
+    "sphinx-rtd-theme>=3.1.0",
+]
+
+[[tool.uv.index]]
+url = "https://safesoftware.jfrog.io/artifactory/api/pypi/pypi/simple"
+default = true
 
 [tool.setuptools.dynamic]
 version = { attr = "fmetools.__version__" }

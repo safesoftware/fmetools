@@ -1,33 +1,66 @@
-name: Build docs and publish to web
+name: Docs
 on:
   push:
-    branches:
-      - main
-permissions:
-  contents: write
+  release:
+    types: [created]
+
 jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
+  docs-external:
+    runs-on: ubuntu-slim
+    if: github.server_url == 'https://github.com'
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: 3.x
-      - name: Install dependencies
-        run: |
-            pip install sphinx sphinx_rtd_theme
-            pip install six pypac requests
-            pip install -e .
-      - name: Sphinx build
-        run: |
-            sphinx-build docs _build
-      - name: Publish to web
-        uses: jakejarvis/s3-sync-action@master
-        with:
-            args: --acl public-read --follow-symlinks --delete --exclude '.git/*'
-        env:
-            AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
-            AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-            AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-            SOURCE_DIR: _build
-            DEST_DIR: ${{ vars.DEST_DIR }}
+    - uses: actions/checkout@v7
+    - uses: astral-sh/setup-uv@v10.0.0
+    - name: Sphinx build
+      run: uv run --group docs sphinx-build -d .doctrees docs _build
+    - uses: actions/upload-artifact@v4
+      with:
+        name: docs
+        path: _build
+        if-no-files-found: error
+    - name: Publish to web
+      if: github.event_name == 'release'
+      uses: jakejarvis/s3-sync-action@master
+      with:
+        args: --acl public-read --follow-symlinks --delete --exclude '.git/*'
+      env:
+        AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        SOURCE_DIR: _build
+        DEST_DIR: ${{ vars.DEST_DIR }}
+  docs-internal:
+    runs-on: [self-hosted]
+    if: github.server_url != 'https://github.com'
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v4
+    - name: Sphinx build
+      run: uv run --group docs sphinx-build -d .doctrees docs _build
+    - uses: actions/upload-artifact@v3
+      with:
+        name: docs
+        path: _build
+        if-no-files-found: error
+    - name: Publish to GitHub Pages
+      if: github.event_name == 'release'
+      run: |
+        git fetch origin gh-pages
+        git worktree add -B gh-pages ../gh-pages origin/gh-pages
+        cd ../gh-pages
+        rm -rf ./*
+        cp -r "$GITHUB_WORKSPACE"/_build/. .
+        touch .nojekyll
+        git add -A
+        if git diff --cached --quiet; then
+          echo "No doc changes to publish"
+          exit 0
+        fi
+        # gh-pages is a single rootless commit: no history to accumulate.
+        git checkout -q --orphan gh-pages-new
+        git add -A
+        git -c user.name="github-actions[bot]" \
+          -c user.email="github-actions[bot]@users.noreply.github.com" \
+          commit -qm "Docs for ${{ github.event.release.tag_name }}"
+        git push -f origin gh-pages-new:gh-pages
