@@ -1,5 +1,9 @@
 # fmetools changes
 
+## 0.14.1
+
+* `fmetools.http.FMERequestsSession`: Fix error in 0.14.0 when system proxy is enabled but no PAC was found. (FMEENGINE-99324)
+
 ## 0.14.0
 
 * `fmetools.http`: Support usage without `fmeobjects`.

@@ -612,18 +612,19 @@ class FMERequestsSession(PACSession):
             # No proxy config source given, but fmeobjects is available, so use FMESession.
             fme_session = FMEProxyConfig.from_fme_session()
 
-        self._proxy_resolver = FMEProxyResolver(fme_session)
-        self._log_and_validate_proxy_config(self._proxy_resolver)
+        self._fme_proxy_resolver = FMEProxyResolver(fme_session)
+        self._log_and_validate_proxy_config(self._fme_proxy_resolver)
 
         # Apply general proxy settings: PAC toggle and session-level proxy auth.
-        self.pac_enabled = self._proxy_resolver.general.use_pac
-        if self._proxy_resolver.general.user:
+        self.pac_enabled = self._fme_proxy_resolver.general.use_pac
+        if self._fme_proxy_resolver.general.user:
             self.proxy_auth = HTTPProxyAuth(
-                self._proxy_resolver.general.user, self._proxy_resolver.general.password
+                self._fme_proxy_resolver.general.user,
+                self._fme_proxy_resolver.general.password,
             )
 
         # PR70705: Honour system proxy exceptions on Windows.
-        if self._proxy_resolver.general.proxies and os.name == "nt":
+        if self._fme_proxy_resolver.general.proxies and os.name == "nt":
             _configure_proxy_exceptions()
 
         self._last_used_custom_proxy = None
@@ -712,7 +713,7 @@ class FMERequestsSession(PACSession):
         if kwargs.get("proxies"):
             return super().request(method, url, **kwargs)
 
-        if not (proxy_config := self._proxy_resolver.get_proxy_config_for_url(url)):
+        if not (proxy_config := self._fme_proxy_resolver.get_proxy_config_for_url(url)):
             # No proxy kwrags, and FME has no proxy rules for the URL.
             # Defer to PAC and/or env vars.
             return super().request(method, url, **kwargs)
