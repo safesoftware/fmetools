@@ -1,5 +1,3 @@
-# coding: utf-8
-
 """
 This module provides base classes for FME plugins such as transformers.
 

@@ -1,5 +1,3 @@
-# coding: utf-8
-
 """
 This module provides classes to make HTTP requests that follow FME settings.
 

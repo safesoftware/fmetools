@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 This module contains parsers to support FME reader/writer development.
 It is not intended for general use.

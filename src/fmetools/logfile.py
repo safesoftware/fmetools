@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 This module bridges FME's :class:`fmeobjects.FMELogFile`
 with the :mod:`logging` module in the Python standard library.

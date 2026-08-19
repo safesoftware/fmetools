@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 This module contains :class:`fmeobjects.FMEFeature` utilities for getting attributes, setting attributes,
 and building complete features.

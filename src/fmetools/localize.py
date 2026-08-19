@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Helpers for enabling localized strings using the :mod:`gettext` module.
 """

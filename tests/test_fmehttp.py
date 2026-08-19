@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Tests for ``fmetools.http``, a module that expects ``fmeobjects`` to be present,
 but must also remain importable and functional when it's not present.

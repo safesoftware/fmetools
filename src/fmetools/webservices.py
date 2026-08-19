@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Helpers for working with FME Named Connections and FME Web Services.
 """
