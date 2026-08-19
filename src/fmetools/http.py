@@ -17,6 +17,7 @@ import os
 import re
 import sys
 import warnings
+from dataclasses import dataclass
 from http import client as http_client
 from typing import (
     Any,
@@ -32,12 +33,11 @@ from typing import (
 )
 from urllib.parse import quote, urlparse
 
-from dataclasses import dataclass
 import requests
 import urllib3
 from pypac import PACSession
 from requests.adapters import HTTPAdapter
-from requests.auth import HTTPBasicAuth, HTTPDigestAuth, HTTPProxyAuth, AuthBase
+from requests.auth import AuthBase, HTTPBasicAuth, HTTPDigestAuth, HTTPProxyAuth
 
 try:
     import fme
@@ -47,7 +47,12 @@ except ModuleNotFoundError:
     _FME_MACROVALUES = {}
 
 try:
-    from fmeobjects import FMEException, FMESession, FME_ASSEMBLY_VERSION  # pyright: ignore[reportAssignmentType]
+    from fmeobjects import (  # pyright: ignore[reportAssignmentType]
+        FME_ASSEMBLY_VERSION,
+        FMEException,
+        FMESession,
+    )
+
     from .logfile import get_configured_logger  # pyright: ignore[reportAssignmentType]
 
     _USER_AGENT = f"FME/{FME_ASSEMBLY_VERSION}"
