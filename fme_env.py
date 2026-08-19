@@ -49,8 +49,7 @@ if __name__ == "__main__":
     dst_pth = os.path.join(site_packages_dir, "fme_env.pth")
     print("Writing " + dst_pth)
     with open(dst_pth, "w") as f:
-        for path in paths_to_add:
-            f.write(path + "\n")
+        f.writelines(path + "\n" for path in paths_to_add)
         f.write("import fme_env\n")
 
     dst_py = os.path.join(site_packages_dir, "fme_env.py")

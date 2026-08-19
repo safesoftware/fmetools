@@ -58,7 +58,9 @@ filterwarnings = [
 
 [tool.ruff]
 required-version = ">=0.14.4"
-target-version = "py38"
+fix = true
 
 [tool.ruff.lint]
-extend-select = ["FA"]
+extend-select = ["FA", "F401"]
+ignore = ["PIE790", "SIM114", "SIM117", "UP", "RUF012"]
+fixable = ["I"]

@@ -45,7 +45,7 @@ fme_exe_path = Path(fmeobjects.FMESession().fmeHome()) / "fme.exe"
 if not fme_exe_path.is_file():
     fme_exe_path = fme_exe_path.parent / "fme"
 result = subprocess.run(
-    [fme_exe_path.as_posix(), "package", "list"], capture_output=True
+    [fme_exe_path.as_posix(), "package", "list"], capture_output=True, check=False
 )
 arbitrary_fpkg_transformer = None
 skip_reason = ""

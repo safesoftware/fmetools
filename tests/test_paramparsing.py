@@ -296,7 +296,7 @@ def test_system_transformer(creator):
 
     # Invalid type for name
     with pytest.raises(TypeError) as e:
-        t.set(1, 1)  # noqa
+        t.set(1, 1)
     assert "must be str, failed to get string value" in str(e.value)
 
     # This doesn't clear default values

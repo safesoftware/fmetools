@@ -42,12 +42,12 @@ LEVEL_NUM_TO_FME = {
     logging.NOTSET: FME_WARN,
     logging.DEBUG: FME_WARN,
     logging.INFO: FME_INFORM,
-    logging.WARN: FME_WARN,
+    logging.WARNING: FME_WARN,
     logging.ERROR: FME_ERROR,
     logging.CRITICAL: FME_FATAL,
 }
 FME_TO_LEVEL_NUM = {
-    FME_WARN: logging.WARN,
+    FME_WARN: logging.WARNING,
     FME_INFORM: logging.INFO,
     FME_ERROR: logging.ERROR,
     FME_FATAL: logging.CRITICAL,

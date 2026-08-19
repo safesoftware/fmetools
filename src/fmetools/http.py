@@ -348,7 +348,9 @@ class FMEGeneralProxyHandler:
             if key == "non_proxy_hosts":
                 try:
                     for host_regex in json.loads(value):
-                        self.non_proxy_hosts.append(re.compile(host_regex, re.I))
+                        self.non_proxy_hosts.append(
+                            re.compile(host_regex, re.IGNORECASE)
+                        )
                 except (json.JSONDecodeError, re.error):
                     warnings.warn(tr("FME non-proxy-hosts: not JSON or bad regex"))
             i += 2
