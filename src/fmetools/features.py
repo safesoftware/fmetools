@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 This module contains :class:`fmeobjects.FMEFeature` utilities for getting attributes, setting attributes,
 and building complete features.
@@ -128,7 +127,7 @@ def get_attributes_with_prefix(
 
 def build_feature(
     feature_type: str,
-    attrs: dict[str, Any] = None,
+    attrs: Optional[dict[str, Any]] = None,
     attr_types: Optional[dict[str, int]] = None,
     geometry: Optional[FMEGeometry] = None,
     coordsys: Optional[str] = None,

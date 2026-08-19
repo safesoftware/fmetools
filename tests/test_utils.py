@@ -1,11 +1,9 @@
-from fmetools.utils import stringarray_to_dict
-
+from collections import Counter
 
 from hypothesis import assume, example, given
 from hypothesis.strategies import integers, lists, text
 
-
-from collections import Counter
+from fmetools.utils import stringarray_to_dict
 
 
 @given(lists(text(), max_size=6), integers(min_value=0, max_value=6))

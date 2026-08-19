@@ -31,7 +31,7 @@ class ParameterParser:
         self.encoded = encoded
         self.config = config
 
-    def __call__(self, value: Union[bool, int, float, str]):
+    def __call__(self, value: Union[bool, float, str]):
         if isinstance(value, str) and self.encoded:
             return FMESession().decodeFromFMEParsableText(value)
         return value

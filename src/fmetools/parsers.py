@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 This module contains parsers to support FME reader/writer development.
 It is not intended for general use.
@@ -15,12 +14,12 @@ from typing import Dict, Generator, Iterable, List, Optional, Set, Union
 
 import fme
 import six
-from fmeobjects import (  # noqa F401
+from fmeobjects import (
     FMEFeature,
     FMESession,
     kFME_ReaderPropAll,
 )
-from pluginbuilder import FMEMappingFile  # noqa F401
+from pluginbuilder import FMEMappingFile
 from six import string_types
 
 from . import tr
@@ -287,16 +286,16 @@ class Directives(dict):
     def __init__(
         self,
         directive_names: Set[str],
-        directive_gui_types: Dict[str, str] = None,
-        directive_defaults: Dict = None,
+        directive_gui_types: Optional[Dict[str, str]] = None,
+        directive_defaults: Optional[Dict] = None,
     ):
         super().__init__()
         self.names = directive_names
         if directive_gui_types is None:
-            directive_gui_types = dict()
+            directive_gui_types = {}
 
         if directive_defaults is None:
-            directive_defaults = dict()
+            directive_defaults = {}
 
         self.directive_types = {}
         self.directive_defaults = {}
@@ -447,9 +446,7 @@ class MappingFile:
 
         return string_to_bool(value)
 
-    def get_number(
-        self, directive: str, default: Union[float, int] = 0
-    ) -> Union[float, int]:
+    def get_number(self, directive: str, default: float = 0) -> Union[float, int]:
         """
         Get the specified directive and interpret it as a numeric value.
 
@@ -498,7 +495,7 @@ class MappingFile:
         return [_system_to_unicode(ft) for ft in featTypes]
 
     def parse_def_lines(
-        self, parameter_names: Set[str] = None
+        self, parameter_names: Optional[Set[str]] = None
     ) -> Dict[str, FeatureTypeInfo]:
         """Return the user schema and feature type options for each feature type defined in the mapping file."""
         if not parameter_names:

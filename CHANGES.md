@@ -1,5 +1,9 @@
 # fmetools changes
 
+## 0.14.2
+
+- CIB and code inspection fixes.
+
 ## 0.14.1
 
 * `fmetools.http.FMERequestsSession`: Fix error in 0.14.0 when system proxy is enabled but no PAC was found. (FMEENGINE-99324)
