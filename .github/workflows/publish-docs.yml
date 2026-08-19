@@ -20,14 +20,14 @@ jobs:
         if-no-files-found: error
     - name: Publish to web
       if: github.event_name == 'release'
-      uses: jakejarvis/s3-sync-action@master
-      with:
-        args: --acl public-read --follow-symlinks --delete --exclude '.git/*'
+      run: |
+        aws s3 sync _build "s3://$AWS_S3_BUCKET/$DEST_DIR" \
+          --acl public-read --follow-symlinks --delete --exclude '.git/*'
       env:
         AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        SOURCE_DIR: _build
+        AWS_DEFAULT_REGION: us-east-1
         DEST_DIR: ${{ vars.DEST_DIR }}
   docs-internal:
     runs-on: [self-hosted]
