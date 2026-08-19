@@ -30,7 +30,7 @@ dev = [
     "pytest-cov>=5.0.0",
     "pytest-recording>=0.13.2",
     "hypothesis>=6.113.0",
-    "ruff>=0.14.4",
+    "ruff>=0.16.3",
     "fme-packager>=1.14.0",
 ]
 docs = [
@@ -38,10 +38,6 @@ docs = [
     "sphinx>=7.4.7",
     "sphinx-rtd-theme>=3.1.0",
 ]
-
-[[tool.uv.index]]
-url = "https://safesoftware.jfrog.io/artifactory/api/pypi/pypi/simple"
-default = true
 
 [tool.setuptools.dynamic]
 version = { attr = "fmetools.__version__" }
